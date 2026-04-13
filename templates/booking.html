@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Book a Service{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header pink-header">
+        <h5 class="mb-0 fw-bold"><i class="fa-solid fa-calendar-plus me-2"></i>Schedule a Pickup</h5>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST" id="bookingForm">
+
+          <div class="row g-3">
+            <!-- Full Name -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Full Name</label>
+              <input type="text" name="full_name" class="form-control"
+                     value="{{ form.get('full_name', user.name) }}" required/>
+            </div>
+            <!-- Phone -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Phone Number</label>
+              <input type="tel" name="phone" class="form-control"
+                     value="{{ form.get('phone', '') }}" placeholder="09XXXXXXXXX" required/>
+            </div>
+            <!-- Address -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">Pickup Address</label>
+              <textarea name="address" class="form-control" rows="2" required>{{ form.get('address', '') }}</textarea>
+            </div>
+            <!-- Service Type -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Service Type</label>
+              <select name="service_type" class="form-select" id="serviceSelect" required>
+                <option value="">-- Select Service --</option>
+                {% for name, info in services.items() %}
+                <option value="{{ name }}"
+                  data-price="{{ info.price }}"
+                  {% if form.get('service_type') == name or request.args.get('service') == name %}selected{% endif %}>
+                  {{ name }} – ₱{{ info.price }}/kg
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <!-- Weight -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Weight (kg)</label>
+              <input type="number" name="weight" class="form-control" id="weightInput"
+                     value="{{ form.get('weight', '') }}" min="0.5" step="0.5" required/>
+            </div>
+            <!-- Pickup Date -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Pickup Date</label>
+              <input type="date" name="pickup_date" class="form-control"
+                     value="{{ form.get('pickup_date', '') }}" required/>
+            </div>
+            <!-- Pickup Time -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Pickup Time</label>
+              <input type="time" name="pickup_time" class="form-control"
+                     value="{{ form.get('pickup_time', '') }}" required/>
+            </div>
+            <!-- Notes -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">Additional Notes <small class="text-muted">(optional)</small></label>
+              <textarea name="notes" class="form-control" rows="2"
+                        placeholder="e.g. Handle with care, separate colors...">{{ form.get('notes', '') }}</textarea>
+            </div>
+          </div>
+
+          <!-- Price Preview -->
+          <div class="price-preview mt-4 p-3 rounded-3" id="pricePreview" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-semibold">Estimated Total:</span>
+              <span class="fs-5 fw-bold pink-text" id="totalPrice">₱0.00</span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-pink w-100 py-2 fw-bold mt-4">
+            <i class="fa-solid fa-check me-2"></i>Confirm Booking
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const serviceSelect = document.getElementById('serviceSelect');
+  const weightInput   = document.getElementById('weightInput');
+  const pricePreview  = document.getElementById('pricePreview');
+  const totalPrice    = document.getElementById('totalPrice');
+
+  function updatePrice() {
+    const opt    = serviceSelect.options[serviceSelect.selectedIndex];
+    const price  = parseFloat(opt?.dataset?.price || 0);
+    const weight = parseFloat(weightInput.value || 0);
+    if (price > 0 && weight > 0) {
+      totalPrice.textContent = '₱' + (price * weight).toFixed(2);
+      pricePreview.style.display = 'block';
+    } else {
+      pricePreview.style.display = 'none';
+    }
+  }
+
+  serviceSelect.addEventListener('change', updatePrice);
+  weightInput.addEventListener('input', updatePrice);
+
+  // Set min date to today
+  document.querySelector('[name="pickup_date"]').min = new Date().toISOString().split('T')[0];
+
+  updatePrice();
+</script>
+{% endblock %}

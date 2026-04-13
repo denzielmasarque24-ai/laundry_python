@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}My Bookings{% endblock %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div class="d-flex align-items-center">
+    <div class="section-icon me-3"><i class="fa-solid fa-box-open fa-lg"></i></div>
+    <div>
+      <h3 class="fw-bold mb-0 pink-text">My Bookings</h3>
+      <small class="text-muted">Track all your laundry orders</small>
+    </div>
+  </div>
+  <a href="{{ url_for('booking') }}" class="btn btn-pink btn-sm">
+    <i class="fa-solid fa-plus me-1"></i>New Booking
+  </a>
+</div>
+
+{% if bookings %}
+  <!-- Summary Cards -->
+  {% set pending   = bookings | selectattr('status', 'equalto', 'Pending')     | list %}
+  {% set progress  = bookings | selectattr('status', 'equalto', 'In Progress') | list %}
+  {% set completed = bookings | selectattr('status', 'equalto', 'Completed')   | list %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-4">
+      <div class="stat-card card border-0 shadow-sm text-center p-3">
+        <div class="stat-num text-warning">{{ pending | length }}</div>
+        <small class="text-muted">Pending</small>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="stat-card card border-0 shadow-sm text-center p-3">
+        <div class="stat-num text-info">{{ progress | length }}</div>
+        <small class="text-muted">In Progress</small>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="stat-card card border-0 shadow-sm text-center p-3">
+        <div class="stat-num text-success">{{ completed | length }}</div>
+        <small class="text-muted">Completed</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bookings List -->
+  <div class="row g-3">
+    {% for b in bookings %}
+    <div class="col-12">
+      <div class="booking-card card border-0 shadow-sm p-3">
+        <div class="row align-items-center">
+          <div class="col-md-5">
+            <h6 class="fw-bold mb-1">{{ b.service_type }}</h6>
+            <small class="text-muted">
+              <i class="fa-solid fa-calendar me-1"></i>{{ b.pickup_date }} at {{ b.pickup_time }}
+            </small><br/>
+            <small class="text-muted">
+              <i class="fa-solid fa-location-dot me-1"></i>{{ b.address[:40] }}{% if b.address|length > 40 %}...{% endif %}
+            </small>
+          </div>
+          <div class="col-md-3 mt-2 mt-md-0">
+            <div class="text-muted small">Weight</div>
+            <div class="fw-semibold">{{ b.weight }} kg</div>
+          </div>
+          <div class="col-md-2 mt-2 mt-md-0">
+            <div class="text-muted small">Total</div>
+            <div class="fw-bold pink-text">₱{{ "%.2f" | format(b.total_price) }}</div>
+          </div>
+          <div class="col-md-2 mt-2 mt-md-0 text-md-end">
+            <span class="badge status-{{ b.status | lower | replace(' ', '-') }} fs-6">{{ b.status }}</span>
+          </div>
+        </div>
+        {% if b.notes %}
+        <div class="mt-2 pt-2 border-top">
+          <small class="text-muted"><i class="fa-solid fa-note-sticky me-1"></i>{{ b.notes }}</small>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% else %}
+  <div class="text-center py-5">
+    <i class="fa-solid fa-basket-shopping fa-4x mb-3 opacity-25 pink-text"></i>
+    <h5 class="text-muted">No bookings yet</h5>
+    <p class="text-muted">Schedule your first laundry pickup today!</p>
+    <a href="{{ url_for('booking') }}" class="btn btn-pink px-4">Book Now</a>
+  </div>
+{% endif %}
+{% endblock %}
