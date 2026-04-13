@@ -82,3 +82,4 @@ FreshWash/
 - **Admin Panel**: Add a role check (`is_admin`) in user metadata and create `/admin` routes
 - **Status Updates**: Add a PATCH route to update booking status
 - **Email Notifications**: Use Supabase Edge Functions or Flask-Mail
+"laundry_python" 
