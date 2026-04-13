@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+<!-- Hero Welcome -->
+<div class="dashboard-hero rounded-4 p-4 mb-4 text-white">
+  <div class="d-flex align-items-center gap-3">
+    <div class="avatar-circle"><i class="fa-solid fa-user fa-lg"></i></div>
+    <div>
+      <h4 class="mb-0 fw-bold">Hello, {{ user.name }}! 👋</h4>
+      <small class="opacity-75">{{ user.email }}</small>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <a href="{{ url_for('services') }}" class="text-decoration-none">
+      <div class="quick-card card border-0 shadow-sm p-3 text-center h-100">
+        <div class="quick-icon mb-2"><i class="fa-solid fa-list-check fa-2x"></i></div>
+        <h6 class="fw-bold mb-1">Services</h6>
+        <small class="text-muted">View all laundry services</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{{ url_for('booking') }}" class="text-decoration-none">
+      <div class="quick-card card border-0 shadow-sm p-3 text-center h-100">
+        <div class="quick-icon mb-2"><i class="fa-solid fa-calendar-plus fa-2x"></i></div>
+        <h6 class="fw-bold mb-1">Book Now</h6>
+        <small class="text-muted">Schedule a pickup</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{{ url_for('my_bookings') }}" class="text-decoration-none">
+      <div class="quick-card card border-0 shadow-sm p-3 text-center h-100">
+        <div class="quick-icon mb-2"><i class="fa-solid fa-box-open fa-2x"></i></div>
+        <h6 class="fw-bold mb-1">My Bookings</h6>
+        <small class="text-muted">Track your orders</small>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- Recent Bookings -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header pink-header d-flex justify-content-between align-items-center">
+    <span class="fw-bold"><i class="fa-solid fa-clock-rotate-left me-2"></i>Recent Bookings</span>
+    <a href="{{ url_for('my_bookings') }}" class="btn btn-sm btn-outline-light">View All</a>
+  </div>
+  <div class="card-body p-0">
+    {% if recent %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Service</th><th>Date</th><th>Weight</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in recent %}
+            <tr>
+              <td>{{ b.service_type }}</td>
+              <td>{{ b.pickup_date }}</td>
+              <td>{{ b.weight }} kg</td>
+              <td><span class="badge status-{{ b.status | lower | replace(' ', '-') }}">{{ b.status }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5 text-muted">
+        <i class="fa-solid fa-basket-shopping fa-3x mb-3 opacity-25"></i>
+        <p>No bookings yet. <a href="{{ url_for('booking') }}" class="pink-link">Book your first service!</a></p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

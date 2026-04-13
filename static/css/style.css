@@ -1,0 +1,101 @@
+/* ── Base ── */
+body { background: #fdf2f8; font-family: 'Segoe UI', sans-serif; }
+
+/* ── Colors ── */
+:root {
+  --pink:       #e91e8c;
+  --pink-light: #f8bbd9;
+  --pink-dark:  #c2185b;
+  --pink-bg:    #fce4ec;
+}
+
+/* ── Navbar ── */
+.pink-nav { background: linear-gradient(135deg, #e91e8c, #c2185b); }
+
+/* ── Auth Card ── */
+.auth-card { border-radius: 1.25rem; }
+.brand-icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  display: inline-flex; align-items: center; justify-content: center;
+  color: white;
+}
+
+/* ── Buttons ── */
+.btn-pink {
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  color: white; border: none; border-radius: .6rem;
+  transition: opacity .2s, transform .1s;
+}
+.btn-pink:hover { opacity: .9; color: white; transform: translateY(-1px); }
+
+/* ── Input icons ── */
+.pink-icon { background: var(--pink-bg); color: var(--pink); border-color: #f8bbd9; }
+.form-control:focus, .form-select:focus {
+  border-color: var(--pink-light); box-shadow: 0 0 0 .2rem rgba(233,30,140,.15);
+}
+
+/* ── Links ── */
+.pink-link { color: var(--pink); }
+.pink-link:hover { color: var(--pink-dark); }
+.pink-text { color: var(--pink); }
+
+/* ── Dashboard Hero ── */
+.dashboard-hero {
+  background: linear-gradient(135deg, #e91e8c, #c2185b);
+}
+.avatar-circle {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: rgba(255,255,255,.25);
+  display: flex; align-items: center; justify-content: center; color: white;
+}
+
+/* ── Quick Cards ── */
+.quick-card { border-radius: 1rem; transition: transform .2s, box-shadow .2s; cursor: pointer; }
+.quick-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(233,30,140,.15) !important; }
+.quick-icon { color: var(--pink); }
+
+/* ── Section Icon ── */
+.section-icon {
+  width: 44px; height: 44px; border-radius: .75rem;
+  background: var(--pink-bg); color: var(--pink);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── Card Header ── */
+.pink-header {
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  color: white; border-radius: .5rem .5rem 0 0 !important;
+}
+
+/* ── Service Cards ── */
+.service-card { border-radius: 1rem; transition: transform .2s; }
+.service-card:hover { transform: translateY(-3px); }
+.service-icon {
+  width: 52px; height: 52px; border-radius: .75rem; flex-shrink: 0;
+  background: var(--pink-bg); color: var(--pink);
+  display: flex; align-items: center; justify-content: center;
+}
+.price-badge {
+  background: var(--pink-bg); color: var(--pink);
+  padding: .3rem .75rem; border-radius: 2rem; font-weight: 700; font-size: .95rem;
+}
+
+/* ── Price Preview ── */
+.price-preview { background: var(--pink-bg); border: 1px solid var(--pink-light); }
+
+/* ── Booking Cards ── */
+.booking-card { border-radius: 1rem; }
+
+/* ── Status Badges ── */
+.badge { border-radius: .5rem; padding: .4em .75em; }
+.status-pending     { background: #fff3cd; color: #856404; }
+.status-in-progress { background: #cff4fc; color: #055160; }
+.status-completed   { background: #d1e7dd; color: #0a3622; }
+
+/* ── Stat Cards ── */
+.stat-card { border-radius: 1rem; }
+.stat-num  { font-size: 1.75rem; font-weight: 700; }
+
+/* ── Table ── */
+.table th { font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; color: #888; }
