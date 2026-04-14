@@ -1,42 +1,38 @@
 {% extends "base.html" %}
 {% block title %}Register{% endblock %}
 {% block content %}
-<div class="row justify-content-center mt-5">
-  <div class="col-md-5">
-    <div class="auth-card card shadow-lg border-0 p-4">
-      <div class="text-center mb-4">
-        <div class="brand-icon mb-3"><i class="fa-solid fa-shirt fa-2x"></i></div>
-        <h2 class="fw-bold pink-text">Create Account</h2>
-        <p class="text-muted">Join FreshWash today</p>
-      </div>
-      <form method="POST">
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Full Name</label>
-          <div class="input-group">
-            <span class="input-group-text pink-icon"><i class="fa-solid fa-user"></i></span>
-            <input type="text" name="name" class="form-control" placeholder="Juan Dela Cruz" required/>
-          </div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Email Address</label>
-          <div class="input-group">
-            <span class="input-group-text pink-icon"><i class="fa-solid fa-envelope"></i></span>
-            <input type="email" name="email" class="form-control" placeholder="you@example.com" required/>
-          </div>
-        </div>
-        <div class="mb-4">
-          <label class="form-label fw-semibold">Password <small class="text-muted">(min. 6 characters)</small></label>
-          <div class="input-group">
-            <span class="input-group-text pink-icon"><i class="fa-solid fa-lock"></i></span>
-            <input type="password" name="password" class="form-control" placeholder="••••••••" required minlength="6"/>
-          </div>
-        </div>
-        <button type="submit" class="btn btn-pink w-100 py-2 fw-bold">Create Account</button>
-      </form>
-      <p class="text-center mt-3 mb-0">Already have an account?
-        <a href="{{ url_for('login') }}" class="pink-link fw-semibold">Sign In</a>
-      </p>
+<section class="auth-center">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-icon"><i class="fa-solid fa-shirt"></i></div>
+      <span>FreshWash</span>
     </div>
+    <h1 class="auth-title">Create your account</h1>
+    <p class="auth-sub">Set up your profile so booking and pickup details stay quick and organized.</p>
+    <form method="POST" class="auth-form">
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-user"></i></span>
+        <input type="text" name="name" class="rv-input" placeholder="Full name" required/>
+      </div>
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
+        <input type="email" name="email" class="rv-input" placeholder="Email address" required/>
+      </div>
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-phone"></i></span>
+        <input type="tel" name="phone" class="rv-input" placeholder="Phone number" required/>
+      </div>
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-location-dot"></i></span>
+        <input type="text" name="address" class="rv-input" placeholder="Address" required/>
+      </div>
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+        <input type="password" name="password" class="rv-input" placeholder="Password (min. 6)" required minlength="6"/>
+      </div>
+      <button type="submit" class="btn-primary w-full">Create Account</button>
+    </form>
+    <p class="auth-foot">Already have an account? <a href="{{ url_for('login') }}" class="text-link">Sign In</a></p>
   </div>
-</div>
+</section>
 {% endblock %}

@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from supabase_client import supabase
+from supabase_client import supabase, get_authed_client
 from dotenv import load_dotenv
 from functools import wraps
 import os
@@ -10,11 +10,12 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "freshwash-secret-key-2024")
 
 SERVICES = {
-    "Wash & Fold":    {"price": 150, "desc": "Clean and neatly folded laundry delivered to your door."},
-    "Wash & Iron":    {"price": 200, "desc": "Washed and professionally ironed for a crisp finish."},
-    "Dry Cleaning":   {"price": 250, "desc": "Gentle dry cleaning for delicate and special garments."},
-    "Premium Wash":   {"price": 350, "desc": "Premium treatment with fabric softener and extra care."},
+    "Wash & Fold":  {"price": 150, "desc": "Clean and neatly folded laundry delivered to your door."},
+    "Wash & Iron":  {"price": 200, "desc": "Washed and professionally ironed for a crisp finish."},
+    "Dry Cleaning": {"price": 250, "desc": "Gentle dry cleaning for delicate and special garments."},
+    "Premium Wash": {"price": 350, "desc": "Premium treatment with fabric softener and extra care."},
 }
+
 
 def login_required(f):
     @wraps(f)
@@ -25,20 +26,29 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
+def db():
+    """Return an RLS-authenticated Supabase client for the current user."""
+    return get_authed_client(session.get("access_token", ""))
+
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
 @app.route("/")
 def index():
-    if "user" in session:
-        return redirect(url_for("dashboard"))
-    return redirect(url_for("login"))
+    return redirect(url_for("readers_view"))
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        email    = request.form.get("email", "").strip()
-        password = request.form.get("password", "").strip()
         name     = request.form.get("name", "").strip()
+        email    = request.form.get("email", "").strip()
+        phone    = request.form.get("phone", "").strip()
+        address  = request.form.get("address", "").strip()
+        password = request.form.get("password", "").strip()
 
-        if not email or not password or not name:
+        if not name or not email or not phone or not address or not password:
             flash("All fields are required.", "error")
             return render_template("register.html")
 
@@ -47,19 +57,34 @@ def register():
             return render_template("register.html")
 
         try:
+            # Step 1: Create auth user
             res = supabase.auth.sign_up({
                 "email": email,
                 "password": password,
                 "options": {"data": {"full_name": name}}
             })
-            if res.user:
-                flash("Account created! Please log in.", "success")
-                return redirect(url_for("login"))
-            flash("Registration failed. Try again.", "error")
+
+            if not res.user:
+                flash("Registration failed. Try again.", "error")
+                return render_template("register.html")
+
+            # Step 2: Save profile with phone and address
+            authed = get_authed_client(res.session.access_token) if res.session else supabase
+            authed.table("profiles").insert({
+                "id":        res.user.id,
+                "full_name": name,
+                "phone":     phone,
+                "address":   address
+            }).execute()
+
+            flash("Account created! Please log in.", "success")
+            return redirect(url_for("login"))
+
         except Exception as e:
-            flash(str(e), "error")
+            flash(f"Registration error: {str(e)}", "error")
 
     return render_template("register.html")
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -73,51 +98,72 @@ def login():
 
         try:
             res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-            if res.user:
-                session["user"] = {
-                    "id":    res.user.id,
-                    "email": res.user.email,
-                    "name":  res.user.user_metadata.get("full_name", email.split("@")[0])
-                }
-                session["access_token"] = res.session.access_token
-                flash(f"Welcome back, {session['user']['name']}!", "success")
-                return redirect(url_for("dashboard"))
-            flash("Invalid credentials.", "error")
+
+            if not res.user or not res.session:
+                flash("Invalid credentials.", "error")
+                return render_template("login.html")
+
+            access_token = res.session.access_token
+            authed = get_authed_client(access_token)
+
+            # Load profile from profiles table
+            profile_res = authed.table("profiles").select("*").eq("id", res.user.id).single().execute()
+            profile = profile_res.data or {}
+
+            session["user"] = {
+                "id":      res.user.id,
+                "email":   res.user.email,
+                "name":    profile.get("full_name") or res.user.user_metadata.get("full_name", email.split("@")[0]),
+                "phone":   profile.get("phone", ""),
+                "address": profile.get("address", ""),
+                "avatar":  profile.get("avatar", "")
+            }
+            session["access_token"] = access_token
+
+            flash(f"Welcome back, {session['user']['name']}!", "success")
+            return redirect(url_for("readers_view"))
+
         except Exception as e:
-            flash("Invalid email or password.", "error")
+            flash(f"Login failed: {str(e)}", "error")
 
     return render_template("login.html")
 
+
 @app.route("/logout")
 def logout():
-    try:
-        supabase.auth.sign_out()
-    except Exception:
-        pass
     session.clear()
     flash("You have been logged out.", "success")
-    return redirect(url_for("login"))
+    return redirect(url_for("readers_view"))
+
+
+# ── Pages ─────────────────────────────────────────────────────────────────────
 
 @app.route("/dashboard")
 @login_required
 def dashboard():
     user = session["user"]
     try:
-        res = supabase.table("bookings").select("*").eq("user_id", user["id"]).order("created_at", desc=True).limit(3).execute()
+        res = db().table("bookings").select("*") \
+            .eq("user_id", user["id"]) \
+            .order("created_at", desc=True) \
+            .limit(3).execute()
         recent = res.data or []
     except Exception:
         recent = []
     return render_template("dashboard.html", user=user, recent=recent)
+
 
 @app.route("/services")
 @login_required
 def services():
     return render_template("services.html", services=SERVICES, user=session["user"])
 
+
 @app.route("/booking", methods=["GET", "POST"])
 @login_required
 def booking():
     user = session["user"]
+
     if request.method == "POST":
         service_type = request.form.get("service_type", "")
         full_name    = request.form.get("full_name", "").strip()
@@ -133,13 +179,13 @@ def booking():
             weight = 0
 
         errors = []
-        if not full_name:  errors.append("Full name is required.")
-        if not phone:      errors.append("Phone number is required.")
-        if not address:    errors.append("Address is required.")
+        if not full_name:                errors.append("Full name is required.")
+        if not phone:                    errors.append("Phone number is required.")
+        if not address:                  errors.append("Address is required.")
         if service_type not in SERVICES: errors.append("Invalid service selected.")
-        if not pickup_date: errors.append("Pickup date is required.")
-        if not pickup_time: errors.append("Pickup time is required.")
-        if weight <= 0:    errors.append("Weight must be greater than 0.")
+        if not pickup_date:              errors.append("Pickup date is required.")
+        if not pickup_time:              errors.append("Pickup time is required.")
+        if weight <= 0:                  errors.append("Weight must be greater than 0.")
 
         if errors:
             for e in errors:
@@ -147,31 +193,34 @@ def booking():
             return render_template("booking.html", services=SERVICES, user=user, form=request.form)
 
         try:
-            supabase.table("bookings").insert({
-                "user_id":     user["id"],
-                "full_name":   full_name,
-                "phone":       phone,
-                "address":     address,
+            db().table("bookings").insert({
+                "user_id":      user["id"],
+                "full_name":    full_name,
+                "phone":        phone,
+                "address":      address,
                 "service_type": service_type,
-                "pickup_date": pickup_date,
-                "pickup_time": pickup_time,
-                "weight":      weight,
-                "notes":       notes,
-                "status":      "Pending"
+                "pickup_date":  pickup_date,
+                "pickup_time":  pickup_time,
+                "weight":       weight,
+                "notes":        notes,
+                "status":       "Pending"
             }).execute()
             flash("Booking confirmed! We'll pick up your laundry soon. 🎉", "success")
-            return redirect(url_for("my_bookings"))
+            return redirect(url_for("readers_view", _anchor="my-booking"))
         except Exception as e:
             flash(f"Booking failed: {str(e)}", "error")
 
     return render_template("booking.html", services=SERVICES, user=user, form={})
+
 
 @app.route("/my-bookings")
 @login_required
 def my_bookings():
     user = session["user"]
     try:
-        res = supabase.table("bookings").select("*").eq("user_id", user["id"]).order("created_at", desc=True).execute()
+        res = db().table("bookings").select("*") \
+            .eq("user_id", user["id"]) \
+            .order("created_at", desc=True).execute()
         bookings = res.data or []
         for b in bookings:
             price = SERVICES.get(b["service_type"], {}).get("price", 0)
@@ -180,6 +229,89 @@ def my_bookings():
         flash(f"Could not load bookings: {str(e)}", "error")
         bookings = []
     return render_template("my_bookings.html", bookings=bookings, user=user)
+
+
+@app.route("/readers-view")
+def readers_view():
+    user = session.get("user")
+    recent = []
+    bookings = []
+    if user:
+        try:
+            res = db().table("bookings").select("*") \
+                .eq("user_id", user["id"]) \
+                .order("created_at", desc=True) \
+                .limit(3).execute()
+            recent = res.data or []
+        except Exception:
+            recent = []
+        try:
+            bookings_res = db().table("bookings").select("*") \
+                .eq("user_id", user["id"]) \
+                .order("created_at", desc=True).execute()
+            bookings = bookings_res.data or []
+            for booking in bookings:
+                price = SERVICES.get(booking["service_type"], {}).get("price", 0)
+                booking["total_price"] = round(price * float(booking.get("weight", 0)), 2)
+        except Exception:
+            bookings = []
+    return render_template("readers_spa.html", user=user, recent=recent, bookings=bookings, services=SERVICES)
+
+
+@app.route("/profile/update", methods=["POST"])
+@login_required
+def profile_update():
+    import json
+    user = session["user"]
+    data = request.get_json()
+    name    = data.get("name", "").strip()
+    phone   = data.get("phone", "").strip()
+    address = data.get("address", "").strip()
+    avatar  = data.get("avatar", "")
+
+    if not name:
+        return json.dumps({"ok": False, "error": "Name is required"}), 400
+
+    try:
+        update_data = {"full_name": name, "phone": phone, "address": address}
+        if avatar and avatar.startswith("data:image"):
+            update_data["avatar"] = avatar
+        db().table("profiles").update(update_data).eq("id", user["id"]).execute()
+        session["user"] = {**user, "name": name, "phone": phone, "address": address, "avatar": avatar}
+        return json.dumps({"ok": True})
+    except Exception as e:
+        return json.dumps({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/profile", methods=["GET", "POST"])
+@login_required
+def profile():
+    user = session["user"]
+
+    if request.method == "POST":
+        full_name = request.form.get("full_name", "").strip()
+        phone     = request.form.get("phone", "").strip()
+        address   = request.form.get("address", "").strip()
+
+        if not full_name:
+            flash("Full name is required.", "error")
+            return render_template("profile.html", user=user)
+
+        try:
+            db().table("profiles").update({
+                "full_name": full_name,
+                "phone":     phone,
+                "address":   address
+            }).eq("id", user["id"]).execute()
+
+            session["user"] = {**user, "name": full_name, "phone": phone, "address": address}
+            flash("Profile updated successfully!", "success")
+            return redirect(url_for("profile"))
+        except Exception as e:
+            flash(f"Update failed: {str(e)}", "error")
+
+    return render_template("profile.html", user=user)
+
 
 if __name__ == "__main__":
     app.run(debug=True)

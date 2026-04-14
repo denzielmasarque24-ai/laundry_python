@@ -1,5 +1,38 @@
--- Run this in your Supabase SQL Editor (Dashboard → SQL Editor → New Query)
+-- ============================================================
+-- FreshWash — Full Schema (bookings + profiles)
+-- Run this in: Supabase Dashboard → SQL Editor → New Query
+-- ============================================================
 
+-- ── Profiles table ──────────────────────────────────────────
+create table if not exists public.profiles (
+  id         uuid primary key references auth.users(id) on delete cascade,
+  full_name  text not null,
+  phone      text,
+  address    text,
+  created_at timestamptz default now()
+);
+
+alter table public.profiles enable row level security;
+
+drop policy if exists "Users can view own profile"   on public.profiles;
+drop policy if exists "Users can insert own profile" on public.profiles;
+drop policy if exists "Users can update own profile" on public.profiles;
+
+create policy "Users can view own profile"
+  on public.profiles for select
+  using (auth.uid() = id);
+
+create policy "Users can insert own profile"
+  on public.profiles for insert
+  with check (auth.uid() = id);
+
+create policy "Users can update own profile"
+  on public.profiles for update
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
+
+-- ── Bookings table ──────────────────────────────────────────
 create table if not exists public.bookings (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid references auth.users(id) on delete cascade not null,
@@ -15,12 +48,34 @@ create table if not exists public.bookings (
   created_at   timestamptz default now()
 );
 
--- Enable Row Level Security
 alter table public.bookings enable row level security;
 
--- Users can only read/write their own bookings
-create policy "Users manage own bookings"
-  on public.bookings
-  for all
+drop policy if exists "Users manage own bookings"    on public.bookings;
+drop policy if exists "Users can view own bookings"  on public.bookings;
+drop policy if exists "Users can insert own bookings" on public.bookings;
+drop policy if exists "Users can update own bookings" on public.bookings;
+drop policy if exists "Users can delete own bookings" on public.bookings;
+
+create policy "Users can view own bookings"
+  on public.bookings for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own bookings"
+  on public.bookings for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own bookings"
+  on public.bookings for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+create policy "Users can delete own bookings"
+  on public.bookings for delete
+  using (auth.uid() = user_id);
+
+
+-- ── Verify ──────────────────────────────────────────────────
+select tablename, policyname, cmd
+from pg_policies
+where schemaname = 'public'
+order by tablename, cmd;

@@ -1,35 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Login{% endblock %}
 {% block content %}
-<div class="row justify-content-center mt-5">
-  <div class="col-md-5">
-    <div class="auth-card card shadow-lg border-0 p-4">
-      <div class="text-center mb-4">
-        <div class="brand-icon mb-3"><i class="fa-solid fa-shirt fa-2x"></i></div>
-        <h2 class="fw-bold pink-text">FreshWash</h2>
-        <p class="text-muted">Sign in to your account</p>
-      </div>
-      <form method="POST">
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Email Address</label>
-          <div class="input-group">
-            <span class="input-group-text pink-icon"><i class="fa-solid fa-envelope"></i></span>
-            <input type="email" name="email" class="form-control" placeholder="you@example.com" required/>
-          </div>
-        </div>
-        <div class="mb-4">
-          <label class="form-label fw-semibold">Password</label>
-          <div class="input-group">
-            <span class="input-group-text pink-icon"><i class="fa-solid fa-lock"></i></span>
-            <input type="password" name="password" class="form-control" placeholder="••••••••" required/>
-          </div>
-        </div>
-        <button type="submit" class="btn btn-pink w-100 py-2 fw-bold">Sign In</button>
-      </form>
-      <p class="text-center mt-3 mb-0">Don't have an account?
-        <a href="{{ url_for('register') }}" class="pink-link fw-semibold">Sign Up</a>
-      </p>
+<section class="auth-center">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-icon"><i class="fa-solid fa-shirt"></i></div>
+      <span>FreshWash</span>
     </div>
+    <h1 class="auth-title">Sign in to continue</h1>
+    <p class="auth-sub">Access bookings, services, and your profile in one compact workspace.</p>
+    <form method="POST" class="auth-form">
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
+        <input type="email" name="email" class="rv-input" placeholder="Email address" required/>
+      </div>
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+        <input type="password" name="password" class="rv-input" placeholder="Password" required/>
+      </div>
+      <button type="submit" class="btn-primary w-full">Sign In</button>
+    </form>
+    <p class="auth-foot">New here? <a href="{{ url_for('register') }}" class="text-link">Sign Up</a></p>
+    <p class="auth-foot"><a href="{{ url_for('readers_view') }}" class="text-link">Open Reader's View</a></p>
   </div>
-</div>
+</section>
 {% endblock %}

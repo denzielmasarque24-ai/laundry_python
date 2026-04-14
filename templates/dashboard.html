@@ -1,82 +1,98 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}Home{% endblock %}
 {% block content %}
-
-<!-- Hero Welcome -->
-<div class="dashboard-hero rounded-4 p-4 mb-4 text-white">
-  <div class="d-flex align-items-center gap-3">
-    <div class="avatar-circle"><i class="fa-solid fa-user fa-lg"></i></div>
-    <div>
-      <h4 class="mb-0 fw-bold">Hello, {{ user.name }}! 👋</h4>
-      <small class="opacity-75">{{ user.email }}</small>
+<section class="compact-hero">
+  <div class="hero-copy">
+    <span class="eyebrow">Laundry service platform</span>
+    <h1>Clean clothes, faster bookings, less screen clutter.</h1>
+    <p>Manage pickups, check service availability, and revisit bookings from one compact dashboard.</p>
+    <div class="hero-actions">
+      <a href="{{ url_for('booking') }}" class="btn-primary">Book Now</a>
+      <a href="{{ url_for('services') }}" class="btn-ghost">Browse Services</a>
     </div>
   </div>
-</div>
 
-<!-- Quick Actions -->
-<div class="row g-3 mb-4">
-  <div class="col-md-4">
-    <a href="{{ url_for('services') }}" class="text-decoration-none">
-      <div class="quick-card card border-0 shadow-sm p-3 text-center h-100">
-        <div class="quick-icon mb-2"><i class="fa-solid fa-list-check fa-2x"></i></div>
-        <h6 class="fw-bold mb-1">Services</h6>
-        <small class="text-muted">View all laundry services</small>
-      </div>
-    </a>
+  <div class="hero-summary-card">
+    <div class="mini-stat">
+      <strong>{{ recent | selectattr('status','equalto','Pending') | list | length }}</strong>
+      <span>Pending</span>
+    </div>
+    <div class="mini-stat">
+      <strong>{{ recent | selectattr('status','equalto','In Progress') | list | length }}</strong>
+      <span>In Progress</span>
+    </div>
+    <div class="mini-stat">
+      <strong>{{ recent | selectattr('status','equalto','Completed') | list | length }}</strong>
+      <span>Completed</span>
+    </div>
   </div>
-  <div class="col-md-4">
-    <a href="{{ url_for('booking') }}" class="text-decoration-none">
-      <div class="quick-card card border-0 shadow-sm p-3 text-center h-100">
-        <div class="quick-icon mb-2"><i class="fa-solid fa-calendar-plus fa-2x"></i></div>
-        <h6 class="fw-bold mb-1">Book Now</h6>
-        <small class="text-muted">Schedule a pickup</small>
-      </div>
-    </a>
-  </div>
-  <div class="col-md-4">
-    <a href="{{ url_for('my_bookings') }}" class="text-decoration-none">
-      <div class="quick-card card border-0 shadow-sm p-3 text-center h-100">
-        <div class="quick-icon mb-2"><i class="fa-solid fa-box-open fa-2x"></i></div>
-        <h6 class="fw-bold mb-1">My Bookings</h6>
-        <small class="text-muted">Track your orders</small>
-      </div>
-    </a>
-  </div>
-</div>
+</section>
 
-<!-- Recent Bookings -->
-<div class="card border-0 shadow-sm">
-  <div class="card-header pink-header d-flex justify-content-between align-items-center">
-    <span class="fw-bold"><i class="fa-solid fa-clock-rotate-left me-2"></i>Recent Bookings</span>
-    <a href="{{ url_for('my_bookings') }}" class="btn btn-sm btn-outline-light">View All</a>
-  </div>
-  <div class="card-body p-0">
+<section class="compact-grid">
+  <article class="info-card">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Services</span>
+        <h2>Popular care options</h2>
+      </div>
+      <a href="{{ url_for('services') }}" class="text-link">See all</a>
+    </div>
+
+    <div class="service-list">
+      <div class="service-row">
+        <span class="service-dot wash"><i class="fa-solid fa-soap"></i></span>
+        <div>
+          <strong>Wash</strong>
+          <small>Premium detergent, everyday wear</small>
+        </div>
+        <span class="price-tag">P150/kg</span>
+      </div>
+      <div class="service-row">
+        <span class="service-dot dry"><i class="fa-solid fa-wind"></i></span>
+        <div>
+          <strong>Dry Clean</strong>
+          <small>Delicates and formal garments</small>
+        </div>
+        <span class="price-tag">P250/pc</span>
+      </div>
+      <div class="service-row">
+        <span class="service-dot fold"><i class="fa-solid fa-layer-group"></i></span>
+        <div>
+          <strong>Fold &amp; Pack</strong>
+          <small>Organized and ready to store</small>
+        </div>
+        <span class="price-tag">P100/kg</span>
+      </div>
+    </div>
+  </article>
+
+  <article class="info-card">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Recent bookings</span>
+        <h2>Quick glance</h2>
+      </div>
+      <a href="{{ url_for('my_bookings') }}" class="text-link">Open My Booking</a>
+    </div>
+
     {% if recent %}
-      <div class="table-responsive">
-        <table class="table table-hover mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Service</th><th>Date</th><th>Weight</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for b in recent %}
-            <tr>
-              <td>{{ b.service_type }}</td>
-              <td>{{ b.pickup_date }}</td>
-              <td>{{ b.weight }} kg</td>
-              <td><span class="badge status-{{ b.status | lower | replace(' ', '-') }}">{{ b.status }}</span></td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+    <div class="booking-stack">
+      {% for booking in recent[:3] %}
+      <div class="booking-mini-card">
+        <div>
+          <strong>{{ booking.service_type }}</strong>
+          <small>{{ booking.pickup_date }} at {{ booking.pickup_time }}</small>
+        </div>
+        <span class="fw-badge status-{{ booking.status | lower | replace(' ','-') }}">{{ booking.status }}</span>
       </div>
+      {% endfor %}
+    </div>
     {% else %}
-      <div class="text-center py-5 text-muted">
-        <i class="fa-solid fa-basket-shopping fa-3x mb-3 opacity-25"></i>
-        <p>No bookings yet. <a href="{{ url_for('booking') }}" class="pink-link">Book your first service!</a></p>
-      </div>
+    <div class="empty-inline">
+      <p>No bookings yet. Schedule your first pickup to start tracking laundry progress here.</p>
+      <a href="{{ url_for('booking') }}" class="btn-primary btn-small">Create Booking</a>
+    </div>
     {% endif %}
-  </div>
-</div>
+  </article>
+</section>
 {% endblock %}

@@ -1,41 +1,62 @@
 {% extends "base.html" %}
 {% block title %}Services{% endblock %}
 {% block content %}
-
-<div class="d-flex align-items-center mb-4">
-  <div class="section-icon me-3"><i class="fa-solid fa-list-check fa-lg"></i></div>
-  <div>
-    <h3 class="fw-bold mb-0 pink-text">Our Services</h3>
-    <small class="text-muted">Choose the best care for your clothes</small>
+<div class="fw-page">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Our Services</h2>
+      <p class="page-sub">Premium laundry care for every need</p>
+    </div>
+    <div class="page-chip">
+      <i class="fa-solid fa-bolt"></i>
+      <span>Laptop-optimized service grid</span>
+    </div>
   </div>
-</div>
 
-{% set icons = {
-  "Wash & Fold":  "fa-layer-group",
-  "Wash & Iron":  "fa-temperature-high",
-  "Dry Cleaning": "fa-wind",
-  "Premium Wash": "fa-star"
-} %}
+  {% set icons = {
+    "Wash & Fold":  "fa-layer-group",
+    "Wash & Iron":  "fa-temperature-high",
+    "Dry Cleaning": "fa-wind",
+    "Premium Wash": "fa-star"
+  } %}
+  {% set gradients = {
+    "Wash & Fold":  "linear-gradient(135deg,#ffbfdc,#eb4d98)",
+    "Wash & Iron":  "linear-gradient(135deg,#ffc8e2,#f06aa9)",
+    "Dry Cleaning": "linear-gradient(135deg,#ffd3e8,#e55696)",
+    "Premium Wash": "linear-gradient(135deg,#ffb1d4,#d84d92)"
+  } %}
 
-<div class="row g-4">
-  {% for name, info in services.items() %}
-  <div class="col-md-6">
-    <div class="service-card card border-0 shadow-sm h-100 p-4">
-      <div class="d-flex align-items-start gap-3">
-        <div class="service-icon"><i class="fa-solid {{ icons[name] }} fa-xl"></i></div>
-        <div class="flex-grow-1">
-          <h5 class="fw-bold mb-1">{{ name }}</h5>
-          <p class="text-muted mb-3 small">{{ info.desc }}</p>
-          <div class="d-flex align-items-center justify-content-between">
-            <span class="price-badge">₱{{ info.price }}<small>/kg</small></span>
-            <a href="{{ url_for('booking') }}?service={{ name | urlencode }}" class="btn btn-pink btn-sm">
-              Book Now <i class="fa-solid fa-arrow-right ms-1"></i>
-            </a>
-          </div>
-        </div>
+  <div class="services-grid services-grid-compact">
+    {% for name, info in services.items() %}
+    <div class="service-glass-card">
+      <div class="svc-icon-wrap" style="background:{{ gradients[name] }}">
+        <i class="fa-solid {{ icons[name] }} fa-xl"></i>
+      </div>
+      <h5 class="svc-name">{{ name }}</h5>
+      <p class="svc-desc">{{ info.desc }}</p>
+      <div class="svc-footer">
+        <span class="svc-price">₱{{ info.price }}<small>/kg</small></span>
+        <a href="{{ url_for('booking') }}?service={{ name | urlencode }}" class="fw-btn-primary btn-sm px-3">
+          Book <i class="fa-solid fa-arrow-right ms-1"></i>
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Pickup & Delivery card -->
+    <div class="service-glass-card delivery-card">
+      <div class="svc-icon-wrap" style="background:linear-gradient(135deg,#ffd0e5,#eb4d98)">
+        <i class="fa-solid fa-truck fa-xl"></i>
+      </div>
+      <h5 class="svc-name">Pickup & Delivery</h5>
+      <p class="svc-desc">Door-to-door laundry service, we come to you.</p>
+      <div class="svc-footer">
+        <span class="svc-price free-badge">Free over ₱500</span>
+        <a href="{{ url_for('booking') }}" class="fw-btn-primary btn-sm px-3">
+          Book <i class="fa-solid fa-arrow-right ms-1"></i>
+        </a>
       </div>
     </div>
   </div>
-  {% endfor %}
 </div>
 {% endblock %}
