@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block body_class %}landing-body{% endblock %}
+{% block content %}
+<div class="home-page">
+  <section id="home" class="home-section hero-home">
+    <div class="home-hero-card">
+      <div class="home-hero-copy">
+        <span class="eyebrow landing-eyebrow">Modern Laundry Care</span>
+        <h1>FreshWash Laundry Service</h1>
+        <p>Fast, Affordable, and Reliable Laundry Care for You</p>
+        <div class="landing-cta-group">
+          {% if user %}
+          <a href="{{ url_for('booking') }}" class="btn-primary landing-cta">Book Now</a>
+          {% else %}
+          <button type="button" class="btn-primary landing-cta" onclick="openAuthModal('signin')">Book Now</button>
+          {% endif %}
+          <a href="#services" class="btn-ghost landing-secondary">View Services</a>
+        </div>
+      </div>
+      <div class="hero-visual-card">
+        <div class="hero-visual-badge"><i class="fa-solid fa-shirt"></i> Gentle Fabric Care</div>
+        <div class="hero-visual-badge"><i class="fa-solid fa-bolt"></i> Express Turnaround</div>
+        <div class="hero-visual-badge"><i class="fa-solid fa-truck-fast"></i> Pickup & Delivery</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="services" class="home-section">
+    <div class="section-shell">
+      <div class="home-head">
+        <div>
+          <span class="eyebrow">Services</span>
+          <h2>Care options designed for busy schedules</h2>
+        </div>
+        <p>Choose from everyday essentials and premium care with simple pricing and a polished experience.</p>
+      </div>
+
+      <div class="home-service-grid">
+        <article class="home-service-card">
+          <div class="landing-card-icon"><i class="fa-solid fa-soap"></i></div>
+          <h3>Wash &amp; Fold</h3>
+          <p>Freshly cleaned and neatly folded laundry ready for your shelves.</p>
+          <span class="svc-price">&#8369;150 - &#8369;250</span>
+        </article>
+        <article class="home-service-card">
+          <div class="landing-card-icon"><i class="fa-solid fa-wind"></i></div>
+          <h3>Dry Cleaning</h3>
+          <p>Special treatment for delicate, formal, and premium garments.</p>
+          <span class="svc-price">&#8369;250 - &#8369;400</span>
+        </article>
+        <article class="home-service-card">
+          <div class="landing-card-icon"><i class="fa-solid fa-temperature-high"></i></div>
+          <h3>Ironing Service</h3>
+          <p>Crisp finishing for uniforms, office wear, and everyday clothes.</p>
+          <span class="svc-price">&#8369;120 - &#8369;220</span>
+        </article>
+        <article class="home-service-card">
+          <div class="landing-card-icon"><i class="fa-solid fa-bolt"></i></div>
+          <h3>Express Laundry</h3>
+          <p>Priority handling for urgent loads when you need a faster return.</p>
+          <span class="svc-price">&#8369;220 - &#8369;380</span>
+        </article>
+        <article class="home-service-card">
+          <div class="landing-card-icon"><i class="fa-solid fa-truck-fast"></i></div>
+          <h3>Pickup &amp; Delivery</h3>
+          <p>Convenient door-to-door service that saves you time and effort.</p>
+          <span class="svc-price">Included on select orders</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="about" class="home-section">
+    <div class="section-shell">
+      <div class="home-head">
+        <div>
+          <span class="eyebrow">Why Choose Us</span>
+          <h2>Trusted service with speed, care, and convenience</h2>
+        </div>
+        <p>FreshWash keeps the process easy while delivering clean results that feel dependable from pickup to return.</p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-clock"></i></div>
+          <h3>Fast Service</h3>
+          <p>Quick 24–48 hour turnaround for most regular loads.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-tags"></i></div>
+          <h3>Affordable Prices</h3>
+          <p>Clear rates that stay friendly for students, families, and professionals.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-heart"></i></div>
+          <h3>High Quality Care</h3>
+          <p>Thoughtful handling for everyday clothes and delicate garments alike.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-truck"></i></div>
+          <h3>Door-to-Door</h3>
+          <p>Pickup and delivery designed to fit your schedule with less hassle.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="home-section">
+    <div class="section-shell">
+      <div class="home-head">
+        <div>
+          <span class="eyebrow">How It Works</span>
+          <h2>Simple from booking to clean delivery</h2>
+        </div>
+      </div>
+
+      <div class="steps-grid">
+        <article class="step-card">
+          <div class="step-number">1</div>
+          <h3>Book Online</h3>
+          <p>Choose your service and schedule your pickup in just a few clicks.</p>
+        </article>
+        <article class="step-card">
+          <div class="step-number">2</div>
+          <h3>We Pick Up Your Laundry</h3>
+          <p>Our team collects your clothes right from your location.</p>
+        </article>
+        <article class="step-card">
+          <div class="step-number">3</div>
+          <h3>Clean &amp; Deliver Back</h3>
+          <p>Your laundry returns fresh, organized, and ready to wear.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="home-section">
+    <div class="section-shell">
+      <div class="home-head">
+        <div>
+          <span class="eyebrow">Testimonials</span>
+          <h2>What customers say about FreshWash</h2>
+        </div>
+      </div>
+
+      <div class="testimonial-grid">
+        <article class="testimonial-card">
+          <div class="testimonial-stars">★★★★★</div>
+          <p>“Very fast and clean service!”</p>
+          <strong>Maria</strong>
+        </article>
+        <article class="testimonial-card">
+          <div class="testimonial-stars">★★★★★</div>
+          <p>“Affordable and super convenient.”</p>
+          <strong>John</strong>
+        </article>
+        <article class="testimonial-card">
+          <div class="testimonial-stars">★★★★★</div>
+          <p>“Pickup and delivery saved me so much time.”</p>
+          <strong>Angela</strong>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" class="home-section">
+    <div class="section-shell contact-shell">
+      <div class="home-head">
+        <div>
+          <span class="eyebrow">Location & Contact</span>
+          <h2>Visit us or get in touch anytime</h2>
+        </div>
+      </div>
+
+      <div class="contact-grid">
+        <div class="contact-card">
+          <div class="contact-list">
+            <div><i class="fa-solid fa-location-dot"></i><span>123 Fresh Street, Quezon City, Metro Manila</span></div>
+            <div><i class="fa-solid fa-phone"></i><span>+63 912 345 6789</span></div>
+            <div><i class="fa-solid fa-envelope"></i><span>hello@freshwash.app</span></div>
+          </div>
+          {% if user %}
+          <a href="{{ url_for('booking') }}" class="btn-primary">Contact Us</a>
+          {% else %}
+          <button type="button" class="btn-primary" onclick="openAuthModal('signin')">Contact Us</button>
+          {% endif %}
+        </div>
+        <div class="map-placeholder">
+          <i class="fa-solid fa-map-location-dot"></i>
+          <span>Map Preview</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="book" class="home-section">
+    <div class="cta-banner">
+      <div>
+        <span class="eyebrow cta-eyebrow">Ready To Start?</span>
+        <h2>Ready to experience hassle-free laundry?</h2>
+      </div>
+      {% if user %}
+      <a href="{{ url_for('booking') }}" class="btn-ghost cta-button">Book Now</a>
+      {% else %}
+      <button type="button" class="btn-ghost cta-button" onclick="openAuthModal('signin')">Book Now</button>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+{% if not user %}
+<div class="auth-modal-backdrop" id="authBackdrop" onclick="closeAuthModal()"></div>
+<aside class="auth-modal" id="authModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+  <div class="panel-head">
+    <div>
+      <p class="panel-kicker">FreshWash Access</p>
+      <h3 id="authModalTitle">Sign in or create an account</h3>
+    </div>
+    <button class="panel-close" type="button" onclick="closeAuthModal()" aria-label="Close auth modal">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+
+  <div class="landing-auth-tabs">
+    <button class="reader-tab active" id="tabSignIn" type="button" onclick="switchTab('signin')">Sign In</button>
+    <button class="reader-tab" id="tabSignUp" type="button" onclick="switchTab('signup')">Sign Up</button>
+  </div>
+
+  <form id="formSignIn" class="reader-form" method="POST" action="{{ url_for('login') }}">
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
+      <input type="email" name="email" class="rv-input" placeholder="Email address" required/>
+    </div>
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+      <input type="password" name="password" class="rv-input" placeholder="Password" required/>
+    </div>
+    <button type="submit" class="btn-primary w-full">Sign In</button>
+  </form>
+
+  <form id="formSignUp" class="reader-form hidden" method="POST" action="{{ url_for('register') }}">
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-user"></i></span>
+      <input type="text" name="name" class="rv-input" placeholder="Full name" required/>
+    </div>
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
+      <input type="email" name="email" class="rv-input" placeholder="Email address" required/>
+    </div>
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-phone"></i></span>
+      <input type="tel" name="phone" class="rv-input" placeholder="Phone number" required/>
+    </div>
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-location-dot"></i></span>
+      <input type="text" name="address" class="rv-input" placeholder="Address" required/>
+    </div>
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+      <input type="password" name="password" id="regPass" class="rv-input" placeholder="Password (min. 6)" required minlength="6"/>
+    </div>
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+      <input type="password" id="regConfirm" class="rv-input" placeholder="Confirm password" required/>
+    </div>
+    <p id="passError" class="rv-error hidden">Passwords do not match.</p>
+    <button type="submit" class="btn-primary w-full" onclick="return validatePasswords()">Create Account</button>
+  </form>
+</aside>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function switchTab(tab) {
+    const signInForm = document.getElementById('formSignIn');
+    const signUpForm = document.getElementById('formSignUp');
+    const signInTab = document.getElementById('tabSignIn');
+    const signUpTab = document.getElementById('tabSignUp');
+    const passError = document.getElementById('passError');
+    if (!signInForm || !signUpForm || !signInTab || !signUpTab) return;
+    signInForm.classList.toggle('hidden', tab !== 'signin');
+    signUpForm.classList.toggle('hidden', tab !== 'signup');
+    signInTab.classList.toggle('active', tab === 'signin');
+    signUpTab.classList.toggle('active', tab === 'signup');
+    if (passError) passError.classList.add('hidden');
+  }
+
+  function validatePasswords() {
+    const pass1 = document.getElementById('regPass');
+    const pass2 = document.getElementById('regConfirm');
+    const err = document.getElementById('passError');
+    if (!pass1 || !pass2 || !err) return true;
+    const isMatch = pass1.value === pass2.value;
+    err.classList.toggle('hidden', isMatch);
+    return isMatch;
+  }
+
+  function openAuthModal(tab = 'signin') {
+    const modal = document.getElementById('authModal');
+    const backdrop = document.getElementById('authBackdrop');
+    if (!modal || !backdrop) return;
+    switchTab(tab);
+    modal.classList.add('open');
+    backdrop.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeAuthModal() {
+    const modal = document.getElementById('authModal');
+    const backdrop = document.getElementById('authBackdrop');
+    if (!modal || !backdrop) return;
+    modal.classList.remove('open');
+    backdrop.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+</script>
+{% endblock %}

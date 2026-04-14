@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block body_class %}landing-body{% endblock %}
+{% block content %}
+{% set service_icons = {
+  "Wash & Fold": "fa-layer-group",
+  "Wash & Iron": "fa-temperature-high",
+  "Dry Cleaning": "fa-wind",
+  "Premium Wash": "fa-star"
+} %}
+
+<div class="spa-app-shell" data-spa-root>
+  <section id="home" class="spa-section is-active" data-spa-section aria-hidden="false">
+    <div class="spa-home-stack">
+      <div class="spa-home-grid">
+        <article class="spa-home-card hero-copy">
+        <span class="eyebrow">FreshWash App</span>
+        <h1>Fresh laundry service with a cleaner, faster booking experience.</h1>
+        <p>FreshWash makes it easy to explore services, schedule pickup, and manage bookings in one polished interface.</p>
+        <div class="hero-actions">
+          <button type="button" class="btn-primary" onclick="document.getElementById('homeServices').scrollIntoView({ behavior: 'smooth', block: 'start' })">Explore Services</button>
+          {% if user %}
+          <button type="button" class="btn-ghost" onclick="showSpaSection('book')">Book Now</button>
+          {% else %}
+          <button type="button" class="btn-ghost" onclick="openAuthModal('signin')">Login to Book</button>
+          {% endif %}
+        </div>
+        </article>
+
+        <aside class="spa-home-side glass-card">
+          <div class="spa-mini-stack">
+            <div class="spa-mini-panel">
+              <span>Same-day ready</span>
+              <strong>Fast pickup flow</strong>
+            </div>
+            <div class="spa-mini-panel">
+              <span>Clean interface</span>
+              <strong>Compact and modern</strong>
+            </div>
+          </div>
+
+          <div class="spa-highlight-list">
+            <div class="spa-highlight-item">
+              <i class="fa-solid fa-droplet"></i>
+              <div>
+                <strong>Fresh care</strong>
+                <small>Daily essentials and delicate pieces handled with care.</small>
+              </div>
+            </div>
+            <div class="spa-highlight-item">
+              <i class="fa-solid fa-truck-fast"></i>
+              <div>
+                <strong>Doorstep convenience</strong>
+                <small>Pickup and delivery designed for busy routines.</small>
+              </div>
+            </div>
+            <div class="spa-highlight-item">
+              <i class="fa-solid fa-receipt"></i>
+              <div>
+                <strong>Clear pricing</strong>
+                <small>Service options are visible immediately on the homepage.</small>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <div id="homeServices" class="glass-card spa-home-services">
+        <div class="spa-view-head">
+          <div>
+            <span class="eyebrow">Services</span>
+            <h2 class="page-title">Laundry options visible right on the homepage.</h2>
+          </div>
+          <div class="page-chip"><i class="fa-solid fa-sparkles"></i><span>Browse without clicking</span></div>
+        </div>
+
+        <div class="spa-service-grid spa-service-grid-home">
+          <article class="spa-service-card">
+            <div class="svc-icon-wrap"><i class="fa-solid fa-soap"></i></div>
+            <h3>Wash</h3>
+            <p>Everyday laundry washing for shirts, uniforms, linens, and mixed home loads.</p>
+            <div class="spa-service-foot">
+              <span class="svc-price">Fresh clean</span>
+              {% if user %}
+              <button type="button" class="btn-primary btn-small" onclick="prefillBooking('Wash & Fold')">Book</button>
+              {% else %}
+              <button type="button" class="btn-primary btn-small" onclick="openAuthModal('signin')">Login</button>
+              {% endif %}
+            </div>
+          </article>
+
+          <article class="spa-service-card">
+            <div class="svc-icon-wrap"><i class="fa-solid fa-wind"></i></div>
+            <h3>Dry Clean</h3>
+            <p>Special treatment for formal wear, delicate garments, and premium fabric care.</p>
+            <div class="spa-service-foot">
+              <span class="svc-price">&#8369;250<small>/kg</small></span>
+              {% if user %}
+              <button type="button" class="btn-primary btn-small" onclick="prefillBooking('Dry Cleaning')">Book</button>
+              {% else %}
+              <button type="button" class="btn-primary btn-small" onclick="openAuthModal('signin')">Login</button>
+              {% endif %}
+            </div>
+          </article>
+
+          <article class="spa-service-card">
+            <div class="svc-icon-wrap"><i class="fa-solid fa-box-open"></i></div>
+            <h3>Fold &amp; Pack</h3>
+            <p>Clothes are folded neatly and packed cleanly so they are ready to store or travel.</p>
+            <div class="spa-service-foot">
+              <span class="svc-price">Neat finish</span>
+              {% if user %}
+              <button type="button" class="btn-primary btn-small" onclick="prefillBooking('Wash & Fold')">Book</button>
+              {% else %}
+              <button type="button" class="btn-primary btn-small" onclick="openAuthModal('signin')">Login</button>
+              {% endif %}
+            </div>
+          </article>
+
+          <article class="spa-service-card">
+            <div class="svc-icon-wrap"><i class="fa-solid fa-temperature-high"></i></div>
+            <h3>Iron &amp; Press</h3>
+            <p>Crisp finishing for uniforms, office wear, and outfits that need a polished look.</p>
+            <div class="spa-service-foot">
+              <span class="svc-price">&#8369;200<small>/kg</small></span>
+              {% if user %}
+              <button type="button" class="btn-primary btn-small" onclick="prefillBooking('Wash & Iron')">Book</button>
+              {% else %}
+              <button type="button" class="btn-primary btn-small" onclick="openAuthModal('signin')">Login</button>
+              {% endif %}
+            </div>
+          </article>
+
+          <article class="spa-service-card">
+            <div class="svc-icon-wrap"><i class="fa-solid fa-truck-fast"></i></div>
+            <h3>Pickup &amp; Delivery</h3>
+            <p>Convenient door-to-door collection and return so your laundry fits your schedule.</p>
+            <div class="spa-service-foot">
+              <span class="svc-price">Included on select orders</span>
+              {% if user %}
+              <button type="button" class="btn-primary btn-small" onclick="showSpaSection('book')">Book</button>
+              {% else %}
+              <button type="button" class="btn-primary btn-small" onclick="openAuthModal('signin')">Login</button>
+              {% endif %}
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="about" class="spa-section" data-spa-section aria-hidden="true">
+    <div class="glass-card spa-view-card">
+      <div class="spa-view-head">
+        <div>
+          <span class="eyebrow">About</span>
+          <h2 class="page-title">Built for quick, dependable laundry care.</h2>
+        </div>
+        <div class="page-chip"><i class="fa-solid fa-heart"></i><span>FreshWash promise</span></div>
+      </div>
+
+      <div class="spa-about-grid">
+        <div class="spa-about-story">
+          <p>FreshWash combines pickup convenience, polished booking, and dependable garment care in one focused experience.</p>
+          <p>The interface is structured like a single-page app so each destination feels intentional, calm, and easy to use on desktop or mobile.</p>
+        </div>
+        <div class="spa-feature-grid">
+          <article class="spa-feature-card">
+            <i class="fa-solid fa-bolt"></i>
+            <strong>Fast turnaround</strong>
+            <span>Simple scheduling for repeat orders and urgent loads.</span>
+          </article>
+          <article class="spa-feature-card">
+            <i class="fa-solid fa-shield-heart"></i>
+            <strong>Care-first handling</strong>
+            <span>Everyday wear and delicate fabrics get clear service options.</span>
+          </article>
+          <article class="spa-feature-card">
+            <i class="fa-solid fa-truck-fast"></i>
+            <strong>Doorstep pickup</strong>
+            <span>Convenient collection and return built into the same flow.</span>
+          </article>
+          <article class="spa-feature-card">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+            <strong>App-like navigation</strong>
+            <span>Users switch views instantly without a cluttered homepage.</span>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="book" class="spa-section" data-spa-section aria-hidden="true">
+    <div class="spa-book-grid">
+      <aside class="spa-book-side">
+        <span class="eyebrow">Book Now</span>
+        <h2>Schedule pickup without leaving the app shell.</h2>
+        <p>Choose your service, set the details, and confirm in a focused booking view.</p>
+
+        <div class="spa-highlight-list">
+          <div class="spa-highlight-item">
+            <i class="fa-solid fa-calendar-check"></i>
+            <div>
+              <strong>Clear scheduling</strong>
+              <small>Date, time, address, and notes live in one compact form.</small>
+            </div>
+          </div>
+          <div class="spa-highlight-item">
+            <i class="fa-solid fa-receipt"></i>
+            <div>
+              <strong>Live estimate</strong>
+              <small>Total updates as soon as service and weight are selected.</small>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="glass-card spa-book-card">
+        {% if user %}
+        <form method="POST" action="{{ url_for('booking') }}" id="spaBookingForm" class="spa-book-form">
+          <div class="booking-field">
+            <label class="fw-label">Full Name</label>
+            <div class="fw-field">
+              <span class="fw-field-icon"><i class="fa-solid fa-user"></i></span>
+              <input type="text" name="full_name" class="fw-input" value="{{ user.name }}" required/>
+            </div>
+          </div>
+
+          <div class="booking-field">
+            <label class="fw-label">Phone Number</label>
+            <div class="fw-field">
+              <span class="fw-field-icon"><i class="fa-solid fa-phone"></i></span>
+              <input type="tel" name="phone" class="fw-input" value="{{ user.phone }}" required/>
+            </div>
+          </div>
+
+          <div class="booking-field span-2">
+            <label class="fw-label">Pickup Address</label>
+            <div class="fw-field">
+              <span class="fw-field-icon"><i class="fa-solid fa-location-dot"></i></span>
+              <input type="text" name="address" class="fw-input" value="{{ user.address }}" required/>
+            </div>
+          </div>
+
+          <div class="booking-field">
+            <label class="fw-label">Service Type</label>
+            <div class="fw-field">
+              <span class="fw-field-icon"><i class="fa-solid fa-shirt"></i></span>
+              <select name="service_type" class="fw-input" id="spaServiceSelect" required>
+                <option value="">Select service</option>
+                {% for name, info in services.items() %}
+                <option value="{{ name }}" data-price="{{ info.price }}">{{ name }} - &#8369;{{ info.price }}/kg</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="booking-field">
+            <label class="fw-label">Weight</label>
+            <div class="fw-field">
+              <span class="fw-field-icon"><i class="fa-solid fa-weight-hanging"></i></span>
+              <input type="number" name="weight" class="fw-input" id="spaWeightInput" min="0.5" step="0.5" placeholder="0.5 kg" required/>
+            </div>
+          </div>
+
+          <div class="booking-field">
+            <label class="fw-label">Pickup Date</label>
+            <div class="fw-field">
+              <span class="fw-field-icon"><i class="fa-solid fa-calendar"></i></span>
+              <input type="date" name="pickup_date" class="fw-input" id="spaPickupDate" required/>
+            </div>
+          </div>
+
+          <div class="booking-field">
+            <label class="fw-label">Pickup Time</label>
+            <div class="fw-field">
+              <span class="fw-field-icon"><i class="fa-solid fa-clock"></i></span>
+              <input type="time" name="pickup_time" class="fw-input" required/>
+            </div>
+          </div>
+
+          <div class="booking-field span-2">
+            <label class="fw-label">Additional Notes</label>
+            <div class="fw-field">
+              <span class="fw-field-icon"><i class="fa-solid fa-note-sticky"></i></span>
+              <input type="text" name="notes" class="fw-input" placeholder="Fragile items, gate instructions, preferred detergent..."/>
+            </div>
+          </div>
+
+          <div class="spa-book-bottom span-2">
+            <div class="spa-total-card" id="spaPricePreview">
+              <span>Estimated total</span>
+              <strong id="spaTotalPrice">&#8369;0.00</strong>
+            </div>
+            <button type="submit" class="fw-btn-primary">Confirm Booking</button>
+          </div>
+        </form>
+        {% else %}
+        <div class="spa-login-prompt">
+          <div class="spa-login-icon"><i class="fa-solid fa-lock"></i></div>
+          <h3>Sign in to book your laundry pickup.</h3>
+          <p>Your booking form will appear here once you log in.</p>
+          <button type="button" class="btn-primary" onclick="openAuthModal('signin')">Login</button>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section id="my-booking" class="spa-section" data-spa-section aria-hidden="true">
+    <div class="glass-card spa-view-card">
+      <div class="spa-view-head">
+        <div>
+          <span class="eyebrow">My Booking</span>
+          <h2 class="page-title">Track your laundry activity in one focused view.</h2>
+        </div>
+        {% if user %}
+        <div class="page-chip"><i class="fa-solid fa-clock-rotate-left"></i><span>{{ bookings|length }} bookings</span></div>
+        {% endif %}
+      </div>
+
+      {% if user %}
+        {% if bookings %}
+        <div class="stats-row">
+          <div class="stat-glass">
+            <div class="stat-icon" style="background:linear-gradient(135deg,#ff72b6,#ff2e93)"><i class="fa-solid fa-clock"></i></div>
+            <div><div class="stat-num">{{ bookings | selectattr('status','equalto','Pending') | list | length }}</div><div class="stat-label">Pending</div></div>
+          </div>
+          <div class="stat-glass">
+            <div class="stat-icon" style="background:linear-gradient(135deg,#ff8ac4,#ff5cab)"><i class="fa-solid fa-spinner"></i></div>
+            <div><div class="stat-num">{{ bookings | selectattr('status','equalto','In Progress') | list | length }}</div><div class="stat-label">In Progress</div></div>
+          </div>
+          <div class="stat-glass">
+            <div class="stat-icon" style="background:linear-gradient(135deg,#ffb1d8,#ff2e93)"><i class="fa-solid fa-circle-check"></i></div>
+            <div><div class="stat-num">{{ bookings | selectattr('status','equalto','Completed') | list | length }}</div><div class="stat-label">Completed</div></div>
+          </div>
+        </div>
+
+        <div class="spa-bookings-list">
+          {% for b in bookings %}
+          <article class="booking-glass-card spa-booking-card">
+            <div class="booking-service-icon"><i class="fa-solid {{ service_icons.get(b.service_type, 'fa-shirt') }}"></i></div>
+            <div class="spa-booking-copy">
+              <div class="spa-booking-top">
+                <div>
+                  <strong>{{ b.service_type }}</strong>
+                  <small>{{ b.pickup_date }} at {{ b.pickup_time }} • {{ b.weight }} kg</small>
+                </div>
+                <div class="spa-booking-side">
+                  <strong>&#8369;{{ "%.2f"|format(b.total_price) }}</strong>
+                  <span class="fw-badge status-{{ b.status | lower | replace(' ','-') }}">{{ b.status }}</span>
+                </div>
+              </div>
+              {% if b.notes %}
+              <p>{{ b.notes }}</p>
+              {% endif %}
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-inline spa-empty-state">
+          <strong>No bookings yet</strong>
+          <span>Your history will appear here after your first confirmed pickup.</span>
+          <button type="button" class="btn-primary btn-small" onclick="showSpaSection('book')">Create Booking</button>
+        </div>
+        {% endif %}
+      {% else %}
+      <div class="empty-inline spa-empty-state">
+        <strong>Please log in to view booking history.</strong>
+        <span>The My Booking section is available after sign in.</span>
+        <button type="button" class="btn-primary btn-small" onclick="openAuthModal('signin')">Login</button>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+{% if not user %}
+<div class="auth-modal-backdrop" id="authBackdrop" onclick="closeAuthModal()"></div>
+<aside class="auth-modal" id="authModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+  <div class="panel-head">
+    <div>
+      <p class="panel-kicker">FreshWash Access</p>
+      <h3 id="authModalTitle">Sign in or create an account</h3>
+    </div>
+    <button class="panel-close" type="button" onclick="closeAuthModal()" aria-label="Close auth modal">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+
+  <div class="landing-auth-tabs">
+    <button class="reader-tab active" id="tabSignIn" type="button" onclick="switchTab('signin')">Sign In</button>
+    <button class="reader-tab" id="tabSignUp" type="button" onclick="switchTab('signup')">Sign Up</button>
+  </div>
+
+  <form id="formSignIn" class="reader-form" method="POST" action="{{ url_for('login') }}">
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
+      <input type="email" name="email" class="rv-input" placeholder="Email address" required/>
+    </div>
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+      <input type="password" name="password" class="rv-input" placeholder="Password" required/>
+    </div>
+    <button type="submit" class="btn-primary w-full">Sign In</button>
+  </form>
+
+  <form id="formSignUp" class="reader-form hidden" method="POST" action="{{ url_for('register') }}">
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-user"></i></span>
+      <input type="text" name="name" class="rv-input" placeholder="Full name" required/>
+    </div>
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
+      <input type="email" name="email" class="rv-input" placeholder="Email address" required/>
+    </div>
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-phone"></i></span>
+      <input type="tel" name="phone" class="rv-input" placeholder="Phone number" required/>
+    </div>
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-location-dot"></i></span>
+      <input type="text" name="address" class="rv-input" placeholder="Address" required/>
+    </div>
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+      <input type="password" name="password" id="regPass" class="rv-input" placeholder="Password (min. 6)" required minlength="6"/>
+    </div>
+    <div class="rv-field">
+      <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+      <input type="password" id="regConfirm" class="rv-input" placeholder="Confirm password" required/>
+    </div>
+    <p id="passError" class="rv-error hidden">Passwords do not match.</p>
+    <button type="submit" class="btn-primary w-full" onclick="return validatePasswords()">Create Account</button>
+  </form>
+</aside>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function switchTab(tab) {
+    const signInForm = document.getElementById('formSignIn');
+    const signUpForm = document.getElementById('formSignUp');
+    const signInTab = document.getElementById('tabSignIn');
+    const signUpTab = document.getElementById('tabSignUp');
+    const passError = document.getElementById('passError');
+    if (!signInForm || !signUpForm || !signInTab || !signUpTab) return;
+    signInForm.classList.toggle('hidden', tab !== 'signin');
+    signUpForm.classList.toggle('hidden', tab !== 'signup');
+    signInTab.classList.toggle('active', tab === 'signin');
+    signUpTab.classList.toggle('active', tab === 'signup');
+    if (passError) passError.classList.add('hidden');
+  }
+
+  function validatePasswords() {
+    const pass1 = document.getElementById('regPass');
+    const pass2 = document.getElementById('regConfirm');
+    const err = document.getElementById('passError');
+    if (!pass1 || !pass2 || !err) return true;
+    const isMatch = pass1.value === pass2.value;
+    err.classList.toggle('hidden', isMatch);
+    return isMatch;
+  }
+
+  function openAuthModal(tab = 'signin') {
+    const modal = document.getElementById('authModal');
+    const backdrop = document.getElementById('authBackdrop');
+    if (!modal || !backdrop) return;
+    switchTab(tab);
+    modal.classList.add('open');
+    backdrop.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeAuthModal() {
+    const modal = document.getElementById('authModal');
+    const backdrop = document.getElementById('authBackdrop');
+    if (!modal || !backdrop) return;
+    modal.classList.remove('open');
+    backdrop.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function prefillBooking(serviceName) {
+    const serviceSelect = document.getElementById('spaServiceSelect');
+    if (serviceSelect) {
+      serviceSelect.value = serviceName;
+      serviceSelect.dispatchEvent(new Event('change'));
+    }
+    if (window.showSpaSection) window.showSpaSection('book');
+  }
+
+  (function initSpaBookingForm() {
+    const serviceSelect = document.getElementById('spaServiceSelect');
+    const weightInput = document.getElementById('spaWeightInput');
+    const totalPrice = document.getElementById('spaTotalPrice');
+    const pickupDate = document.getElementById('spaPickupDate');
+
+    if (pickupDate) {
+      pickupDate.min = new Date().toISOString().split('T')[0];
+    }
+
+    function updatePrice() {
+      if (!serviceSelect || !weightInput || !totalPrice) return;
+      const price = parseFloat(serviceSelect.options[serviceSelect.selectedIndex]?.dataset?.price || 0);
+      const weight = parseFloat(weightInput.value || 0);
+      const total = price * weight;
+      totalPrice.innerHTML = '&#8369;' + total.toFixed(2);
+    }
+
+    if (serviceSelect) serviceSelect.addEventListener('change', updatePrice);
+    if (weightInput) weightInput.addEventListener('input', updatePrice);
+    updatePrice();
+  })();
+</script>
+{% endblock %}
