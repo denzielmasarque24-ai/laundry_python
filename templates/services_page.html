@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Services{% endblock %}
+{% block content %}
+<div class="fw-page">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Our Services</h2>
+      <p class="page-sub">FreshWash service options aligned with the homepage and booking flow.</p>
+    </div>
+    <div class="page-chip">
+      <i class="fa-solid fa-sparkles"></i>
+      <span>Clean service grid</span>
+    </div>
+  </div>
+
+  {% set service_cards = [
+    {
+      "title": "Wash",
+      "service": "Wash & Fold",
+      "icon": "fa-soap",
+      "gradient": "linear-gradient(135deg,#ffbfdc,#eb4d98)",
+      "description": "Everyday laundry washing for clothes, linens, and regular household loads.",
+      "price_html": "&#8369;" ~ services["Wash & Fold"]["price"] ~ "<small>/kg</small>"
+    },
+    {
+      "title": "Dry Clean",
+      "service": "Dry Cleaning",
+      "icon": "fa-wind",
+      "gradient": "linear-gradient(135deg,#ffd3e8,#e55696)",
+      "description": "Special treatment for formal wear, delicate fabrics, and premium garments.",
+      "price_html": "&#8369;" ~ services["Dry Cleaning"]["price"] ~ "<small>/kg</small>"
+    },
+    {
+      "title": "Fold & Pack",
+      "service": "Wash & Fold",
+      "icon": "fa-box-open",
+      "gradient": "linear-gradient(135deg,#ffcde4,#f06aa9)",
+      "description": "Neatly folded and packed clothing ready for shelves, closets, or travel.",
+      "price_html": "Included with wash service"
+    },
+    {
+      "title": "Iron & Press",
+      "service": "Wash & Iron",
+      "icon": "fa-temperature-high",
+      "gradient": "linear-gradient(135deg,#ffc8e2,#f06aa9)",
+      "description": "Crisp finishing for uniforms, office wear, and clothes that need a polished look.",
+      "price_html": "&#8369;" ~ services["Wash & Iron"]["price"] ~ "<small>/kg</small>"
+    },
+    {
+      "title": "Pickup & Delivery",
+      "service": "",
+      "icon": "fa-truck-fast",
+      "gradient": "linear-gradient(135deg,#ffd0e5,#eb4d98)",
+      "description": "Door-to-door collection and return that fits naturally into a busy schedule.",
+      "price_html": "Available on select orders"
+    }
+  ] %}
+
+  <div class="services-grid services-grid-compact">
+    {% for card in service_cards %}
+    <article class="service-glass-card">
+      <div class="svc-icon-wrap" style="background:{{ card.gradient }}">
+        <i class="fa-solid {{ card.icon }} fa-xl"></i>
+      </div>
+      <h3 class="svc-name">{{ card.title }}</h3>
+      <p class="svc-desc">{{ card.description }}</p>
+      <div class="svc-footer">
+        <span class="svc-price">{{ card.price_html | safe }}</span>
+        {% if card.service %}
+        <a href="{{ url_for('booking') }}?service={{ card.service | urlencode }}" class="fw-btn-primary btn-small">
+          Book <i class="fa-solid fa-arrow-right"></i>
+        </a>
+        {% else %}
+        <a href="{{ url_for('booking') }}" class="fw-btn-primary btn-small">
+          Book <i class="fa-solid fa-arrow-right"></i>
+        </a>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -2,37 +2,75 @@
 {% block title %}Register{% endblock %}
 {% block content %}
 <section class="auth-center">
-  <div class="auth-card">
-    <div class="auth-brand">
-      <div class="auth-brand-icon"><i class="fa-solid fa-shirt"></i></div>
-      <span>FreshWash</span>
+  <div class="auth-shell">
+    <aside class="auth-hero-panel">
+      <span class="eyebrow">Create Account</span>
+      <h1 class="auth-title">Set up a FreshWash profile once and keep booking fast.</h1>
+      <p class="auth-sub">Your name, email, contact details, and optional profile picture are tied to your account so the app can personalize the header right after login.</p>
+      <div class="auth-feature-list">
+        <div><i class="fa-solid fa-database"></i><span>Profile information stored in the connected database</span></div>
+        <div><i class="fa-solid fa-lock"></i><span>Password handled securely with hashed auth storage</span></div>
+        <div><i class="fa-solid fa-wand-magic-sparkles"></i><span>Ready for instant sign in after registration</span></div>
+      </div>
+    </aside>
+
+    <div class="auth-card auth-form-card">
+      <div class="auth-brand">
+        <div class="auth-brand-icon"><i class="fa-solid fa-shirt"></i></div>
+        <span>FreshWash</span>
+      </div>
+      <h2 class="auth-form-title">Create your account</h2>
+      <p class="auth-form-copy">Set up your profile so booking and pickup details stay quick and organized.</p>
+      <form method="POST" class="auth-form" onsubmit="return validateRegisterPagePasswords()">
+        <div class="rv-field">
+          <span class="rv-fi"><i class="fa-solid fa-user"></i></span>
+          <input type="text" name="name" class="rv-input" placeholder="Full name" autocomplete="name" required/>
+        </div>
+        <div class="rv-field">
+          <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
+          <input type="email" name="email" class="rv-input" placeholder="Email address" autocomplete="email" required/>
+        </div>
+        <div class="rv-field">
+          <span class="rv-fi"><i class="fa-solid fa-phone"></i></span>
+          <input type="tel" name="phone" class="rv-input" placeholder="Phone number" autocomplete="tel" required/>
+        </div>
+        <div class="rv-field">
+          <span class="rv-fi"><i class="fa-solid fa-location-dot"></i></span>
+          <input type="text" name="address" class="rv-input" placeholder="Address" autocomplete="street-address" required/>
+        </div>
+        <div class="rv-field password-field">
+          <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+          <input type="password" name="password" id="registerPagePassword" class="rv-input" placeholder="Password (min. 6)" autocomplete="new-password" required minlength="6"/>
+          <button type="button" class="password-toggle" data-password-toggle="registerPagePassword" aria-label="Show password">
+            <i class="fa-regular fa-eye-slash"></i>
+          </button>
+        </div>
+        <div class="rv-field password-field">
+          <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+          <input type="password" name="confirm_password" id="registerPageConfirmPassword" class="rv-input" placeholder="Confirm password" autocomplete="new-password" required minlength="6"/>
+          <button type="button" class="password-toggle" data-password-toggle="registerPageConfirmPassword" aria-label="Show password">
+            <i class="fa-regular fa-eye-slash"></i>
+          </button>
+        </div>
+        <p id="registerPagePassError" class="rv-error hidden">Passwords do not match.</p>
+        <button type="submit" class="btn-primary w-full">Register</button>
+      </form>
+      <p class="auth-foot">Already have an account? <a href="{{ url_for('login') }}" class="text-link">Login</a></p>
     </div>
-    <h1 class="auth-title">Create your account</h1>
-    <p class="auth-sub">Set up your profile so booking and pickup details stay quick and organized.</p>
-    <form method="POST" class="auth-form">
-      <div class="rv-field">
-        <span class="rv-fi"><i class="fa-solid fa-user"></i></span>
-        <input type="text" name="name" class="rv-input" placeholder="Full name" required/>
-      </div>
-      <div class="rv-field">
-        <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
-        <input type="email" name="email" class="rv-input" placeholder="Email address" required/>
-      </div>
-      <div class="rv-field">
-        <span class="rv-fi"><i class="fa-solid fa-phone"></i></span>
-        <input type="tel" name="phone" class="rv-input" placeholder="Phone number" required/>
-      </div>
-      <div class="rv-field">
-        <span class="rv-fi"><i class="fa-solid fa-location-dot"></i></span>
-        <input type="text" name="address" class="rv-input" placeholder="Address" required/>
-      </div>
-      <div class="rv-field">
-        <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
-        <input type="password" name="password" class="rv-input" placeholder="Password (min. 6)" required minlength="6"/>
-      </div>
-      <button type="submit" class="btn-primary w-full">Create Account</button>
-    </form>
-    <p class="auth-foot">Already have an account? <a href="{{ url_for('login') }}" class="text-link">Sign In</a></p>
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function validateRegisterPagePasswords() {
+    const pass1 = document.getElementById('registerPagePassword');
+    const pass2 = document.getElementById('registerPageConfirmPassword');
+    const err = document.getElementById('registerPagePassError');
+    if (!pass1 || !pass2 || !err) return true;
+    const isMatch = pass1.value === pass2.value;
+    err.classList.toggle('hidden', isMatch);
+    return isMatch;
+  }
+</script>
 {% endblock %}
