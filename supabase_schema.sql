@@ -6,11 +6,17 @@
 -- ── Profiles table ──────────────────────────────────────────
 create table if not exists public.profiles (
   id         uuid primary key references auth.users(id) on delete cascade,
+  email      text unique not null,
   full_name  text not null,
   phone      text,
   address    text,
+  avatar     text,
   created_at timestamptz default now()
 );
+
+alter table public.profiles add column if not exists email text;
+alter table public.profiles add column if not exists avatar text;
+alter table public.profiles alter column email set not null;
 
 alter table public.profiles enable row level security;
 

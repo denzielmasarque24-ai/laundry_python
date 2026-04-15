@@ -64,7 +64,7 @@
       </div>
       <div class="booking-card-body">
         <div class="booking-card-top">
-          <div>
+          <div class="booking-card-main">
             <h6 class="booking-service-name">{{ b.service_type }}</h6>
             <div class="booking-meta">
               <span><i class="fa-solid fa-calendar me-1"></i>{{ b.pickup_date }} at {{ b.pickup_time }}</span>
@@ -73,6 +73,12 @@
             {% if b.notes %}
             <div class="booking-notes"><i class="fa-solid fa-note-sticky me-1"></i>{{ b.notes }}</div>
             {% endif %}
+            <div class="booking-card-actions">
+              <button type="button" class="btn-ghost btn-small">View</button>
+              {% if b.status == 'Pending' %}
+              <button type="button" class="btn-primary btn-small">Cancel</button>
+              {% endif %}
+            </div>
           </div>
           <div class="booking-summary text-end">
             <div class="booking-price">₱{{ "%.2f"|format(b.total_price) }}</div>

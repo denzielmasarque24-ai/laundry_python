@@ -32,6 +32,46 @@ def db():
     return get_authed_client(session.get("access_token", ""))
 
 
+def ensure_profile_record(authed_client, auth_user, defaults=None):
+    """Load the user's profile and create a row if it doesn't exist yet."""
+    defaults = defaults or {}
+    metadata = auth_user.user_metadata or {}
+    profile_payload = {
+        "id": auth_user.id,
+        "email": auth_user.email,
+        "full_name": defaults.get("full_name") or metadata.get("full_name") or auth_user.email.split("@")[0],
+        "phone": defaults.get("phone", ""),
+        "address": defaults.get("address", ""),
+        "avatar": defaults.get("avatar") or metadata.get("avatar", "")
+    }
+
+    try:
+        existing = authed_client.table("profiles").select("*").eq("id", auth_user.id).single().execute()
+        if existing.data:
+            merged_profile = {**profile_payload, **existing.data}
+            if merged_profile.get("email") != auth_user.email:
+                authed_client.table("profiles").update({"email": auth_user.email}).eq("id", auth_user.id).execute()
+                merged_profile["email"] = auth_user.email
+            return merged_profile
+    except Exception:
+        pass
+
+    authed_client.table("profiles").upsert(profile_payload).execute()
+    return profile_payload
+
+
+def build_session_user(auth_user, profile):
+    metadata = auth_user.user_metadata or {}
+    return {
+        "id": auth_user.id,
+        "email": profile.get("email") or auth_user.email,
+        "name": profile.get("full_name") or metadata.get("full_name") or auth_user.email.split("@")[0],
+        "phone": profile.get("phone", ""),
+        "address": profile.get("address", ""),
+        "avatar": profile.get("avatar", "")
+    }
+
+
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -41,12 +81,16 @@ def index():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    if "user" in session:
+        return redirect(url_for("readers_view"))
+
     if request.method == "POST":
         name     = request.form.get("name", "").strip()
         email    = request.form.get("email", "").strip()
         phone    = request.form.get("phone", "").strip()
         address  = request.form.get("address", "").strip()
         password = request.form.get("password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
 
         if not name or not email or not phone or not address or not password:
             flash("All fields are required.", "error")
@@ -56,8 +100,11 @@ def register():
             flash("Password must be at least 6 characters.", "error")
             return render_template("register.html")
 
+        if confirm_password and password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return render_template("register.html")
+
         try:
-            # Step 1: Create auth user
             res = supabase.auth.sign_up({
                 "email": email,
                 "password": password,
@@ -68,16 +115,16 @@ def register():
                 flash("Registration failed. Try again.", "error")
                 return render_template("register.html")
 
-            # Step 2: Save profile with phone and address
-            authed = get_authed_client(res.session.access_token) if res.session else supabase
-            authed.table("profiles").insert({
-                "id":        res.user.id,
-                "full_name": name,
-                "phone":     phone,
-                "address":   address
-            }).execute()
-
-            flash("Account created! Please log in.", "success")
+            if res.session:
+                authed = get_authed_client(res.session.access_token)
+                ensure_profile_record(authed, res.user, {
+                    "full_name": name,
+                    "phone": phone,
+                    "address": address
+                })
+                flash("Account created! Please sign in.", "success")
+            else:
+                flash("Account created! Please verify your email, then sign in.", "success")
             return redirect(url_for("login"))
 
         except Exception as e:
@@ -88,6 +135,9 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if "user" in session:
+        return redirect(url_for("readers_view"))
+
     if request.method == "POST":
         email    = request.form.get("email", "").strip()
         password = request.form.get("password", "").strip()
@@ -105,19 +155,9 @@ def login():
 
             access_token = res.session.access_token
             authed = get_authed_client(access_token)
+            profile = ensure_profile_record(authed, res.user)
 
-            # Load profile from profiles table
-            profile_res = authed.table("profiles").select("*").eq("id", res.user.id).single().execute()
-            profile = profile_res.data or {}
-
-            session["user"] = {
-                "id":      res.user.id,
-                "email":   res.user.email,
-                "name":    profile.get("full_name") or res.user.user_metadata.get("full_name", email.split("@")[0]),
-                "phone":   profile.get("phone", ""),
-                "address": profile.get("address", ""),
-                "avatar":  profile.get("avatar", "")
-            }
+            session["user"] = build_session_user(res.user, profile)
             session["access_token"] = access_token
 
             flash(f"Welcome back, {session['user']['name']}!", "success")
@@ -133,7 +173,7 @@ def login():
 def logout():
     session.clear()
     flash("You have been logged out.", "success")
-    return redirect(url_for("readers_view"))
+    return redirect(url_for("login"))
 
 
 # ── Pages ─────────────────────────────────────────────────────────────────────
@@ -156,7 +196,7 @@ def dashboard():
 @app.route("/services")
 @login_required
 def services():
-    return render_template("services.html", services=SERVICES, user=session["user"])
+    return render_template("services_page.html", services=SERVICES, user=session["user"])
 
 
 @app.route("/booking", methods=["GET", "POST"])
@@ -277,7 +317,13 @@ def profile_update():
         if avatar and avatar.startswith("data:image"):
             update_data["avatar"] = avatar
         db().table("profiles").update(update_data).eq("id", user["id"]).execute()
-        session["user"] = {**user, "name": name, "phone": phone, "address": address, "avatar": avatar}
+        session["user"] = {
+            **user,
+            "name": name,
+            "phone": phone,
+            "address": address,
+            "avatar": update_data.get("avatar", user.get("avatar", ""))
+        }
         return json.dumps({"ok": True})
     except Exception as e:
         return json.dumps({"ok": False, "error": str(e)}), 500

@@ -298,7 +298,7 @@
         {% else %}
         <div class="spa-login-prompt">
           <div class="spa-login-icon"><i class="fa-solid fa-lock"></i></div>
-          <h3>Sign in to book your laundry pickup.</h3>
+          <h3>Login to book your laundry pickup.</h3>
           <p>Your booking form will appear here once you log in.</p>
           <button type="button" class="btn-primary" onclick="openAuthModal('signin')">Login</button>
         </div>
@@ -342,7 +342,7 @@
             <div class="booking-service-icon"><i class="fa-solid {{ service_icons.get(b.service_type, 'fa-shirt') }}"></i></div>
             <div class="spa-booking-copy">
               <div class="spa-booking-top">
-                <div>
+                <div class="spa-booking-main">
                   <strong>{{ b.service_type }}</strong>
                   <small>{{ b.pickup_date }} at {{ b.pickup_time }} • {{ b.weight }} kg</small>
                 </div>
@@ -354,6 +354,12 @@
               {% if b.notes %}
               <p>{{ b.notes }}</p>
               {% endif %}
+              <div class="booking-card-actions">
+                <button type="button" class="btn-ghost btn-small">View</button>
+                {% if b.status == 'Pending' %}
+                <button type="button" class="btn-primary btn-small">Cancel</button>
+                {% endif %}
+              </div>
             </div>
           </article>
           {% endfor %}
@@ -390,8 +396,8 @@
   </div>
 
   <div class="landing-auth-tabs">
-    <button class="reader-tab active" id="tabSignIn" type="button" onclick="switchTab('signin')">Sign In</button>
-    <button class="reader-tab" id="tabSignUp" type="button" onclick="switchTab('signup')">Sign Up</button>
+    <button class="reader-tab active" id="tabSignIn" type="button" onclick="switchTab('signin')">Login</button>
+    <button class="reader-tab" id="tabSignUp" type="button" onclick="switchTab('signup')">Register</button>
   </div>
 
   <form id="formSignIn" class="reader-form" method="POST" action="{{ url_for('login') }}">
@@ -399,11 +405,14 @@
       <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
       <input type="email" name="email" class="rv-input" placeholder="Email address" required/>
     </div>
-    <div class="rv-field">
+    <div class="rv-field password-field">
       <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
-      <input type="password" name="password" class="rv-input" placeholder="Password" required/>
+      <input type="password" name="password" id="loginPassword" class="rv-input" placeholder="Password" required/>
+      <button type="button" class="password-toggle" data-password-toggle="loginPassword" aria-label="Show password">
+        <i class="fa-regular fa-eye-slash"></i>
+      </button>
     </div>
-    <button type="submit" class="btn-primary w-full">Sign In</button>
+    <button type="submit" class="btn-primary w-full">Login</button>
   </form>
 
   <form id="formSignUp" class="reader-form hidden" method="POST" action="{{ url_for('register') }}">
@@ -423,16 +432,22 @@
       <span class="rv-fi"><i class="fa-solid fa-location-dot"></i></span>
       <input type="text" name="address" class="rv-input" placeholder="Address" required/>
     </div>
-    <div class="rv-field">
+    <div class="rv-field password-field">
       <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
       <input type="password" name="password" id="regPass" class="rv-input" placeholder="Password (min. 6)" required minlength="6"/>
+      <button type="button" class="password-toggle" data-password-toggle="regPass" aria-label="Show password">
+        <i class="fa-regular fa-eye-slash"></i>
+      </button>
     </div>
-    <div class="rv-field">
+    <div class="rv-field password-field">
       <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
-      <input type="password" id="regConfirm" class="rv-input" placeholder="Confirm password" required/>
+      <input type="password" id="regConfirm" name="confirm_password" class="rv-input" placeholder="Confirm password" required minlength="6"/>
+      <button type="button" class="password-toggle" data-password-toggle="regConfirm" aria-label="Show password">
+        <i class="fa-regular fa-eye-slash"></i>
+      </button>
     </div>
     <p id="passError" class="rv-error hidden">Passwords do not match.</p>
-    <button type="submit" class="btn-primary w-full" onclick="return validatePasswords()">Create Account</button>
+    <button type="submit" class="btn-primary w-full" onclick="return validatePasswords()">Register</button>
   </form>
 </aside>
 {% endif %}
@@ -469,6 +484,7 @@
     const backdrop = document.getElementById('authBackdrop');
     if (!modal || !backdrop) return;
     switchTab(tab);
+    if (typeof initPasswordToggles === 'function') initPasswordToggles();
     modal.classList.add('open');
     backdrop.classList.add('show');
     modal.setAttribute('aria-hidden', 'false');
