@@ -2,29 +2,18 @@
 {% block title %}Login{% endblock %}
 {% block content %}
 <section class="auth-center">
-  <div class="auth-shell">
-    <aside class="auth-hero-panel">
-      <span class="eyebrow">Secure Access</span>
-      <h1 class="auth-title">FreshWash sign in that feels built into the app.</h1>
-      <p class="auth-sub">Use your email and password to load your saved bookings, profile name, and profile picture from the database.</p>
-      <div class="auth-feature-list">
-        <div><i class="fa-solid fa-shield-heart"></i><span>Protected authentication through Supabase</span></div>
-        <div><i class="fa-solid fa-user-check"></i><span>Profile details stay synced after login</span></div>
-        <div><i class="fa-solid fa-arrow-right-to-bracket"></i><span>Successful sign in returns you to the homepage</span></div>
-      </div>
-    </aside>
-
-    <div class="auth-card auth-form-card">
+  <div class="auth-shell auth-shell-compact">
+    <div class="auth-card auth-form-card auth-form-card-compact">
       <div class="auth-brand">
         <div class="auth-brand-icon"><i class="fa-solid fa-shirt"></i></div>
         <span>FreshWash</span>
       </div>
       <h2 class="auth-form-title">Sign in to continue</h2>
       <p class="auth-form-copy">Access bookings, services, and your profile in one compact workspace.</p>
-      <form method="POST" class="auth-form">
+      <form method="POST" action="{{ url_for('login') }}" class="auth-form" novalidate>
         <div class="rv-field">
           <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
-          <input type="email" name="email" class="rv-input" placeholder="Email address" autocomplete="email" required/>
+          <input type="email" name="email" class="rv-input" placeholder="Email address" autocomplete="email" value="{{ form_data.get('email', '') }}" required/>
         </div>
         <div class="rv-field password-field">
           <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
@@ -36,7 +25,6 @@
         <button type="submit" class="btn-primary w-full">Login</button>
       </form>
       <p class="auth-foot">New here? <a href="{{ url_for('register') }}" class="text-link">Register</a></p>
-      <p class="auth-foot"><a href="{{ url_for('readers_view') }}" class="text-link">Back to homepage</a></p>
     </div>
   </div>
 </section>

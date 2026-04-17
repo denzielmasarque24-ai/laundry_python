@@ -1,0 +1,57 @@
+[
+  {
+    "id": "65083f1c-c254-452a-a6d7-9f83cd2c618f",
+    "email": "flow2@example.com",
+    "password_hash": "scrypt:32768:8:1$hGVXOpsKYI2jz0TA$2f36a2125fa6598d0cb00f1737a42340b5e055380964f66f954ca772195b1f3844b72d6459cc280e44e78b3b7e83a7fbfd2b9e07887b2e20ba40aef0667681af",
+    "full_name": "Flow Two",
+    "phone": "09123456789",
+    "address": "Manila",
+    "avatar": "",
+    "role": "user",
+    "created_at": "2026-04-16T16:37:11.298699"
+  },
+  {
+    "id": "255519ad-2adf-417d-ba5b-d52b875604d7",
+    "email": "zafra@gmail.com",
+    "password_hash": "scrypt:32768:8:1$4XSx2YuP6t9ydnmn$5d216ded92abcda4baf2f93bec7ebc3bc9e0f6c1d6004552115afa2321e10b512d6772cb2c46a36e4adee4b92066cc91e721849c489f1d8e6b775ad9f59a10e9",
+    "full_name": "erl zafra",
+    "phone": "09914405837",
+    "address": "duljo",
+    "avatar": "",
+    "role": "user",
+    "created_at": "2026-04-16T17:34:41.407801"
+  },
+  {
+    "id": "25c84cfb-80ca-4fd6-8330-bdcd20b72b26",
+    "email": "admin@gmail.com",
+    "password_hash": "scrypt:32768:8:1$9eHq9jtgc12uNOkx$abcd6e195ab214f9b97acde4a399ea346b63c4fa50b35fa70e69991ebf533c937badada4364463c2201e807054c194044b7fbb2fcc6763827bf1cbc19df362bc",
+    "full_name": "Denziel Masarque",
+    "phone": "09914405837",
+    "address": "talisay",
+    "avatar": "",
+    "role": "user",
+    "created_at": "2026-04-16T17:47:52.571958"
+  },
+  {
+    "id": "dcd2d815-449c-4845-857e-5e9d6f8782bd",
+    "email": "mae@gmail.com",
+    "password_hash": "scrypt:32768:8:1$2Sc8lh9whVcVfqOt$cb2f171b99243ff4e34b3ee5c329a559fd9d6fb5f951698986edbef222827e5d5b213e84ecd9ca383871bcbf5b5646174a2c7250eceda589726a7f773829dc02",
+    "full_name": "mae",
+    "phone": "0983834738",
+    "address": "talisay",
+    "avatar": "",
+    "role": "user",
+    "created_at": "2026-04-16T18:50:02.164888"
+  },
+  {
+    "id": "b48159c0-9b06-4a74-9452-563da02c1cd9",
+    "email": "joy@gmail.com",
+    "password_hash": "scrypt:32768:8:1$IhuXwL6UdR4N5s0L$19e7d3b8c28b76ed997f49eb7bce6919bd0a72963ba25490a934f51b711851ca6d784cdfe465349db42a0772227fcdecef8efe42161f603132b84c77c4c5aef8",
+    "full_name": "joy gulpan",
+    "phone": "09914405837",
+    "address": "talisay",
+    "avatar": "",
+    "role": "user",
+    "created_at": "2026-04-16T19:02:14.572716"
+  }
+]
