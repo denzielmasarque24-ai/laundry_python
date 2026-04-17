@@ -5,16 +5,13 @@
 {% block extra_head %}
 <style>
   .booking-screen {
-    width: min(1120px, 100%);
-    height: min(100%, 760px);
-    display: grid;
-    grid-template-columns: 0.92fr 1.28fr;
-    gap: 1rem;
-    align-items: stretch;
+    width: min(980px, 100%);
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
     animation: fadeUp 0.55s ease;
   }
 
-  .booking-side,
   .booking-main {
     position: relative;
     overflow: hidden;
@@ -24,116 +21,14 @@
     backdrop-filter: blur(22px);
   }
 
-  .booking-side {
-    padding: 1.3rem;
-    color: white;
-    background:
-      radial-gradient(circle at top right, rgba(255, 255, 255, 0.28), transparent 12rem),
-      linear-gradient(145deg, rgba(237, 93, 175, 0.92), rgba(123, 92, 255, 0.88) 52%, rgba(63, 160, 255, 0.84));
-    display: grid;
-    gap: 1rem;
-  }
-
   .booking-main {
-    padding: 1.2rem;
+    width: 100%;
+    max-width: 980px;
+    padding: 1.5rem;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.28));
     display: grid;
     grid-template-rows: auto 1fr auto;
-    gap: 0.85rem;
-  }
-
-  .booking-kicker {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: fit-content;
-    padding: 0.42rem 0.8rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.2);
-    font-size: 0.78rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-weight: 700;
-  }
-
-  .booking-side h1 {
-    margin: 0.2rem 0 0.45rem;
-    font-size: clamp(1.9rem, 3vw, 2.65rem);
-    line-height: 1.02;
-  }
-
-  .booking-side p {
-    margin: 0;
-    color: rgba(255, 255, 255, 0.82);
-    font-size: 0.92rem;
-  }
-
-  .booking-points,
-  .booking-service-list {
-    display: grid;
-    gap: 0.7rem;
-  }
-
-  .booking-point,
-  .booking-service-item,
-  .booking-total-card {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    padding: 0.85rem 0.95rem;
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.16);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-  }
-
-  .booking-point i,
-  .booking-service-item i,
-  .booking-total-card i {
-    width: 38px;
-    height: 38px;
-    display: grid;
-    place-items: center;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.18);
-    flex-shrink: 0;
-  }
-
-  .booking-point strong,
-  .booking-service-item strong,
-  .booking-total-card strong {
-    display: block;
-    font-size: 0.95rem;
-  }
-
-  .booking-point span,
-  .booking-service-item span,
-  .booking-total-card span {
-    display: block;
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.72);
-  }
-
-  .booking-side-foot {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-  }
-
-  .booking-stat {
-    padding: 0.9rem 1rem;
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-  }
-
-  .booking-stat strong {
-    display: block;
-    font-size: 1.25rem;
-  }
-
-  .booking-stat span {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.72);
+    gap: 1.15rem;
   }
 
   .booking-main-top {
@@ -151,7 +46,7 @@
 
   .booking-main-top p {
     margin: 0.2rem 0 0;
-    font-size: 0.84rem;
+    font-size: 0.9rem;
     color: #6f6190;
   }
 
@@ -171,7 +66,7 @@
   .booking-form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem 0.85rem;
+    gap: 0.95rem 1rem;
     align-content: start;
   }
 
@@ -180,14 +75,14 @@
   }
 
   .booking-field .fw-label {
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.4rem;
     color: #655784;
     font-size: 0.72rem;
   }
 
   .booking-field .fw-field {
-    min-height: 50px;
-    padding: 0.1rem 0.8rem;
+    min-height: 52px;
+    padding: 0.1rem 0.9rem;
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.58);
     border-color: rgba(173, 158, 221, 0.22);
@@ -202,7 +97,7 @@
   .booking-main-bottom {
     display: grid;
     grid-template-columns: 1fr auto;
-    gap: 0.9rem;
+    gap: 1rem;
     align-items: center;
   }
 
@@ -241,8 +136,7 @@
     transform: translateY(-2px) scale(1.01);
   }
 
-  .booking-main::before,
-  .booking-side::before {
+  .booking-main::before {
     content: "";
     position: absolute;
     inset: auto auto -35px -35px;
@@ -255,11 +149,9 @@
 
   @media (max-width: 980px) {
     .booking-screen {
-      grid-template-columns: 1fr;
-      height: auto;
+      width: 100%;
     }
 
-    .booking-side-foot,
     .booking-main-bottom,
     .booking-form-grid {
       grid-template-columns: 1fr;
@@ -279,54 +171,6 @@
 
 {% block content %}
 <section class="booking-screen">
-  <aside class="booking-side">
-    <div>
-      <span class="booking-kicker"><i class="fa-solid fa-sparkles"></i> Fresh & Fast</span>
-      <h1>Book your laundry pickup in one polished flow.</h1>
-      <p>Everything stays on one screen so customers can book faster, review pricing instantly, and feel confident before confirming.</p>
-    </div>
-
-    <div class="booking-points">
-      <div class="booking-point">
-        <i class="fa-solid fa-truck-fast"></i>
-        <div>
-          <strong>Door-to-door pickup</strong>
-          <span>Set a time that fits your day without extra steps.</span>
-        </div>
-      </div>
-      <div class="booking-point">
-        <i class="fa-solid fa-droplet"></i>
-        <div>
-          <strong>Clean glassmorphism UI</strong>
-          <span>Compact cards, soft gradients, and smooth interaction states.</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="booking-service-list">
-      {% for name, info in services.items() %}
-      <div class="booking-service-item">
-        <i class="fa-solid fa-shirt"></i>
-        <div>
-          <strong>{{ name }}</strong>
-          <span>Starts at &#8369;{{ info.price }}/kg</span>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-
-    <div class="booking-side-foot">
-      <div class="booking-stat">
-        <strong>Same-day</strong>
-        <span>Quick scheduling for urgent loads</span>
-      </div>
-      <div class="booking-stat">
-        <strong>Live total</strong>
-        <span>Instant estimate as weight changes</span>
-      </div>
-    </div>
-  </aside>
-
   <div class="booking-main">
     <div class="booking-main-top">
       <div>
@@ -378,10 +222,36 @@
       </div>
 
       <div class="booking-field">
+        <label class="fw-label">Machine</label>
+        <div class="fw-field">
+          <span class="fw-field-icon"><i class="fa-solid fa-drum"></i></span>
+          <select name="machine" class="fw-input" id="machineSelect">
+            <option value="">Select machine</option>
+            {% for machine in machines %}
+            <option value="{{ machine.name }}" {% if form.get('machine')==machine.name or request.args.get('machine')==machine.name or request.args.get('machine')==(machine.machine_number|string) %}selected{% endif %}>{{ machine.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="booking-field">
         <label class="fw-label">Weight</label>
         <div class="fw-field">
           <span class="fw-field-icon"><i class="fa-solid fa-weight-hanging"></i></span>
-          <input type="number" name="weight" class="fw-input" id="weightInput" value="{{ form.get('weight','') }}" min="0.5" step="0.5" placeholder="0.5 kg" required/>
+          <input type="number" name="weight" class="fw-input" id="weightInput" value="{{ form.get('weight', request.args.get('weight','')) }}" min="0.5" step="0.5" placeholder="0.5 kg" required/>
+        </div>
+      </div>
+
+      <div class="booking-field">
+        <label class="fw-label">Load Type</label>
+        <div class="fw-field">
+          <span class="fw-field-icon"><i class="fa-solid fa-basket-shopping"></i></span>
+          <select name="load_type" class="fw-input" id="loadTypeSelect">
+            <option value="">Select load size</option>
+            <option value="Light Load" {% if form.get('load_type')=='Light Load' or request.args.get('load')=='Light Load' %}selected{% endif %}>Light Load</option>
+            <option value="Medium Load" {% if form.get('load_type')=='Medium Load' or request.args.get('load')=='Medium Load' %}selected{% endif %}>Medium Load</option>
+            <option value="Heavy Load" {% if form.get('load_type')=='Heavy Load' or request.args.get('load')=='Heavy Load' %}selected{% endif %}>Heavy Load</option>
+          </select>
         </div>
       </div>
 
@@ -432,9 +302,15 @@
 <script>
   const sel = document.getElementById('serviceSelect');
   const wt = document.getElementById('weightInput');
+  const loadTypeSelect = document.getElementById('loadTypeSelect');
   const box = document.getElementById('pricePreview');
   const tot = document.getElementById('totalPrice');
   const pickupDateInput = document.querySelector('[name="pickup_date"]');
+  const loadWeights = {
+    'Light Load': '2.5',
+    'Medium Load': '5',
+    'Heavy Load': '8'
+  };
 
   function updatePrice() {
     const price = parseFloat(sel.options[sel.selectedIndex]?.dataset?.price || 0);
@@ -454,6 +330,17 @@
 
   sel.addEventListener('change', updatePrice);
   wt.addEventListener('input', updatePrice);
+  if (loadTypeSelect) {
+    loadTypeSelect.addEventListener('change', () => {
+      const suggestedWeight = loadWeights[loadTypeSelect.value];
+      if (suggestedWeight && !wt.value) {
+        wt.value = suggestedWeight;
+      } else if (suggestedWeight) {
+        wt.value = suggestedWeight;
+      }
+      updatePrice();
+    });
+  }
   pickupDateInput.min = new Date().toISOString().split('T')[0];
   updatePrice();
 </script>

@@ -2,41 +2,30 @@
 {% block title %}Register{% endblock %}
 {% block content %}
 <section class="auth-center">
-  <div class="auth-shell">
-    <aside class="auth-hero-panel">
-      <span class="eyebrow">Create Account</span>
-      <h1 class="auth-title">Set up a FreshWash profile once and keep booking fast.</h1>
-      <p class="auth-sub">Your name, email, contact details, and optional profile picture are tied to your account so the app can personalize the header right after login.</p>
-      <div class="auth-feature-list">
-        <div><i class="fa-solid fa-database"></i><span>Profile information stored in the connected database</span></div>
-        <div><i class="fa-solid fa-lock"></i><span>Password handled securely with hashed auth storage</span></div>
-        <div><i class="fa-solid fa-wand-magic-sparkles"></i><span>Ready for instant sign in after registration</span></div>
-      </div>
-    </aside>
-
-    <div class="auth-card auth-form-card">
+  <div class="auth-shell auth-shell-compact">
+    <div class="auth-card auth-form-card auth-form-card-compact">
       <div class="auth-brand">
         <div class="auth-brand-icon"><i class="fa-solid fa-shirt"></i></div>
         <span>FreshWash</span>
       </div>
       <h2 class="auth-form-title">Create your account</h2>
       <p class="auth-form-copy">Set up your profile so booking and pickup details stay quick and organized.</p>
-      <form method="POST" class="auth-form" onsubmit="return validateRegisterPagePasswords()">
+      <form method="POST" action="{{ url_for('register') }}" class="auth-form" onsubmit="return validateRegisterPagePasswords()" novalidate>
         <div class="rv-field">
           <span class="rv-fi"><i class="fa-solid fa-user"></i></span>
-          <input type="text" name="name" class="rv-input" placeholder="Full name" autocomplete="name" required/>
+          <input type="text" name="name" class="rv-input" placeholder="Full name" autocomplete="name" value="{{ form_data.get('name', '') }}" required/>
         </div>
         <div class="rv-field">
           <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
-          <input type="email" name="email" class="rv-input" placeholder="Email address" autocomplete="email" required/>
+          <input type="email" name="email" class="rv-input" placeholder="Email address" autocomplete="email" value="{{ form_data.get('email', '') }}" required/>
         </div>
         <div class="rv-field">
           <span class="rv-fi"><i class="fa-solid fa-phone"></i></span>
-          <input type="tel" name="phone" class="rv-input" placeholder="Phone number" autocomplete="tel" required/>
+          <input type="tel" name="phone" class="rv-input" placeholder="Phone number" autocomplete="tel" value="{{ form_data.get('phone', '') }}" required/>
         </div>
         <div class="rv-field">
           <span class="rv-fi"><i class="fa-solid fa-location-dot"></i></span>
-          <input type="text" name="address" class="rv-input" placeholder="Address" autocomplete="street-address" required/>
+          <input type="text" name="address" class="rv-input" placeholder="Address" autocomplete="street-address" value="{{ form_data.get('address', '') }}" required/>
         </div>
         <div class="rv-field password-field">
           <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>

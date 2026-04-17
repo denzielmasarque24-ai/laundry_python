@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FreshWash - Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body class="admin-dashboard-body" data-admin-mode="{{ admin_data.settings.theme.mode }}" data-admin-accent="{{ admin_data.settings.theme.accent }}">
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <a href="{{ url_for('admin_dashboard') }}" class="admin-brand">
+        <span class="admin-brand-icon"><i class="fa-solid fa-shirt"></i></span>
+        <span>
+          <strong>FreshWash</strong>
+          <small>Admin Console</small>
+        </span>
+      </a>
+
+      <nav class="admin-nav" aria-label="Admin menu">
+        <a href="{{ url_for('admin_dashboard') }}" class="admin-nav-link{% if initial_section == 'dashboard' %} is-active{% endif %}" data-section="dashboard"><i class="fa-solid fa-chart-pie"></i><span>Dashboard</span></a>
+        <a href="{{ url_for('admin_users') }}" class="admin-nav-link{% if initial_section == 'users' %} is-active{% endif %}" data-section="users"><i class="fa-solid fa-users"></i><span>Users</span></a>
+        <a href="{{ url_for('admin_bookings') }}" class="admin-nav-link{% if initial_section == 'bookings' %} is-active{% endif %}" data-section="bookings"><i class="fa-solid fa-calendar-check"></i><span>Bookings</span></a>
+        <a href="{{ url_for('admin_machines') }}" class="admin-nav-link{% if initial_section == 'machines' %} is-active{% endif %}" data-section="machines"><i class="fa-solid fa-soap"></i><span>Machines</span></a>
+        <a href="{{ url_for('admin_services') }}" class="admin-nav-link{% if initial_section == 'services' %} is-active{% endif %}" data-section="services"><i class="fa-solid fa-tags"></i><span>Services</span></a>
+        <a href="{{ url_for('admin_reports') }}" class="admin-nav-link{% if initial_section == 'reports' %} is-active{% endif %}" data-section="reports"><i class="fa-solid fa-chart-line"></i><span>Reports</span></a>
+        <a href="{{ url_for('admin_settings') }}" class="admin-nav-link{% if initial_section == 'settings' %} is-active{% endif %}" data-section="settings"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+        <a class="admin-nav-link logout-link" href="{{ url_for('logout') }}"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a>
+      </nav>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-header">
+        <div>
+          <p class="admin-kicker">Laundry Management System</p>
+          <h1>Admin Dashboard</h1>
+        </div>
+        <div class="admin-header-actions">
+          <div class="admin-profile-pill">
+            <span class="admin-profile-avatar"><i class="fa-solid fa-user-shield"></i></span>
+            <span>
+              <strong>{{ user.name }}</strong>
+              <small>{{ user.email }}</small>
+            </span>
+          </div>
+          <a href="{{ url_for('logout') }}" class="btn-primary btn-small">Logout</a>
+        </div>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-stack" aria-live="polite" aria-atomic="true">
+            {% for category, message in messages %}
+              <div class="flash flash-{{ 'error' if category == 'error' else 'success' }}">
+                <i class="fa-solid {{ 'fa-circle-exclamation' if category == 'error' else 'fa-circle-check' }}"></i>
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="admin-panel{% if initial_section == 'dashboard' %} is-active{% endif %}" data-panel="dashboard">
+        <div class="admin-overview-grid admin-overview-grid-extended">
+          <article class="admin-summary-card"><span>Total Users</span><strong id="summaryUsers">{{ admin_data.summary.total_users }}</strong><small>Registered profiles</small></article>
+          <article class="admin-summary-card"><span>Total Bookings</span><strong id="summaryBookings">{{ admin_data.summary.total_bookings }}</strong><small>All tracked orders</small></article>
+          <article class="admin-summary-card"><span>Pending Bookings</span><strong id="summaryPending">{{ admin_data.summary.pending_bookings }}</strong><small>Waiting for action</small></article>
+          <article class="admin-summary-card"><span>Completed Bookings</span><strong id="summaryCompleted">{{ admin_data.summary.completed_orders }}</strong><small>Finished laundry jobs</small></article>
+          <article class="admin-summary-card"><span>Available Machines</span><strong id="summaryAvailable">{{ admin_data.summary.available_machines }}</strong><small>Ready for booking</small></article>
+          <article class="admin-summary-card"><span>In Use Machines</span><strong id="summaryMachines">{{ admin_data.summary.active_machines }}</strong><small>Currently occupied</small></article>
+        </div>
+
+        <div class="admin-dashboard-grid">
+          <article class="admin-card">
+            <div class="admin-card-head">
+              <div>
+                <p class="admin-kicker">Operations Pulse</p>
+                <h2>Recent bookings</h2>
+              </div>
+              <span class="admin-pill" id="revenueStat">Revenue: &#8369;{{ '%.2f'|format(admin_data.summary.revenue) }}</span>
+            </div>
+            <div class="admin-timeline" id="recentBookingsList"></div>
+          </article>
+
+          <article class="admin-card admin-card-accent">
+            <div class="admin-card-head">
+              <div>
+                <p class="admin-kicker">Machine Status</p>
+                <h2>Live machine availability</h2>
+              </div>
+            </div>
+            <div class="admin-machine-mini-grid" id="machineStatusMini"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="admin-panel{% if initial_section == 'users' %} is-active{% endif %}" data-panel="users">
+        <article class="admin-card">
+          <div class="admin-card-head admin-card-head-stack">
+            <div>
+              <p class="admin-kicker">Users Management</p>
+              <h2>Registered users</h2>
+            </div>
+            <div class="admin-toolbar">
+              <input type="search" id="userSearch" class="admin-search" placeholder="Search name, email, phone, role">
+              <button class="btn-primary btn-small" type="button" onclick="createUser()">Create User</button>
+            </div>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Full Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Address</th>
+                  <th>Role</th>
+                  <th>Created At</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="admin-panel{% if initial_section == 'bookings' %} is-active{% endif %}" data-panel="bookings">
+        <article class="admin-card">
+          <div class="admin-card-head admin-card-head-stack">
+            <div>
+              <p class="admin-kicker">Bookings Management</p>
+              <h2>All bookings</h2>
+            </div>
+            <div class="admin-toolbar">
+              <input type="search" id="bookingSearch" class="admin-search" placeholder="Search customer, machine, service">
+              <select id="bookingStatusFilter" class="admin-select">
+                <option value="">All statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Booking ID</th>
+                  <th>User</th>
+                  <th>Service</th>
+                  <th>Machine</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Status</th>
+                  <th>Price</th>
+                  <th>Load Type</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="bookingsTableBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="admin-panel{% if initial_section == 'machines' %} is-active{% endif %}" data-panel="machines">
+        <article class="admin-card">
+          <div class="admin-card-head">
+            <div>
+              <p class="admin-kicker">Machines Management</p>
+              <h2>Machine 1 to Machine 8 controls</h2>
+            </div>
+          </div>
+          <div class="admin-machine-grid" id="machinesGrid"></div>
+        </article>
+      </section>
+
+      <section class="admin-panel{% if initial_section == 'services' %} is-active{% endif %}" data-panel="services">
+        <article class="admin-card">
+          <div class="admin-card-head admin-card-head-stack">
+            <div>
+              <p class="admin-kicker">Services Management</p>
+              <h2>Pricing and descriptions</h2>
+            </div>
+            <div class="admin-toolbar">
+              <button class="btn-primary btn-small" type="button" onclick="createService()">Add Service</button>
+            </div>
+          </div>
+          <div class="admin-service-grid" id="servicesGrid"></div>
+        </article>
+      </section>
+
+      <section class="admin-panel{% if initial_section == 'reports' %} is-active{% endif %}" data-panel="reports">
+        <div class="admin-reports-grid">
+          <article class="admin-card">
+            <div class="admin-card-head">
+              <div>
+                <p class="admin-kicker">Reports</p>
+                <h2>Total bookings per day</h2>
+              </div>
+            </div>
+            <div class="admin-report-bars" id="reportBookingsPerDay"></div>
+          </article>
+
+          <article class="admin-card">
+            <div class="admin-card-head">
+              <div>
+                <p class="admin-kicker">Reports</p>
+                <h2>Status breakdown</h2>
+              </div>
+            </div>
+            <div class="admin-stats-inline" id="reportStatusBreakdown"></div>
+          </article>
+
+          <article class="admin-card">
+            <div class="admin-card-head">
+              <div>
+                <p class="admin-kicker">Reports</p>
+                <h2>Most used service</h2>
+              </div>
+            </div>
+            <div class="admin-highlight-stat">
+              <strong id="reportTopService">{{ admin_data.reports.most_used_service }}</strong>
+              <span>Most selected service across tracked bookings</span>
+            </div>
+          </article>
+
+          <article class="admin-card">
+            <div class="admin-card-head">
+              <div>
+                <p class="admin-kicker">Reports</p>
+                <h2>Machine usage</h2>
+              </div>
+            </div>
+            <div class="admin-usage-list" id="reportMachineUsage"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="admin-panel{% if initial_section == 'settings' %} is-active{% endif %}" data-panel="settings">
+        <div class="admin-settings-grid">
+          <article class="admin-card admin-settings-card">
+            <div class="admin-card-head">
+              <div>
+                <p class="admin-kicker">Settings</p>
+                <h2>Admin profile</h2>
+              </div>
+            </div>
+            <div class="admin-settings-group-head">
+              <p>Update the main administrator account details used for FreshWash management.</p>
+            </div>
+            <div class="admin-form-stack admin-settings-form">
+              <label>
+                <span>Admin Name</span>
+                <input type="text" id="settingsAdminName" placeholder="Admin name">
+              </label>
+              <label>
+                <span>Email</span>
+                <input type="email" id="settingsAdminEmail" placeholder="admin@freshwash.com">
+              </label>
+              <label class="admin-settings-field-wide">
+                <span>New Password</span>
+                <input type="password" id="settingsAdminPassword" placeholder="Leave blank to keep current password">
+              </label>
+            </div>
+            <div class="admin-action-row admin-settings-actions">
+              <button class="btn-primary btn-sm" type="button" onclick="saveAdminProfileSettings()">Save Profile</button>
+            </div>
+          </article>
+
+          <article class="admin-card admin-settings-card">
+            <div class="admin-card-head">
+              <div>
+                <p class="admin-kicker">Settings</p>
+                <h2>System settings</h2>
+              </div>
+            </div>
+            <div class="admin-settings-group-head">
+              <p>Control the shop identity and contact details shown for the FreshWash operation.</p>
+            </div>
+            <div class="admin-form-stack admin-settings-form">
+              <label>
+                <span>Shop Name</span>
+                <input type="text" id="settingsShopName" placeholder="FreshWash">
+              </label>
+              <label>
+                <span>Contact Number</span>
+                <input type="text" id="settingsContactNumber" placeholder="+63 900 000 0000">
+              </label>
+              <label class="admin-settings-field-wide">
+                <span>Shop Address</span>
+                <textarea id="settingsShopAddress" placeholder="Enter shop address"></textarea>
+              </label>
+            </div>
+            <div class="admin-action-row admin-settings-actions">
+              <button class="btn-primary btn-sm" type="button" onclick="saveSystemSettings()">Save Settings</button>
+            </div>
+          </article>
+
+          <article class="admin-card admin-settings-card">
+            <div class="admin-card-head">
+              <div>
+                <p class="admin-kicker">Settings</p>
+                <h2>Machine settings</h2>
+              </div>
+            </div>
+            <div class="admin-form-stack admin-settings-form">
+              <label class="admin-settings-field-wide">
+                <span>Default Load Types</span>
+                <input type="text" id="settingsLoadTypes" placeholder="Light, Medium, Heavy">
+              </label>
+              <label class="admin-checkbox-row admin-settings-field-wide">
+                <input type="checkbox" id="settingsMachinesEnabled">
+                <span>Enable machines globally</span>
+              </label>
+            </div>
+            <div class="admin-action-row admin-settings-actions">
+              <button class="btn-primary btn-sm" type="button" onclick="saveMachineSettings()">Save Machine Settings</button>
+            </div>
+          </article>
+
+          <article class="admin-card admin-settings-card">
+            <div class="admin-card-head">
+              <div>
+                <p class="admin-kicker">Settings</p>
+                <h2>Theme settings</h2>
+              </div>
+            </div>
+            <div class="admin-form-stack admin-settings-form">
+              <label>
+                <span>Theme Mode</span>
+                <select class="admin-select" id="settingsThemeMode">
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </label>
+              <label>
+                <span>Color Theme</span>
+                <select class="admin-select" id="settingsThemeAccent">
+                  <option value="pink-rose">Pink Rose</option>
+                  <option value="pink-blush">Pink Blush</option>
+                  <option value="pink-berry">Pink Berry</option>
+                </select>
+              </label>
+            </div>
+            <div class="admin-action-row admin-settings-actions">
+              <button class="btn-primary btn-sm" type="button" onclick="saveThemeSettings()">Save Theme</button>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    let adminState = {{ admin_data | tojson }};
+
+    function showToast(message, isError = false) {
+      let stack = document.querySelector('.flash-stack');
+      if (!stack) {
+        stack = document.createElement('div');
+        stack.className = 'flash-stack';
+        stack.setAttribute('aria-live', 'polite');
+        stack.setAttribute('aria-atomic', 'true');
+        document.body.prepend(stack);
+      }
+
+      const toast = document.createElement('div');
+      toast.className = 'flash flash-' + (isError ? 'error' : 'success');
+      toast.innerHTML = '<i class="fa-solid ' + (isError ? 'fa-circle-exclamation' : 'fa-circle-check') + '"></i><span>' + message + '</span><button type="button" onclick="this.parentElement.remove()">&times;</button>';
+      stack.prepend(toast);
+      setTimeout(() => toast.remove(), 3500);
+    }
+
+    function postJson(url, body) {
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+        .then(async (response) => {
+          const raw = await response.text();
+          let data;
+          try {
+            data = raw ? JSON.parse(raw) : {};
+          } catch (error) {
+            throw new Error(raw || `Request failed with status ${response.status}`);
+          }
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || `Request failed with status ${response.status}`);
+          }
+          adminState = data.data;
+          renderDashboard();
+          return data;
+        });
+    }
+
+    function slugify(value) {
+      return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
+
+    function formatDate(value) {
+      if (!value) return 'N/A';
+      return String(value).replace('T', ' ').slice(0, 16);
+    }
+
+    function bookingBadgeClass(status) {
+      return 'status-' + String(status || 'Pending').toLowerCase().replace(/\s+/g, '-');
+    }
+
+    function filteredUsers() {
+      const query = (document.getElementById('userSearch')?.value || '').trim().toLowerCase();
+      return adminState.users.filter((user) => {
+        if (!query) return true;
+        return [user.name, user.email, user.phone, user.address, user.role].join(' ').toLowerCase().includes(query);
+      });
+    }
+
+    function filteredBookings() {
+      const query = (document.getElementById('bookingSearch')?.value || '').trim().toLowerCase();
+      const status = document.getElementById('bookingStatusFilter')?.value || '';
+      return adminState.bookings.filter((booking) => {
+        const matchesStatus = !status || booking.status === status;
+        const haystack = [
+          booking.id,
+          booking.full_name,
+          booking.machine,
+          booking.service_type,
+          booking.pickup_date,
+          booking.pickup_time,
+          booking.notes,
+          booking.load_type
+        ].join(' ').toLowerCase();
+        const matchesQuery = !query || haystack.includes(query);
+        return matchesStatus && matchesQuery;
+      });
+    }
+
+    function renderSummary() {
+      document.getElementById('summaryUsers').textContent = adminState.summary.total_users;
+      document.getElementById('summaryBookings').textContent = adminState.summary.total_bookings;
+      document.getElementById('summaryPending').textContent = adminState.summary.pending_bookings;
+      document.getElementById('summaryCompleted').textContent = adminState.summary.completed_orders;
+      document.getElementById('summaryAvailable').textContent = adminState.summary.available_machines;
+      document.getElementById('summaryMachines').textContent = adminState.summary.active_machines;
+      document.getElementById('revenueStat').innerHTML = 'Revenue: &#8369;' + Number(adminState.summary.revenue || 0).toFixed(2);
+      document.getElementById('reportTopService').textContent = adminState.reports.most_used_service || 'No data yet';
+    }
+
+    function renderRecentBookings() {
+      const wrap = document.getElementById('recentBookingsList');
+      wrap.innerHTML = adminState.bookings.slice(0, 5).map((booking) => `
+        <div class="admin-timeline-item">
+          <div>
+            <strong>${booking.full_name || 'Customer'}</strong>
+            <small>${booking.service_type || 'Service'} - ${booking.machine || 'Machine TBD'} - ${booking.pickup_date || 'TBD'}</small>
+          </div>
+          <span class="fw-badge ${bookingBadgeClass(booking.status)}">${booking.status || 'Pending'}</span>
+        </div>
+      `).join('') || '<p class="admin-empty">No bookings available.</p>';
+    }
+
+    function renderUsers() {
+      const body = document.getElementById('usersTableBody');
+      body.innerHTML = filteredUsers().map((user) => `
+        <tr>
+          <td>${user.name || 'N/A'}</td>
+          <td>${user.email || 'N/A'}</td>
+          <td>${user.phone || 'N/A'}</td>
+          <td>${user.address || 'N/A'}</td>
+          <td><span class="fw-badge ${user.role === 'admin' ? 'status-pending' : 'status-completed'}">${user.role || 'user'}</span></td>
+          <td>${formatDate(user.created_at)}</td>
+          <td>
+            <div class="admin-action-row">
+              <button class="btn-ghost btn-sm" type="button" onclick="editUser('${user.id}')">Edit</button>
+              <button class="btn-primary btn-sm admin-danger" type="button" onclick="deleteUser('${user.id}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="7" class="admin-empty-cell">No users found.</td></tr>';
+    }
+
+    function renderBookings() {
+      const body = document.getElementById('bookingsTableBody');
+      body.innerHTML = filteredBookings().map((booking) => `
+        <tr>
+          <td>${booking.id || 'N/A'}</td>
+          <td>${booking.full_name || 'Customer'}</td>
+          <td>${booking.service_type || 'N/A'}</td>
+          <td>${booking.machine || 'Unassigned'}</td>
+          <td>${booking.pickup_date || 'TBD'}</td>
+          <td>${booking.pickup_time || 'TBD'}</td>
+          <td><span class="fw-badge ${bookingBadgeClass(booking.status)}">${booking.status || 'Pending'}</span></td>
+          <td>&#8369;${Number(booking.total_price || 0).toFixed(2)}</td>
+          <td>${booking.load_type || 'N/A'}</td>
+          <td>${booking.notes || '-'}</td>
+          <td>
+            <div class="admin-action-row admin-action-row-stacked">
+              <select class="admin-select" onchange="updateBookingStatus('${booking.id}', this.value)">
+                ${['Pending', 'In Progress', 'Completed', 'Cancelled'].map((status) => `<option value="${status}" ${status === booking.status ? 'selected' : ''}>${status}</option>`).join('')}
+              </select>
+              <button class="btn-ghost btn-sm" type="button" onclick="editBooking('${booking.id}')">Edit</button>
+              <button class="btn-primary btn-sm admin-danger" type="button" onclick="deleteBooking('${booking.id}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="11" class="admin-empty-cell">No bookings found.</td></tr>';
+    }
+
+    function renderMachines() {
+      const loadTypes = adminState.settings?.machines?.default_load_types || ['Light', 'Medium', 'Heavy'];
+      const mini = document.getElementById('machineStatusMini');
+      mini.innerHTML = adminState.machines.map((machine) => `
+        <div class="admin-mini-machine ${machine.enabled ? '' : 'is-disabled'}">
+          <strong>${machine.name}</strong>
+          <span>${machine.status_display || (machine.enabled ? machine.status : 'Disabled')}</span>
+        </div>
+      `).join('') || '<p class="admin-empty">No machine data available.</p>';
+
+      const grid = document.getElementById('machinesGrid');
+      grid.innerHTML = adminState.machines.map((machine) => `
+        <article class="admin-machine-card ${machine.enabled ? '' : 'is-disabled'}">
+          <div class="admin-machine-head">
+            <div>
+              <h3>${machine.name}</h3>
+              <p>${machine.enabled ? 'Ready for admin control' : 'Temporarily disabled'}</p>
+            </div>
+            <span class="fw-badge ${bookingBadgeClass(machine.status_display || machine.status)}">${machine.status_display || (machine.enabled ? machine.status : 'Disabled')}</span>
+          </div>
+          <div class="admin-form-stack">
+            <label>
+              <span>Machine Name</span>
+              <input type="text" id="machine-name-${machine.machine_number}" value="${machine.name}">
+            </label>
+            <label>
+              <span>Status</span>
+              <select class="admin-select" id="machine-status-${machine.machine_number}">
+                ${['Available', 'In Use'].map((status) => `<option value="${status}" ${status === machine.status ? 'selected' : ''}>${status}</option>`).join('')}
+              </select>
+            </label>
+            <label>
+              <span>Load Type</span>
+              <select class="admin-select" id="machine-load-${machine.machine_number}">
+                ${loadTypes.map((load) => `<option value="${load}" ${load === machine.load_type ? 'selected' : ''}>${load}</option>`).join('')}
+              </select>
+            </label>
+          </div>
+          <div class="admin-machine-actions">
+            <button class="btn-ghost btn-sm" type="button" onclick="saveMachine(${machine.machine_number})">Save Machine</button>
+            <button class="btn-primary btn-sm ${machine.enabled ? 'admin-muted' : ''}" type="button" onclick="toggleMachineEnabled(${machine.machine_number}, ${!machine.enabled})">${machine.enabled ? 'Disable' : 'Enable'}</button>
+          </div>
+        </article>
+      `).join('') || '<p class="admin-empty">No machine data available.</p>';
+    }
+
+    function renderServices() {
+      const grid = document.getElementById('servicesGrid');
+      grid.innerHTML = adminState.services.map((service) => `
+        <article class="admin-service-card">
+          <div>
+            <h3>${service.name}</h3>
+            <p>${service.description}</p>
+          </div>
+          <label>
+            <span>Price</span>
+            <input type="number" min="0" step="0.01" value="${service.price}" id="price-${slugify(service.name)}">
+          </label>
+          <label>
+            <span>Description</span>
+            <textarea id="desc-${slugify(service.name)}">${service.description}</textarea>
+          </label>
+          <div class="admin-action-row">
+            <button class="btn-ghost btn-sm" type="button" onclick="saveServiceBySlug('${encodeURIComponent(service.name)}')">Save Service</button>
+            <button class="btn-primary btn-sm admin-danger" type="button" onclick="deleteServiceBySlug('${encodeURIComponent(service.name)}')">Delete</button>
+          </div>
+        </article>
+      `).join('') || '<p class="admin-empty">No services available.</p>';
+    }
+
+    function renderReports() {
+      const bars = document.getElementById('reportBookingsPerDay');
+      const counts = adminState.reports.bookings_per_day.map((item) => item.count);
+      const maxCount = Math.max(...counts, 1);
+      bars.innerHTML = adminState.reports.bookings_per_day.map((item) => `
+        <div class="admin-bar-row">
+          <span>${item.label}</span>
+          <div class="admin-bar-track"><div class="admin-bar-fill" style="width:${(item.count / maxCount) * 100}%"></div></div>
+          <strong>${item.count}</strong>
+        </div>
+      `).join('') || '<p class="admin-empty">No report data available.</p>';
+
+      const usage = document.getElementById('reportMachineUsage');
+      usage.innerHTML = adminState.reports.machine_usage.map((item) => `
+        <div class="admin-usage-item">
+          <div>
+            <strong>${item.label}</strong>
+            <small>${item.status}</small>
+          </div>
+          <span>${item.count} bookings</span>
+        </div>
+      `).join('') || '<p class="admin-empty">No usage data available.</p>';
+
+      const statusWrap = document.getElementById('reportStatusBreakdown');
+      const breakdown = adminState.reports.status_breakdown || {};
+      statusWrap.innerHTML = `
+        <div class="admin-inline-stat"><strong>${breakdown.pending || 0}</strong><span>Pending</span></div>
+        <div class="admin-inline-stat"><strong>${breakdown.completed || 0}</strong><span>Completed</span></div>
+        <div class="admin-inline-stat"><strong>${breakdown.cancelled || 0}</strong><span>Cancelled</span></div>
+      `;
+    }
+
+    function applyAdminTheme() {
+      document.body.dataset.adminMode = adminState.settings?.theme?.mode || 'light';
+      document.body.dataset.adminAccent = adminState.settings?.theme?.accent || 'pink-rose';
+    }
+
+    function renderSettings() {
+      const settings = adminState.settings || {};
+      const profile = settings.profile || {};
+      const system = settings.system || {};
+      const machines = settings.machines || {};
+      const theme = settings.theme || {};
+
+      const adminName = document.getElementById('settingsAdminName');
+      const adminEmail = document.getElementById('settingsAdminEmail');
+      const adminPassword = document.getElementById('settingsAdminPassword');
+      const shopName = document.getElementById('settingsShopName');
+      const contactNumber = document.getElementById('settingsContactNumber');
+      const shopAddress = document.getElementById('settingsShopAddress');
+      const loadTypes = document.getElementById('settingsLoadTypes');
+      const machinesEnabled = document.getElementById('settingsMachinesEnabled');
+      const themeMode = document.getElementById('settingsThemeMode');
+      const themeAccent = document.getElementById('settingsThemeAccent');
+
+      if (adminName) adminName.value = profile.name || '';
+      if (adminEmail) adminEmail.value = profile.email || '';
+      if (adminPassword) adminPassword.value = '';
+      if (shopName) shopName.value = system.shop_name || '';
+      if (contactNumber) contactNumber.value = system.contact_number || '';
+      if (shopAddress) shopAddress.value = system.shop_address || '';
+      if (loadTypes) loadTypes.value = (machines.default_load_types || []).join(', ');
+      if (machinesEnabled) machinesEnabled.checked = Boolean(machines.machines_globally_enabled);
+      if (themeMode) themeMode.value = theme.mode || 'light';
+      if (themeAccent) themeAccent.value = theme.accent || 'pink-rose';
+
+      applyAdminTheme();
+    }
+
+    function renderDashboard() {
+      renderSummary();
+      renderRecentBookings();
+      renderUsers();
+      renderBookings();
+      renderMachines();
+      renderServices();
+      renderReports();
+      renderSettings();
+    }
+
+    async function createUser() {
+      const name = prompt('Full name');
+      if (!name) return;
+      const email = prompt('Email');
+      if (!email) return;
+      const phone = prompt('Phone number', '');
+      if (phone === null || phone === '') return;
+      const address = prompt('Address', '');
+      if (address === null || address === '') return;
+      const password = prompt('Temporary password (min 6 characters)');
+      if (!password) return;
+      const role = confirm('Make this account an admin?') ? 'admin' : 'user';
+      try {
+        await postJson('/admin/api/users', { action: 'create', name, email, phone, address, password, role });
+        showToast('User created successfully.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function editUser(userId) {
+      const user = adminState.users.find((item) => item.id === userId);
+      if (!user) return;
+      const name = prompt('Update user name', user.name || '');
+      if (!name) return;
+      const phone = prompt('Update phone number', user.phone || '');
+      if (phone === null) return;
+      const address = prompt('Update address', user.address || '');
+      if (address === null) return;
+      const role = prompt('Role (admin or user)', user.role || 'user');
+      if (!role) return;
+      const payload = { action: 'edit', name, phone, address, role };
+      if (user.email) payload.email = user.email;
+      try {
+        await postJson(`/admin/api/users/${userId}`, payload);
+        showToast('User updated successfully.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function deleteUser(userId) {
+      if (!confirm('Delete this user account?')) return;
+      try {
+        await postJson(`/admin/api/users/${userId}`, { action: 'delete' });
+        showToast('User deleted successfully.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function updateBookingStatus(bookingId, status) {
+      try {
+        await postJson(`/admin/api/bookings/${bookingId}`, { action: 'status', status });
+        showToast('Booking status updated.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function editBooking(bookingId) {
+      const booking = adminState.bookings.find((item) => item.id === bookingId);
+      if (!booking) return;
+      const machine = prompt('Machine', booking.machine || '');
+      if (machine === null) return;
+      const pickupDate = prompt('Pickup date (YYYY-MM-DD)', booking.pickup_date || '');
+      if (!pickupDate) return;
+      const pickupTime = prompt('Pickup time (HH:MM)', booking.pickup_time || '');
+      if (!pickupTime) return;
+      const notes = prompt('Notes', booking.notes || '');
+      if (notes === null) return;
+      try {
+        await postJson(`/admin/api/bookings/${bookingId}`, {
+          action: 'edit',
+          full_name: booking.full_name || '',
+          service_type: booking.service_type || '',
+          machine,
+          pickup_date: pickupDate,
+          pickup_time: pickupTime,
+          load_type: booking.load_type || '',
+          notes,
+          status: booking.status || 'Pending'
+        });
+        showToast('Booking updated successfully.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function deleteBooking(bookingId) {
+      if (!confirm('Delete this booking permanently?')) return;
+      try {
+        await postJson(`/admin/api/bookings/${bookingId}`, { action: 'delete' });
+        showToast('Booking deleted.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function saveMachine(machineNumber) {
+      const name = document.getElementById(`machine-name-${machineNumber}`).value.trim();
+      const status = document.getElementById(`machine-status-${machineNumber}`).value;
+      const loadType = document.getElementById(`machine-load-${machineNumber}`).value;
+      if (!name) {
+        showToast('Machine name is required.', true);
+        return;
+      }
+      try {
+        await postJson(`/admin/api/machines/${machineNumber}`, { name, status, load_type: loadType });
+        showToast('Machine updated.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function toggleMachineEnabled(machineNumber, enabled) {
+      try {
+        await postJson(`/admin/api/machines/${machineNumber}`, { enabled });
+        showToast(enabled ? 'Machine enabled.' : 'Machine disabled.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function createService() {
+      const name = prompt('Service name');
+      if (!name) return;
+      const price = prompt('Price');
+      if (!price) return;
+      const description = prompt('Description');
+      if (!description) return;
+      try {
+        await postJson('/admin/api/services', { action: 'create', name, price, description });
+        showToast('Service created successfully.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function saveService(serviceName) {
+      const slug = slugify(serviceName);
+      const price = document.getElementById(`price-${slug}`).value;
+      const description = document.getElementById(`desc-${slug}`).value;
+      try {
+        await postJson(`/admin/api/services/${encodeURIComponent(serviceName)}`, { action: 'save', price, description });
+        showToast('Service updated successfully.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    function saveServiceBySlug(encodedName) {
+      return saveService(decodeURIComponent(encodedName));
+    }
+
+    async function deleteService(serviceName) {
+      if (!confirm(`Delete ${serviceName}?`)) return;
+      try {
+        await postJson(`/admin/api/services/${encodeURIComponent(serviceName)}`, { action: 'delete', price: 0, description: 'deleted' });
+        showToast('Service deleted.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    function deleteServiceBySlug(encodedName) {
+      return deleteService(decodeURIComponent(encodedName));
+    }
+
+    async function saveAdminProfileSettings() {
+      const name = document.getElementById('settingsAdminName').value.trim();
+      const email = document.getElementById('settingsAdminEmail').value.trim();
+      const password = document.getElementById('settingsAdminPassword').value;
+      try {
+        await postJson('/admin/api/settings', { action: 'profile', name, email, password });
+        showToast('Admin profile updated.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function saveSystemSettings() {
+      const shop_name = document.getElementById('settingsShopName').value.trim();
+      const contact_number = document.getElementById('settingsContactNumber').value.trim();
+      const shop_address = document.getElementById('settingsShopAddress').value.trim();
+      try {
+        await postJson('/admin/api/settings', { action: 'system', shop_name, contact_number, shop_address });
+        showToast('System settings saved.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function saveMachineSettings() {
+      const default_load_types = document.getElementById('settingsLoadTypes').value.trim();
+      const machines_globally_enabled = document.getElementById('settingsMachinesEnabled').checked;
+      try {
+        await postJson('/admin/api/settings', { action: 'machines', default_load_types, machines_globally_enabled });
+        showToast('Machine settings saved.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function saveThemeSettings() {
+      const mode = document.getElementById('settingsThemeMode').value;
+      const accent = document.getElementById('settingsThemeAccent').value;
+      try {
+        await postJson('/admin/api/settings', { action: 'theme', mode, accent });
+        showToast('Theme settings saved.');
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    document.getElementById('userSearch')?.addEventListener('input', renderUsers);
+    document.getElementById('bookingSearch')?.addEventListener('input', renderBookings);
+    document.getElementById('bookingStatusFilter')?.addEventListener('change', renderBookings);
+
+    renderDashboard();
+  </script>
+</body>
+</html>

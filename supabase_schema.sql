@@ -10,13 +10,16 @@ create table if not exists public.profiles (
   full_name  text not null,
   phone      text,
   address    text,
-  avatar     text,
+  role       text not null default 'user',
   created_at timestamptz default now()
 );
 
 alter table public.profiles add column if not exists email text;
-alter table public.profiles add column if not exists avatar text;
+alter table public.profiles add column if not exists role text not null default 'user';
 alter table public.profiles alter column email set not null;
+
+-- Optional avatar support:
+-- alter table public.profiles add column if not exists avatar text;
 
 alter table public.profiles enable row level security;
 
@@ -38,6 +41,23 @@ create policy "Users can update own profile"
   with check (auth.uid() = id);
 
 
+-- Machines table
+create table if not exists public.machines (
+  machine_number integer primary key,
+  label         text not null,
+  status        text not null default 'Available',
+  load_type     text not null default 'Medium',
+  enabled       boolean not null default true,
+  updated_at    timestamptz default now()
+);
+
+alter table public.machines add column if not exists label text;
+alter table public.machines add column if not exists status text not null default 'Available';
+alter table public.machines add column if not exists load_type text not null default 'Medium';
+alter table public.machines add column if not exists enabled boolean not null default true;
+alter table public.machines add column if not exists updated_at timestamptz default now();
+
+
 -- ── Bookings table ──────────────────────────────────────────
 create table if not exists public.bookings (
   id           uuid primary key default gen_random_uuid(),
@@ -45,7 +65,10 @@ create table if not exists public.bookings (
   full_name    text not null,
   phone        text not null,
   address      text not null,
+  pickup_address text,
   service_type text not null,
+  machine      text,
+  load_type    text,
   pickup_date  date not null,
   pickup_time  time not null,
   weight       numeric(6,2) not null,
@@ -53,6 +76,13 @@ create table if not exists public.bookings (
   status       text not null default 'Pending',
   created_at   timestamptz default now()
 );
+
+alter table public.bookings add column if not exists machine text;
+alter table public.bookings add column if not exists load_type text;
+alter table public.bookings add column if not exists pickup_address text;
+update public.bookings
+set pickup_address = address
+where pickup_address is null and address is not null;
 
 alter table public.bookings enable row level security;
 

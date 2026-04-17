@@ -13,7 +13,7 @@
           {% if user %}
           <a href="{{ url_for('booking') }}" class="btn-primary landing-cta">Book Now</a>
           {% else %}
-          <button type="button" class="btn-primary landing-cta" onclick="openAuthModal('signin')">Book Now</button>
+          <a href="{{ url_for('login') }}" class="btn-primary landing-cta">Book Now</a>
           {% endif %}
           <a href="#services" class="btn-ghost landing-secondary">View Services</a>
         </div>
@@ -38,16 +38,20 @@
 
       <div class="home-service-grid">
         <article class="home-service-card">
-          <div class="landing-card-icon"><i class="fa-solid fa-soap"></i></div>
-          <h3>Wash &amp; Fold</h3>
-          <p>Freshly cleaned and neatly folded laundry ready for your shelves.</p>
-          <span class="svc-price">&#8369;150 - &#8369;250</span>
-        </article>
-        <article class="home-service-card">
-          <div class="landing-card-icon"><i class="fa-solid fa-wind"></i></div>
-          <h3>Dry Cleaning</h3>
-          <p>Special treatment for delicate, formal, and premium garments.</p>
-          <span class="svc-price">&#8369;250 - &#8369;400</span>
+          <div class="landing-card-icon"><i class="fa-solid fa-shirt"></i></div>
+          <h3>Wash + Dry Clean</h3>
+          <p>Everyday washing for regular clothes and professional dry cleaning for delicate and premium fabrics.</p>
+          <div class="home-service-meta">
+            <div class="svc-price-group" aria-label="Wash and dry clean pricing">
+              <span class="svc-price-pill">Wash: &#8369;150 - &#8369;250/kg</span>
+              <span class="svc-price-pill">Dry Clean: &#8369;250 - &#8369;400/kg</span>
+            </div>
+            {% if user %}
+            <a href="{{ url_for('booking') }}" class="btn-primary btn-small">Book</a>
+            {% else %}
+            <a href="{{ url_for('login') }}" class="btn-primary btn-small">Book</a>
+            {% endif %}
+          </div>
         </article>
         <article class="home-service-card">
           <div class="landing-card-icon"><i class="fa-solid fa-temperature-high"></i></div>
@@ -183,7 +187,7 @@
           {% if user %}
           <a href="{{ url_for('booking') }}" class="btn-primary">Contact Us</a>
           {% else %}
-          <button type="button" class="btn-primary" onclick="openAuthModal('signin')">Contact Us</button>
+          <a href="{{ url_for('login') }}" class="btn-primary">Contact Us</a>
           {% endif %}
         </div>
         <div class="map-placeholder">
@@ -203,117 +207,9 @@
       {% if user %}
       <a href="{{ url_for('booking') }}" class="btn-ghost cta-button">Book Now</a>
       {% else %}
-      <button type="button" class="btn-ghost cta-button" onclick="openAuthModal('signin')">Book Now</button>
+      <a href="{{ url_for('login') }}" class="btn-ghost cta-button">Book Now</a>
       {% endif %}
     </div>
   </section>
 </div>
-
-{% if not user %}
-<div class="auth-modal-backdrop" id="authBackdrop" onclick="closeAuthModal()"></div>
-<aside class="auth-modal" id="authModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
-  <div class="panel-head">
-    <div>
-      <p class="panel-kicker">FreshWash Access</p>
-      <h3 id="authModalTitle">Sign in or create an account</h3>
-    </div>
-    <button class="panel-close" type="button" onclick="closeAuthModal()" aria-label="Close auth modal">
-      <i class="fa-solid fa-xmark"></i>
-    </button>
-  </div>
-
-  <div class="landing-auth-tabs">
-    <button class="reader-tab active" id="tabSignIn" type="button" onclick="switchTab('signin')">Sign In</button>
-    <button class="reader-tab" id="tabSignUp" type="button" onclick="switchTab('signup')">Sign Up</button>
-  </div>
-
-  <form id="formSignIn" class="reader-form" method="POST" action="{{ url_for('login') }}">
-    <div class="rv-field">
-      <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
-      <input type="email" name="email" class="rv-input" placeholder="Email address" required/>
-    </div>
-    <div class="rv-field">
-      <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
-      <input type="password" name="password" class="rv-input" placeholder="Password" required/>
-    </div>
-    <button type="submit" class="btn-primary w-full">Sign In</button>
-  </form>
-
-  <form id="formSignUp" class="reader-form hidden" method="POST" action="{{ url_for('register') }}">
-    <div class="rv-field">
-      <span class="rv-fi"><i class="fa-solid fa-user"></i></span>
-      <input type="text" name="name" class="rv-input" placeholder="Full name" required/>
-    </div>
-    <div class="rv-field">
-      <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
-      <input type="email" name="email" class="rv-input" placeholder="Email address" required/>
-    </div>
-    <div class="rv-field">
-      <span class="rv-fi"><i class="fa-solid fa-phone"></i></span>
-      <input type="tel" name="phone" class="rv-input" placeholder="Phone number" required/>
-    </div>
-    <div class="rv-field">
-      <span class="rv-fi"><i class="fa-solid fa-location-dot"></i></span>
-      <input type="text" name="address" class="rv-input" placeholder="Address" required/>
-    </div>
-    <div class="rv-field">
-      <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
-      <input type="password" name="password" id="regPass" class="rv-input" placeholder="Password (min. 6)" required minlength="6"/>
-    </div>
-    <div class="rv-field">
-      <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
-      <input type="password" id="regConfirm" class="rv-input" placeholder="Confirm password" required/>
-    </div>
-    <p id="passError" class="rv-error hidden">Passwords do not match.</p>
-    <button type="submit" class="btn-primary w-full" onclick="return validatePasswords()">Create Account</button>
-  </form>
-</aside>
-{% endif %}
-{% endblock %}
-
-{% block scripts %}
-<script>
-  function switchTab(tab) {
-    const signInForm = document.getElementById('formSignIn');
-    const signUpForm = document.getElementById('formSignUp');
-    const signInTab = document.getElementById('tabSignIn');
-    const signUpTab = document.getElementById('tabSignUp');
-    const passError = document.getElementById('passError');
-    if (!signInForm || !signUpForm || !signInTab || !signUpTab) return;
-    signInForm.classList.toggle('hidden', tab !== 'signin');
-    signUpForm.classList.toggle('hidden', tab !== 'signup');
-    signInTab.classList.toggle('active', tab === 'signin');
-    signUpTab.classList.toggle('active', tab === 'signup');
-    if (passError) passError.classList.add('hidden');
-  }
-
-  function validatePasswords() {
-    const pass1 = document.getElementById('regPass');
-    const pass2 = document.getElementById('regConfirm');
-    const err = document.getElementById('passError');
-    if (!pass1 || !pass2 || !err) return true;
-    const isMatch = pass1.value === pass2.value;
-    err.classList.toggle('hidden', isMatch);
-    return isMatch;
-  }
-
-  function openAuthModal(tab = 'signin') {
-    const modal = document.getElementById('authModal');
-    const backdrop = document.getElementById('authBackdrop');
-    if (!modal || !backdrop) return;
-    switchTab(tab);
-    modal.classList.add('open');
-    backdrop.classList.add('show');
-    modal.setAttribute('aria-hidden', 'false');
-  }
-
-  function closeAuthModal() {
-    const modal = document.getElementById('authModal');
-    const backdrop = document.getElementById('authBackdrop');
-    if (!modal || !backdrop) return;
-    modal.classList.remove('open');
-    backdrop.classList.remove('show');
-    modal.setAttribute('aria-hidden', 'true');
-  }
-</script>
 {% endblock %}

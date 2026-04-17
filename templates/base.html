@@ -15,16 +15,20 @@
 {% set home_href = url_for('readers_view') %}
 {% set about_href = url_for('readers_view') ~ '#about' %}
 {% set book_href = url_for('readers_view') ~ '#book' %}
-{% set my_booking_href = (url_for('readers_view') ~ '#my-booking') if current_user else (url_for('readers_view') ~ '#auth') %}
+{% set my_booking_href = (url_for('readers_view') ~ '#my-booking') if current_user else url_for('login') %}
 
 {% with messages = get_flashed_messages(with_categories=true) %}
-  {% for category, message in messages %}
-  <div class="flash flash-{{ category }}">
-    <i class="fa-solid fa-{{ 'circle-check' if category != 'error' else 'circle-exclamation' }}"></i>
-    <span>{{ message }}</span>
-    <button type="button" onclick="this.parentElement.remove()">&times;</button>
+  {% if messages %}
+  <div class="flash-stack" aria-live="polite" aria-atomic="true">
+    {% for category, message in messages %}
+    <div class="flash flash-{{ category }}">
+      <i class="fa-solid fa-{{ 'circle-check' if category != 'error' else 'circle-exclamation' }}"></i>
+      <span>{{ message }}</span>
+      <button type="button" onclick="this.parentElement.remove()">&times;</button>
+    </div>
+    {% endfor %}
   </div>
-  {% endfor %}
+  {% endif %}
 {% endwith %}
 
 <div class="bubble-layer" aria-hidden="true">
@@ -54,7 +58,10 @@
         <a href="{{ home_href }}" {% if is_spa_home %}data-spa-target="home"{% endif %} class="{% if request.endpoint == 'readers_view' %}active{% endif %}">Home</a>
         <a href="{{ about_href }}" {% if is_spa_home %}data-spa-target="about"{% endif %}>About</a>
         <a href="{{ book_href }}" {% if is_spa_home %}data-spa-target="book"{% endif %}>Book Now</a>
-        <a href="{{ my_booking_href }}" {% if current_user and is_spa_home %}data-spa-target="my-booking"{% endif %}{% if not current_user and is_spa_home %} data-open-auth="signin"{% endif %} class="{% if request.endpoint == 'my_bookings' %}active{% endif %}">My Booking</a>
+        <a href="{{ my_booking_href }}" {% if current_user and is_spa_home %}data-spa-target="my-booking"{% elif not current_user and is_spa_home %}data-auth-link="login"{% endif %} class="{% if request.endpoint == 'my_bookings' %}active{% endif %}">My Booking</a>
+        {% if current_user and current_user.get('is_admin') %}
+        <a href="{{ url_for('admin_dashboard') }}" class="{% if request.endpoint == 'admin_dashboard' %}active{% endif %}">Admin</a>
+        {% endif %}
       </nav>
 
       <div class="header-actions">
@@ -68,13 +75,8 @@
           {% endif %}
         </button>
         {% else %}
-        {% if is_spa_home %}
-        <button type="button" class="btn-ghost btn-small header-login" onclick="openAuthModal('signin')">Login</button>
-        <button type="button" class="btn-primary btn-small header-register" onclick="openAuthModal('signup')">Register</button>
-        {% else %}
-        <a href="{{ url_for('login') }}" class="btn-ghost btn-small header-login">Login</a>
-        <a href="{{ url_for('register') }}" class="btn-primary btn-small header-register">Register</a>
-        {% endif %}
+        <a href="{{ url_for('login') }}" class="btn-ghost btn-small header-login" {% if is_spa_home %}data-auth-link="login"{% endif %}>Login</a>
+        <a href="{{ url_for('register') }}" class="btn-primary btn-small header-register" {% if is_spa_home %}data-auth-link="register"{% endif %}>Register</a>
         {% endif %}
       </div>
     </div>
@@ -174,19 +176,11 @@
 <script>
   const CURRENT_USER = {% if current_user %}{{ current_user | tojson }}{% else %}null{% endif %};
   const PROFILE_STORAGE_KEY = 'freshwashProfile';
+  const ACTIVE_AUTH_MODAL = {{ active_auth_modal | default(None) | tojson }};
 
   function toggleNav() {
     const nav = document.getElementById('headerNav');
     if (nav) nav.classList.toggle('open');
-  }
-
-  function initAuthLinks() {
-    document.querySelectorAll('[data-open-auth]').forEach(link => {
-      link.addEventListener('click', event => {
-        event.preventDefault();
-        openAuthModal(link.dataset.openAuth || 'signin');
-      });
-    });
   }
 
   function initPasswordToggles() {
@@ -202,6 +196,70 @@
           ? '<i class="fa-regular fa-eye"></i>'
           : '<i class="fa-regular fa-eye-slash"></i>';
         button.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+      });
+    });
+  }
+
+  function switchAuthModal(nextModal) {
+    const loginModal = document.getElementById('loginAuthModal');
+    const registerModal = document.getElementById('registerAuthModal');
+    const loginEmail = document.querySelector('#loginAuthModal input[name="email"]');
+    const registerEmail = document.querySelector('#registerAuthModal input[name="email"]');
+    if (!loginModal || !registerModal) return;
+    loginModal.classList.toggle('open', nextModal === 'login');
+    loginModal.setAttribute('aria-hidden', String(nextModal !== 'login'));
+    registerModal.classList.toggle('open', nextModal === 'register');
+    registerModal.setAttribute('aria-hidden', String(nextModal !== 'register'));
+    if (nextModal === 'register' && registerEmail && loginEmail && loginEmail.value && !registerEmail.value) {
+      registerEmail.value = loginEmail.value;
+    }
+    initPasswordToggles();
+  }
+
+  function openAuthModal(modal = 'login') {
+    const backdrop = document.getElementById('authBackdrop');
+    if (!backdrop) return;
+    backdrop.classList.add('show');
+    backdrop.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('auth-modal-open');
+    switchAuthModal(modal);
+  }
+
+  function closeAuthModal() {
+    const backdrop = document.getElementById('authBackdrop');
+    const loginModal = document.getElementById('loginAuthModal');
+    const registerModal = document.getElementById('registerAuthModal');
+    if (!backdrop || !loginModal || !registerModal) return;
+    backdrop.classList.remove('show');
+    backdrop.setAttribute('aria-hidden', 'true');
+    loginModal.classList.remove('open');
+    registerModal.classList.remove('open');
+    loginModal.setAttribute('aria-hidden', 'true');
+    registerModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('auth-modal-open');
+  }
+
+  function initAuthModalLinks() {
+    document.querySelectorAll('[data-auth-link]').forEach(link => {
+      link.addEventListener('click', event => {
+        if (typeof openAuthModal !== 'function') return;
+        event.preventDefault();
+        openAuthModal(link.dataset.authLink || 'login');
+      });
+    });
+
+    const backdrop = document.getElementById('authBackdrop');
+    if (backdrop && backdrop.dataset.bound !== 'true') {
+      backdrop.dataset.bound = 'true';
+      backdrop.addEventListener('click', event => {
+        if (event.target === backdrop) closeAuthModal();
+      });
+    }
+
+    document.querySelectorAll('[data-auth-switch]').forEach(link => {
+      link.addEventListener('click', event => {
+        event.preventDefault();
+        switchAuthModal(link.dataset.authSwitch || 'login');
       });
     });
   }
@@ -374,10 +432,18 @@
   }
 
   function showToast(message, isError = false) {
+    let stack = document.querySelector('.flash-stack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.className = 'flash-stack';
+      stack.setAttribute('aria-live', 'polite');
+      stack.setAttribute('aria-atomic', 'true');
+      document.body.prepend(stack);
+    }
     const toast = document.createElement('div');
     toast.className = 'flash flash-' + (isError ? 'error' : 'success');
     toast.innerHTML = '<i class="fa-solid ' + (isError ? 'fa-circle-exclamation' : 'fa-circle-check') + '"></i><span>' + message + '</span><button type="button" onclick="this.parentElement.remove()">&times;</button>';
-    document.body.prepend(toast);
+    stack.prepend(toast);
     setTimeout(() => toast.remove(), 3500);
   }
 
@@ -426,20 +492,10 @@
     });
 
     const initialHash = window.location.hash.replace('#', '');
-    if (initialHash === 'auth' && typeof openAuthModal === 'function') {
-      setActiveSection(defaultSection, false);
-      openAuthModal('signin');
-    } else {
-      setActiveSection(initialHash || defaultSection, false);
-    }
+    setActiveSection(initialHash || defaultSection, false);
 
     window.addEventListener('hashchange', () => {
       const hashTarget = window.location.hash.replace('#', '');
-      if (hashTarget === 'auth' && typeof openAuthModal === 'function') {
-        setActiveSection(defaultSection, false);
-        openAuthModal('signin');
-        return;
-      }
       if (hashTarget) setActiveSection(hashTarget, false);
     });
 
@@ -447,9 +503,10 @@
   }
 
   syncProfileStorageFromSession();
-  initAuthLinks();
+  initAuthModalLinks();
   initPasswordToggles();
   initSpaNavigation();
+  if (ACTIVE_AUTH_MODAL) openAuthModal(ACTIVE_AUTH_MODAL);
 </script>
 {% block scripts %}{% endblock %}
 </body>
