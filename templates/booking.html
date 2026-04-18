@@ -23,19 +23,16 @@
 
   .booking-main {
     width: 100%;
-    max-width: 980px;
-    padding: 1.5rem;
+    max-width: 900px;
+    padding: 1.6rem;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.28));
     display: grid;
-    grid-template-rows: auto 1fr auto;
-    gap: 1.15rem;
+    gap: 1.1rem;
   }
 
   .booking-main-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
+    display: grid;
+    gap: 0.2rem;
   }
 
   .booking-main-top h2 {
@@ -45,22 +42,9 @@
   }
 
   .booking-main-top p {
-    margin: 0.2rem 0 0;
+    margin: 0;
     font-size: 0.9rem;
     color: #6f6190;
-  }
-
-  .booking-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.55rem 0.8rem;
-    border-radius: 999px;
-    background: rgba(124, 92, 255, 0.12);
-    color: #6b4dff;
-    font-weight: 600;
-    font-size: 0.8rem;
-    white-space: nowrap;
   }
 
   .booking-form-grid {
@@ -80,6 +64,12 @@
     font-size: 0.72rem;
   }
 
+  .booking-field-help {
+    margin-top: 0.42rem;
+    color: #8b789f;
+    font-size: 0.78rem;
+  }
+
   .booking-field .fw-field {
     min-height: 52px;
     padding: 0.1rem 0.9rem;
@@ -94,46 +84,23 @@
     box-shadow: 0 10px 24px rgba(108, 93, 163, 0.08);
   }
 
-  .booking-main-bottom {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 1rem;
-    align-items: center;
-  }
-
-  .booking-total-card {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.42));
-    border-color: rgba(255, 255, 255, 0.7);
-    color: #2f2552;
-    min-height: 74px;
-  }
-
-  .booking-total-card i {
-    background: linear-gradient(135deg, #ff74bb, #7c5cff);
-    color: white;
-  }
-
-  .booking-total-card span {
-    color: #756891;
-  }
-
-  .booking-total-amount {
-    font-size: 1.65rem;
-    font-weight: 700;
-    color: #5c3df0;
+  .booking-actions {
+    grid-column: span 2;
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 0.35rem;
   }
 
   .booking-submit {
-    min-width: 210px;
-    min-height: 74px;
-    border-radius: 24px;
-    font-size: 1rem;
-    background: linear-gradient(135deg, #ff6fb5, #7c5cff 58%, #4db3ff);
-    box-shadow: 0 18px 32px rgba(124, 92, 255, 0.24);
+    min-width: 220px;
+    min-height: 54px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #ff6fb5, #ff4fa0 55%, #f08bbd);
+    box-shadow: 0 16px 30px rgba(255, 111, 181, 0.22);
   }
 
   .booking-submit:hover {
-    transform: translateY(-2px) scale(1.01);
+    transform: translateY(-1px);
   }
 
   .booking-main::before {
@@ -152,7 +119,6 @@
       width: 100%;
     }
 
-    .booking-main-bottom,
     .booking-form-grid {
       grid-template-columns: 1fr;
     }
@@ -161,9 +127,13 @@
       grid-column: auto;
     }
 
+    .booking-actions {
+      grid-column: auto;
+      justify-content: stretch;
+    }
+
     .booking-submit {
       width: 100%;
-      min-height: 58px;
     }
   }
 </style>
@@ -173,14 +143,12 @@
 <section class="booking-screen">
   <div class="booking-main">
     <div class="booking-main-top">
-      <div>
-        <h2>Schedule a Pickup</h2>
-        <p>Compact, clear, and ready in a few taps.</p>
-      </div>
-      <div class="booking-badge"><i class="fa-solid fa-shield-heart"></i> Secure booking</div>
+      <h2>Schedule a Pickup</h2>
     </div>
 
     <form method="POST" id="bookingForm" class="booking-form-grid">
+      <input type="hidden" name="selected_machine_status" id="selectedMachineStatus" value="{{ form.get('selected_machine_status', request.args.get('status', '')) }}"/>
+
       <div class="booking-field">
         <label class="fw-label">Full Name</label>
         <div class="fw-field">
@@ -225,13 +193,28 @@
         <label class="fw-label">Machine</label>
         <div class="fw-field">
           <span class="fw-field-icon"><i class="fa-solid fa-drum"></i></span>
-          <select name="machine" class="fw-input" id="machineSelect">
+          <select name="machine" class="fw-input" id="machineSelect" required>
             <option value="">Select machine</option>
             {% for machine in machines %}
-            <option value="{{ machine.name }}" {% if form.get('machine')==machine.name or request.args.get('machine')==machine.name or request.args.get('machine')==(machine.machine_number|string) %}selected{% endif %}>{{ machine.name }}</option>
+            <option
+              value="{{ machine.name }}"
+              data-load-type="{{ machine.load_type }}"
+              data-status="{{ machine.status_display }}"
+              data-machine-number="{{ machine.machine_number }}"
+              {% if machine.status != 'Available' or machine.status_display == 'Disabled' %}disabled{% endif %}
+              {% if form.get('machine')==machine.name or request.args.get('machine')==machine.name or request.args.get('machine')==(machine.machine_number|string) %}selected{% endif %}>
+              {{ machine.name }} - {{ machine.load_type }} Load ({{ machine.status_display }})
+            </option>
             {% endfor %}
           </select>
         </div>
+        <p class="booking-field-help">
+          {% if machines %}
+          Choose from {{ machines|length }} machine{{ '' if machines|length == 1 else 's' }} loaded from the system. Machines marked In Use cannot be selected.
+          {% else %}
+          No machines found right now. Please check the admin machine setup.
+          {% endif %}
+        </p>
       </div>
 
       <div class="booking-field">
@@ -248,9 +231,9 @@
           <span class="fw-field-icon"><i class="fa-solid fa-basket-shopping"></i></span>
           <select name="load_type" class="fw-input" id="loadTypeSelect">
             <option value="">Select load size</option>
-            <option value="Light Load" {% if form.get('load_type')=='Light Load' or request.args.get('load')=='Light Load' %}selected{% endif %}>Light Load</option>
-            <option value="Medium Load" {% if form.get('load_type')=='Medium Load' or request.args.get('load')=='Medium Load' %}selected{% endif %}>Medium Load</option>
-            <option value="Heavy Load" {% if form.get('load_type')=='Heavy Load' or request.args.get('load')=='Heavy Load' %}selected{% endif %}>Heavy Load</option>
+            <option value="Light" {% if form.get('load_type') in ['Light', 'Light Load'] or request.args.get('load') in ['Light', 'Light Load'] %}selected{% endif %}>Light Load</option>
+            <option value="Medium" {% if form.get('load_type') in ['Medium', 'Medium Load'] or request.args.get('load') in ['Medium', 'Medium Load'] %}selected{% endif %}>Medium Load</option>
+            <option value="Heavy" {% if form.get('load_type') in ['Heavy', 'Heavy Load'] or request.args.get('load') in ['Heavy', 'Heavy Load'] %}selected{% endif %}>Heavy Load</option>
           </select>
         </div>
       </div>
@@ -278,70 +261,147 @@
           <input type="text" name="notes" class="fw-input" value="{{ form.get('notes','') }}" placeholder="Fragile fabric, hypoallergenic soap, gate instructions..."/>
         </div>
       </div>
-    </form>
 
-    <div class="booking-main-bottom">
-      <div class="booking-total-card" id="pricePreview">
-        <i class="fa-solid fa-badge-dollar"></i>
-        <div>
-          <span>Estimated total</span>
-          <strong id="totalPrice" class="booking-total-amount">&#8369;0.00</strong>
-        </div>
+      <div class="booking-actions">
+        <button type="submit" class="fw-btn-primary booking-submit">Confirm Booking</button>
       </div>
-
-      <button type="submit" form="bookingForm" class="fw-btn-primary booking-submit">
-        <i class="fa-solid fa-check"></i>
-        Confirm Booking
-      </button>
-    </div>
+    </form>
   </div>
 </section>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  const sel = document.getElementById('serviceSelect');
+  const BOOKING_MACHINES_API_URL = {{ url_for('machines_api') | tojson }};
   const wt = document.getElementById('weightInput');
   const loadTypeSelect = document.getElementById('loadTypeSelect');
-  const box = document.getElementById('pricePreview');
-  const tot = document.getElementById('totalPrice');
+  const machineSelect = document.getElementById('machineSelect');
+  const selectedMachineStatusInput = document.getElementById('selectedMachineStatus');
+  const bookingForm = document.getElementById('bookingForm');
+  let selectedMachine = null;
+  let bookingMachinesRefreshTimer = null;
   const pickupDateInput = document.querySelector('[name="pickup_date"]');
   const loadWeights = {
-    'Light Load': '2.5',
-    'Medium Load': '5',
-    'Heavy Load': '8'
+    'Light': '2.5',
+    'Medium': '5',
+    'Heavy': '8'
   };
 
-  function updatePrice() {
-    const price = parseFloat(sel.options[sel.selectedIndex]?.dataset?.price || 0);
-    const weight = parseFloat(wt.value || 0);
-    const total = price * weight;
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
-    if (price > 0 && weight > 0) {
-      tot.innerHTML = '&#8369;' + total.toFixed(2);
-      box.style.opacity = '1';
-      box.style.transform = 'scale(1)';
-    } else {
-      tot.innerHTML = '&#8369;0.00';
-      box.style.opacity = '0.72';
-      box.style.transform = 'scale(0.98)';
+  function renderMachineOptions(machines = []) {
+    if (!machineSelect) return;
+
+    const previousValue = machineSelect.value;
+    const selectedFromQuery = {{ request.args.get('machine', '') | tojson }};
+    const requestedMachine = previousValue || selectedFromQuery || '';
+
+    const options = ['<option value="">Select machine</option>'];
+    machines.forEach(machine => {
+      const statusDisplay = machine.status_display || machine.status || 'Disabled';
+      const isDisabled = machine.status !== 'Available' || statusDisplay === 'Disabled';
+      const shouldSelect = requestedMachine && (requestedMachine === machine.name || requestedMachine === String(machine.machine_number));
+      options.push(`
+        <option
+          value="${escapeHtml(machine.name)}"
+          data-load-type="${escapeHtml(machine.load_type)}"
+          data-status="${escapeHtml(statusDisplay)}"
+          data-machine-number="${escapeHtml(machine.machine_number)}"
+          ${isDisabled ? 'disabled' : ''}
+          ${shouldSelect ? 'selected' : ''}
+        >
+          ${escapeHtml(machine.name)} - ${escapeHtml(machine.load_type)} Load (${escapeHtml(statusDisplay)})
+        </option>
+      `);
+    });
+    machineSelect.innerHTML = options.join('');
+    syncSelectedMachine();
+  }
+
+  async function refreshBookingMachines() {
+    if (!BOOKING_MACHINES_API_URL) return;
+    try {
+      const response = await fetch(BOOKING_MACHINES_API_URL, {
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      const result = await response.json();
+      if (!response.ok || result?.ok === false) {
+        throw new Error(result?.error || 'Failed to load booking machines');
+      }
+      console.log('[FreshWash Booking] machines:', result?.data?.machines || []);
+      renderMachineOptions(result?.data?.machines || []);
+    } catch (error) {
+      console.error('[FreshWash Booking] Machine refresh failed:', error);
     }
   }
 
-  sel.addEventListener('change', updatePrice);
-  wt.addEventListener('input', updatePrice);
+  function syncSelectedMachine() {
+    if (!machineSelect) return;
+    const selectedOption = machineSelect.options[machineSelect.selectedIndex];
+    if (!selectedOption || !selectedOption.value) {
+      selectedMachine = null;
+      if (selectedMachineStatusInput) selectedMachineStatusInput.value = '';
+      return;
+    }
+
+    selectedMachine = {
+      name: selectedOption.value,
+      load_type: selectedOption.dataset.loadType || '',
+      status: selectedOption.dataset.status || ''
+    };
+
+    if (selectedMachineStatusInput) {
+      selectedMachineStatusInput.value = selectedMachine.status;
+    }
+
+    if (loadTypeSelect && selectedMachine.load_type) {
+      loadTypeSelect.value = selectedMachine.load_type;
+      loadTypeSelect.dispatchEvent(new Event('change'));
+    }
+  }
+
   if (loadTypeSelect) {
     loadTypeSelect.addEventListener('change', () => {
       const suggestedWeight = loadWeights[loadTypeSelect.value];
-      if (suggestedWeight && !wt.value) {
-        wt.value = suggestedWeight;
-      } else if (suggestedWeight) {
+      if (suggestedWeight && wt) {
         wt.value = suggestedWeight;
       }
-      updatePrice();
     });
   }
-  pickupDateInput.min = new Date().toISOString().split('T')[0];
-  updatePrice();
+
+  if (machineSelect) {
+    machineSelect.addEventListener('change', syncSelectedMachine);
+    syncSelectedMachine();
+  }
+
+  if (bookingForm) {
+    bookingForm.addEventListener('submit', (event) => {
+      syncSelectedMachine();
+      const machineStatus = String(selectedMachine?.status || '').toLowerCase();
+      if (machineStatus === 'disabled' || machineStatus === 'in use') {
+        event.preventDefault();
+        window.alert('This machine is unavailable for booking right now. Please select an available machine.');
+      }
+    });
+  }
+
+  if (pickupDateInput) {
+    pickupDateInput.min = new Date().toISOString().split('T')[0];
+  }
+
+  refreshBookingMachines();
+  window.clearInterval(bookingMachinesRefreshTimer);
+  bookingMachinesRefreshTimer = window.setInterval(() => {
+    refreshBookingMachines();
+  }, 30000);
 </script>
 {% endblock %}

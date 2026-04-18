@@ -24,7 +24,7 @@
   {
     "id": "25c84cfb-80ca-4fd6-8330-bdcd20b72b26",
     "email": "admin@gmail.com",
-    "password_hash": "scrypt:32768:8:1$9eHq9jtgc12uNOkx$abcd6e195ab214f9b97acde4a399ea346b63c4fa50b35fa70e69991ebf533c937badada4364463c2201e807054c194044b7fbb2fcc6763827bf1cbc19df362bc",
+    "password_hash": "scrypt:32768:8:1$ZC1kbwvQH5oobb2Q$3ed77251c65e5bec6a05d5fbb73ab5b6cdd0a2a22da88a9c10249dbac49cf7731117334fe73989853c69c8d3216be3690c51293be039b6edec28c72f7f9f3bf1",
     "full_name": "Denziel Masarque",
     "phone": "09914405837",
     "address": "talisay",
@@ -46,7 +46,7 @@
   {
     "id": "b48159c0-9b06-4a74-9452-563da02c1cd9",
     "email": "joy@gmail.com",
-    "password_hash": "scrypt:32768:8:1$IhuXwL6UdR4N5s0L$19e7d3b8c28b76ed997f49eb7bce6919bd0a72963ba25490a934f51b711851ca6d784cdfe465349db42a0772227fcdecef8efe42161f603132b84c77c4c5aef8",
+    "password_hash": "scrypt:32768:8:1$NOd2LSV91erRd3Yy$d4fdd172dd2b0a67de4c696ed5873ff6caf385669bd251909c8e710bc8c26cfb35a08fabc71a112dcb69fc5e2bbc7a4467b39ea2f4baa15a56c65f78c682795c",
     "full_name": "joy gulpan",
     "phone": "09914405837",
     "address": "talisay",

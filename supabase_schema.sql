@@ -15,11 +15,13 @@ create table if not exists public.profiles (
 );
 
 alter table public.profiles add column if not exists email text;
+alter table public.profiles add column if not exists full_name text;
+alter table public.profiles add column if not exists phone text;
+alter table public.profiles add column if not exists address text;
+alter table public.profiles add column if not exists avatar text;
 alter table public.profiles add column if not exists role text not null default 'user';
+alter table public.profiles add column if not exists created_at timestamptz default now();
 alter table public.profiles alter column email set not null;
-
--- Optional avatar support:
--- alter table public.profiles add column if not exists avatar text;
 
 alter table public.profiles enable row level security;
 
@@ -72,13 +74,25 @@ create table if not exists public.bookings (
   pickup_date  date not null,
   pickup_time  time not null,
   weight       numeric(6,2) not null,
+  total_price  numeric(10,2),
   notes        text,
   status       text not null default 'Pending',
   created_at   timestamptz default now()
 );
 
+alter table public.bookings add column if not exists full_name text;
+alter table public.bookings add column if not exists phone text;
+alter table public.bookings add column if not exists address text;
+alter table public.bookings add column if not exists service_type text;
 alter table public.bookings add column if not exists machine text;
 alter table public.bookings add column if not exists load_type text;
+alter table public.bookings add column if not exists weight numeric(6,2);
+alter table public.bookings add column if not exists total_price numeric(10,2);
+alter table public.bookings add column if not exists pickup_date date;
+alter table public.bookings add column if not exists pickup_time time;
+alter table public.bookings add column if not exists notes text;
+alter table public.bookings add column if not exists status text not null default 'Pending';
+alter table public.bookings add column if not exists created_at timestamptz default now();
 alter table public.bookings add column if not exists pickup_address text;
 update public.bookings
 set pickup_address = address
@@ -108,6 +122,69 @@ create policy "Users can update own bookings"
 create policy "Users can delete own bookings"
   on public.bookings for delete
   using (auth.uid() = user_id);
+
+
+-- ── Services table ─────────────────────────────────────────
+create table if not exists public.services (
+  name        text primary key,
+  price       numeric(10,2) not null default 0,
+  description text not null default ''
+);
+
+alter table public.services add column if not exists price numeric(10,2) not null default 0;
+alter table public.services add column if not exists description text not null default '';
+
+alter table public.services enable row level security;
+
+drop policy if exists "Public can view services" on public.services;
+create policy "Public can view services"
+  on public.services for select
+  using (true);
+
+
+-- ── Admin RLS policies (service role bypasses RLS, but add for anon reads) ──
+
+-- Allow service role full access to profiles
+drop policy if exists "Admin full access profiles" on public.profiles;
+create policy "Admin full access profiles"
+  on public.profiles for all
+  using (true)
+  with check (true);
+
+-- Allow service role full access to bookings
+drop policy if exists "Admin full access bookings" on public.bookings;
+create policy "Admin full access bookings"
+  on public.bookings for all
+  using (true)
+  with check (true);
+
+-- Machines: public read, service role write
+alter table public.machines enable row level security;
+
+drop policy if exists "Public can view machines" on public.machines;
+create policy "Public can view machines"
+  on public.machines for select
+  using (true);
+
+drop policy if exists "Admin full access machines" on public.machines;
+create policy "Admin full access machines"
+  on public.machines for all
+  using (true)
+  with check (true);
+
+-- Seed default machines if table is empty
+insert into public.machines (machine_number, label, status, load_type, enabled)
+select * from (values
+  (1, 'Machine 1', 'Available', 'Light',  true),
+  (2, 'Machine 2', 'Available', 'Medium', true),
+  (3, 'Machine 3', 'In Use',    'Heavy',  true),
+  (4, 'Machine 4', 'Available', 'Light',  true),
+  (5, 'Machine 5', 'Available', 'Medium', true),
+  (6, 'Machine 6', 'In Use',    'Heavy',  true),
+  (7, 'Machine 7', 'Available', 'Medium', true),
+  (8, 'Machine 8', 'Available', 'Light',  true)
+) as v(machine_number, label, status, load_type, enabled)
+where not exists (select 1 from public.machines limit 1);
 
 
 -- ── Verify ──────────────────────────────────────────────────

@@ -11,7 +11,13 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
 {% set current_user = session.get('user') %}
-{% set is_spa_home = request.endpoint == 'readers_view' %}
+{% set safe_user_name = current_user.get('name', '') if current_user else '' %}
+{% set safe_user_email = current_user.get('email', '') if current_user else '' %}
+{% set safe_user_phone = current_user.get('phone', '') if current_user else '' %}
+{% set safe_user_address = current_user.get('address', '') if current_user else '' %}
+{% set safe_user_avatar = current_user.get('avatar', '') if current_user else '' %}
+{% set current_endpoint = request.endpoint or '' %}
+{% set is_spa_home = current_endpoint == 'readers_view' %}
 {% set home_href = url_for('readers_view') %}
 {% set about_href = url_for('readers_view') ~ '#about' %}
 {% set book_href = url_for('readers_view') ~ '#book' %}
@@ -55,20 +61,20 @@
       </button>
 
       <nav class="header-nav" id="headerNav">
-        <a href="{{ home_href }}" {% if is_spa_home %}data-spa-target="home"{% endif %} class="{% if request.endpoint == 'readers_view' %}active{% endif %}">Home</a>
+        <a href="{{ home_href }}" {% if is_spa_home %}data-spa-target="home"{% endif %} class="{% if current_endpoint == 'readers_view' %}active{% endif %}">Home</a>
         <a href="{{ about_href }}" {% if is_spa_home %}data-spa-target="about"{% endif %}>About</a>
         <a href="{{ book_href }}" {% if is_spa_home %}data-spa-target="book"{% endif %}>Book Now</a>
-        <a href="{{ my_booking_href }}" {% if current_user and is_spa_home %}data-spa-target="my-booking"{% elif not current_user and is_spa_home %}data-auth-link="login"{% endif %} class="{% if request.endpoint == 'my_bookings' %}active{% endif %}">My Booking</a>
+        <a href="{{ my_booking_href }}" {% if current_user and is_spa_home %}data-spa-target="my-booking"{% elif not current_user and is_spa_home %}data-auth-link="login"{% endif %} class="{% if current_endpoint == 'my_bookings' %}active{% endif %}">My Booking</a>
         {% if current_user and current_user.get('is_admin') %}
-        <a href="{{ url_for('admin_dashboard') }}" class="{% if request.endpoint == 'admin_dashboard' %}active{% endif %}">Admin</a>
+        <a href="{{ url_for('admin_dashboard') }}" class="{% if current_endpoint == 'admin_dashboard' %}active{% endif %}">Admin</a>
         {% endif %}
       </nav>
 
       <div class="header-actions">
         {% if current_user %}
         <button class="profile-trigger" type="button" onclick="openProfilePanel()" aria-label="Open profile">
-          {% if current_user.avatar %}
-          <img src="{{ current_user.avatar }}" alt="Profile picture" id="navAvatarImg"/>
+          {% if safe_user_avatar %}
+          <img src="{{ safe_user_avatar }}" alt="Profile picture" id="navAvatarImg"/>
           {% else %}
           <i class="fa-solid fa-user" id="navAvatarIcon"></i>
           <img src="" alt="Profile picture" id="navAvatarImg" style="display:none"/>
@@ -121,16 +127,16 @@
 
   <div class="panel-profile-card">
     <div class="panel-avatar" id="panelAvatarPreview">
-      {% if current_user.avatar %}
-      <img src="{{ current_user.avatar }}" id="avatarImg" alt="Avatar preview"/>
+      {% if safe_user_avatar %}
+      <img src="{{ safe_user_avatar }}" id="avatarImg" alt="Avatar preview"/>
       {% else %}
       <i class="fa-solid fa-user" id="avatarIcon"></i>
       <img src="" id="avatarImg" alt="Avatar preview" style="display:none"/>
       {% endif %}
     </div>
     <div>
-      <strong id="profileCardName">{{ current_user.name }}</strong>
-      <span id="profileCardMeta">{{ current_user.email }}</span>
+      <strong id="profileCardName">{{ safe_user_name }}</strong>
+      <span id="profileCardMeta">{{ safe_user_email }}</span>
     </div>
   </div>
 
@@ -148,19 +154,19 @@
       <div class="panel-fields">
         <div class="fw-field">
           <span class="fw-field-icon"><i class="fa-solid fa-user"></i></span>
-          <input type="text" id="pName" class="fw-input" value="{{ current_user.name }}" placeholder="Full name" required/>
+          <input type="text" id="pName" class="fw-input" value="{{ safe_user_name }}" placeholder="Full name" required/>
         </div>
         <div class="fw-field">
           <span class="fw-field-icon"><i class="fa-solid fa-envelope"></i></span>
-          <input type="text" class="fw-input" value="{{ current_user.email }}" disabled/>
+          <input type="text" class="fw-input" value="{{ safe_user_email }}" disabled/>
         </div>
         <div class="fw-field">
           <span class="fw-field-icon"><i class="fa-solid fa-phone"></i></span>
-          <input type="tel" id="pPhone" class="fw-input" value="{{ current_user.phone }}" placeholder="Phone number"/>
+          <input type="tel" id="pPhone" class="fw-input" value="{{ safe_user_phone }}" placeholder="Phone number"/>
         </div>
         <div class="fw-field">
           <span class="fw-field-icon"><i class="fa-solid fa-location-dot"></i></span>
-          <input type="text" id="pAddress" class="fw-input" value="{{ current_user.address }}" placeholder="Address"/>
+          <input type="text" id="pAddress" class="fw-input" value="{{ safe_user_address }}" placeholder="Address"/>
         </div>
       </div>
     </div>
@@ -176,7 +182,7 @@
 <script>
   const CURRENT_USER = {% if current_user %}{{ current_user | tojson }}{% else %}null{% endif %};
   const PROFILE_STORAGE_KEY = 'freshwashProfile';
-  const ACTIVE_AUTH_MODAL = {{ active_auth_modal | default(None) | tojson }};
+  const ACTIVE_AUTH_MODAL = {{ active_auth_modal | default(None, true) | tojson }};
 
   function toggleNav() {
     const nav = document.getElementById('headerNav');
@@ -383,7 +389,7 @@
     if (navEmail) navEmail.textContent = profile.email || '';
     if (cardMeta) {
       const details = [profile.phone, profile.address].filter(Boolean).join(' - ');
-      cardMeta.textContent = details || '{{ session.get("user", {}).get("email", "") }}';
+      cardMeta.textContent = details || {{ safe_user_email | tojson }};
     }
     if (landingProfileMeta) {
       landingProfileMeta.textContent = [profile.phone, profile.address].filter(Boolean).join(' - ') || profile.email || '';

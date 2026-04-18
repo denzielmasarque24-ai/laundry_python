@@ -53,9 +53,9 @@
           <div class="page-chip"><i class="fa-solid fa-sparkles"></i><span>Machine selection is visible after login</span></div>
         </div>
 
-        <div class="spa-machine-grid">
+        <div class="spa-machine-grid" id="spaMachineGrid">
           {% for machine in machines %}
-          <article class="spa-machine-card {{ 'is-disabled' if machine.button_disabled else '' }}" role="button" tabindex="0" aria-label="Select {{ machine.name }}" onclick="goToBookingWithMachine({{ machine.name | tojson }}, {{ machine.load_type | tojson }}, {{ machine.status_display | tojson }}, this)" onkeydown="handleMachineCardKey(event, {{ machine.name | tojson }}, {{ machine.load_type | tojson }}, {{ machine.status_display | tojson }}, this)">
+          <article class="spa-machine-card {{ 'is-disabled' if machine.button_disabled else '' }}" data-machine-number="{{ machine.machine_number }}" data-machine-name="{{ machine.name }}" data-load-type="{{ machine.load_type }}" data-status="{{ machine.status_display }}" data-enabled="{{ 'true' if machine.effective_enabled else 'false' }}" role="button" tabindex="0" aria-label="Select {{ machine.name }}" onclick="goToBookingWithMachine({{ machine.name | tojson }}, {{ machine.load_type | tojson }}, {{ machine.status_display | tojson }}, this)" onkeydown="handleMachineCardKey(event, {{ machine.name | tojson }}, {{ machine.load_type | tojson }}, {{ machine.status_display | tojson }}, this)">
             <span class="spa-machine-icon"><i class="fa-solid fa-drum"></i></span>
             <strong>{{ machine.name }}</strong>
             <p>{{ machine.load_type }} load machine for balanced, fast laundry handling.</p>
@@ -494,12 +494,32 @@
     'Medium': '5',
     'Heavy': '8'
   };
+  const LOAD_PRESETS = {
+    light: {
+      label: 'Light Load',
+      weight: '2.5',
+      copy: 'Recommended for smaller baskets and quick weekly washes.'
+    },
+    medium: {
+      label: 'Medium Load',
+      weight: '5',
+      copy: 'Great for balanced weekly laundry loads with mixed garments.'
+    },
+    heavy: {
+      label: 'Heavy Load',
+      weight: '8',
+      copy: 'Best for bulkier laundry, bedding, and larger family loads.'
+    }
+  };
   {% if user %}
   const BOOKING_PAGE_URL = {{ url_for('booking') | tojson }};
+  const MACHINES_API_URL = {{ url_for('machines_api') | tojson }};
   {% else %}
   const BOOKING_PAGE_URL = null;
+  const MACHINES_API_URL = null;
   {% endif %}
   let selectedMachineState = null;
+  let machineRefreshTimer = null;
 
   function validateRegisterModalPasswords() {
     const password = document.getElementById('modalRegisterPassword');
@@ -572,19 +592,127 @@
     goToBookingWithMachine(machineName, machineLoad, machineStatus, cardElement);
   }
 
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function updateMachineDetailState(machine) {
+    const detailCard = document.getElementById('machineDetailCard');
+    const detailTitle = document.getElementById('machineDetailTitle');
+    const detailName = document.getElementById('machineDetailName');
+    const detailStatus = document.getElementById('machineDetailStatus');
+    const detailLoad = document.getElementById('machineDetailLoad');
+    const detailCopy = document.getElementById('machineDetailCopy');
+    const detailNote = document.getElementById('machineDetailNote');
+    const detailAction = document.getElementById('machineDetailAction');
+    if (!machine || !detailCard || !detailTitle || !detailName || !detailStatus || !detailLoad || !detailCopy || !detailNote || !detailAction) {
+      return;
+    }
+
+    const machineStatus = machine.status_display || machine.status || 'Disabled';
+    const normalizedStatus = String(machineStatus).toLowerCase();
+    const isInUse = normalizedStatus === 'in use';
+    const isDisabled = normalizedStatus === 'disabled';
+
+    detailTitle.textContent = machine.name;
+    detailName.textContent = machine.name;
+    detailStatus.textContent = machineStatus;
+    detailStatus.className = 'spa-machine-status status-' + machineStatus.toLowerCase().replaceAll(' ', '-');
+    detailLoad.textContent = machine.load_type + ' Load';
+    detailCopy.textContent = describeMachine(machine.name, machine.load_type, machineStatus);
+    detailNote.hidden = !isInUse;
+    detailAction.textContent = isDisabled || isInUse ? 'Unavailable' : 'Book Now';
+    detailAction.disabled = isDisabled || isInUse;
+    detailCard.hidden = false;
+  }
+
+  function renderMachineCards(machines = []) {
+    const machineGrid = document.getElementById('spaMachineGrid');
+    if (!machineGrid) return;
+
+    if (!Array.isArray(machines) || machines.length === 0) {
+      machineGrid.innerHTML = '<div class="empty-inline spa-empty-state"><strong>No machines available</strong><span>Please check again in a moment.</span></div>';
+      return;
+    }
+
+    machineGrid.innerHTML = machines.map(machine => {
+      const statusDisplay = machine.status_display || machine.status || 'Disabled';
+      const buttonDisabled = !machine.effective_enabled || machine.status !== 'Available';
+      const buttonLabel = !buttonDisabled ? 'Book Now' : 'Unavailable';
+      const cardDisabledClass = buttonDisabled ? 'is-disabled' : '';
+      const machineNameJson = JSON.stringify(machine.name);
+      const machineLoadJson = JSON.stringify(machine.load_type);
+      const machineStatusJson = JSON.stringify(statusDisplay);
+      return `
+        <article class="spa-machine-card ${cardDisabledClass}" data-machine-number="${escapeHtml(machine.machine_number)}" data-machine-name="${escapeHtml(machine.name)}" data-load-type="${escapeHtml(machine.load_type)}" data-status="${escapeHtml(statusDisplay)}" data-enabled="${machine.effective_enabled ? 'true' : 'false'}" role="button" tabindex="0" aria-label="Select ${escapeHtml(machine.name)}" onclick="goToBookingWithMachine(${machineNameJson}, ${machineLoadJson}, ${machineStatusJson}, this)" onkeydown="handleMachineCardKey(event, ${machineNameJson}, ${machineLoadJson}, ${machineStatusJson}, this)">
+          <span class="spa-machine-icon"><i class="fa-solid fa-drum"></i></span>
+          <strong>${escapeHtml(machine.name)}</strong>
+          <p>${escapeHtml(machine.load_type)} load machine for balanced, fast laundry handling.</p>
+          <div class="spa-machine-meta">
+            <span class="spa-machine-status status-${escapeHtml(String(statusDisplay).toLowerCase().replaceAll(' ', '-'))}">${escapeHtml(statusDisplay)}</span>
+            <span class="spa-machine-load">${escapeHtml(machine.load_type)} Load</span>
+          </div>
+          <button type="button" class="btn-primary btn-small spa-machine-button" ${buttonDisabled ? 'disabled' : ''} onclick="event.stopPropagation(); goToBookingWithMachine(${machineNameJson}, ${machineLoadJson}, ${machineStatusJson}, this.closest('.spa-machine-card'))">
+            ${buttonLabel}
+          </button>
+        </article>
+      `;
+    }).join('');
+
+    if (selectedMachineState?.name) {
+      const currentMachine = machines.find(machine => machine.name === selectedMachineState.name);
+      if (currentMachine) {
+        selectedMachineState = {
+          name: currentMachine.name,
+          load: currentMachine.load_type,
+          status: currentMachine.status_display || currentMachine.status || 'Disabled'
+        };
+        updateMachineDetailState({
+          ...currentMachine,
+          status_display: selectedMachineState.status
+        });
+      }
+    }
+  }
+
+  async function refreshHomepageMachines() {
+    if (!MACHINES_API_URL) return;
+    try {
+      const response = await fetch(MACHINES_API_URL, {
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      const result = await response.json();
+      if (!response.ok || result?.ok === false) {
+        throw new Error(result?.error || 'Failed to load machines');
+      }
+      console.log('[FreshWash Home] machines:', result?.data?.machines || []);
+      renderMachineCards(result?.data?.machines || []);
+    } catch (error) {
+      console.error('[FreshWash Home] Machine refresh failed:', error);
+    }
+  }
+
   function describeMachine(machineName, machineLoad, machineStatus) {
     if ((machineStatus || '').toLowerCase() === 'disabled') {
       return machineName + ' is currently disabled and cannot accept new bookings right now.';
     }
     if ((machineStatus || '').toLowerCase() === 'in use') {
-      return machineName + ' is currently handling a ' + machineLoad.toLowerCase() + ' load. You can review the details and proceed anyway if this machine still fits your booking.';
+      return machineName + ' is currently handling a ' + machineLoad.toLowerCase() + ' load and cannot accept a new booking right now.';
     }
     return machineName + ' is available for a ' + machineLoad.toLowerCase() + ' load and ready to continue to booking.';
   }
 
   function goToBookingWithMachine(machineName, machineLoad, machineStatus, cardElement = null) {
     if (!BOOKING_PAGE_URL) return;
-    if ((machineStatus || '').toLowerCase() === 'disabled') return;
+    const normalizedStatus = (machineStatus || '').toLowerCase();
+    if (normalizedStatus === 'disabled' || normalizedStatus === 'in use') return;
 
     if (cardElement) {
       document.querySelectorAll('.spa-machine-card.is-selected').forEach(card => card.classList.remove('is-selected'));
@@ -597,28 +725,14 @@
       status: machineStatus
     };
 
-    const detailCard = document.getElementById('machineDetailCard');
-    const detailTitle = document.getElementById('machineDetailTitle');
-    const detailName = document.getElementById('machineDetailName');
-    const detailStatus = document.getElementById('machineDetailStatus');
-    const detailLoad = document.getElementById('machineDetailLoad');
-    const detailCopy = document.getElementById('machineDetailCopy');
-    const detailNote = document.getElementById('machineDetailNote');
-    const detailAction = document.getElementById('machineDetailAction');
-    if (!detailCard || !detailTitle || !detailName || !detailStatus || !detailLoad || !detailCopy || !detailNote || !detailAction) return;
+    updateMachineDetailState({
+      name: machineName,
+      load_type: machineLoad,
+      status_display: machineStatus
+    });
 
-    const isInUse = (machineStatus || '').toLowerCase() === 'in use';
-    detailTitle.textContent = machineName;
-    detailName.textContent = machineName;
-    detailStatus.textContent = machineStatus;
-    detailStatus.className = 'spa-machine-status status-' + machineStatus.toLowerCase().replaceAll(' ', '-');
-    detailLoad.textContent = machineLoad + ' Load';
-    detailCopy.textContent = describeMachine(machineName, machineLoad, machineStatus);
-    const isDisabled = (machineStatus || '').toLowerCase() === 'disabled';
-    detailNote.hidden = !isInUse;
-    detailAction.textContent = isDisabled ? 'Unavailable' : (isInUse ? 'Select Anyway' : 'Book Now');
-    detailAction.disabled = isDisabled;
-    detailCard.hidden = false;
+    const detailCard = document.getElementById('machineDetailCard');
+    if (!detailCard) return;
     detailCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
@@ -626,10 +740,8 @@
     if (!BOOKING_PAGE_URL || !selectedMachineState) return;
 
     const isInUse = (selectedMachineState.status || '').toLowerCase() === 'in use';
-    if (isInUse) {
-      const shouldProceed = window.confirm('This machine is currently in use. Do you want to proceed anyway?');
-      if (!shouldProceed) return;
-    }
+    const isDisabled = (selectedMachineState.status || '').toLowerCase() === 'disabled';
+    if (isInUse || isDisabled) return;
 
     const machineNumberMatch = String(selectedMachineState.name || '').match(/(\d+)/);
     const machineNumber = machineNumberMatch ? machineNumberMatch[1] : selectedMachineState.name;
@@ -637,7 +749,7 @@
     const params = new URLSearchParams({
       service: 'Wash & Fold',
       machine: machineNumber,
-      load: selectedMachineState.load + ' Load',
+      load: selectedMachineState.load,
       status: selectedMachineState.status,
       weight: MACHINE_LOAD_WEIGHTS[selectedMachineState.load] || ''
     });
@@ -672,7 +784,10 @@
         return;
       }
       const preset = Object.values(LOAD_PRESETS).find(item => item.label === selectedOption.value);
-      if (!preset) return;
+      if (!preset) {
+        updateLoadSelectionUi(selectedOption.value, 'Selected load size for this booking.');
+        return;
+      }
       if (weightInput && selectedOption.dataset.weight) {
         weightInput.value = selectedOption.dataset.weight;
         weightInput.dispatchEvent(new Event('input'));
@@ -684,7 +799,15 @@
     if (weightInput) weightInput.addEventListener('input', updatePrice);
     if (loadSelect) loadSelect.addEventListener('change', syncLoadSelect);
     updatePrice();
+  })();
 
+  (function initHomepageMachineRefresh() {
+    if (!MACHINES_API_URL) return;
+    refreshHomepageMachines();
+    window.clearInterval(machineRefreshTimer);
+    machineRefreshTimer = window.setInterval(() => {
+      refreshHomepageMachines();
+    }, 30000);
   })();
 </script>
 {% endblock %}
