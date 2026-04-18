@@ -9,11 +9,13 @@ from supabase_client import (
 from dotenv import load_dotenv
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.exceptions import HTTPException
 import sqlite3
 import uuid
 import re
 import os
 import json
+import tempfile
 from collections import Counter
 from datetime import datetime
 from itertools import product
@@ -22,7 +24,34 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "freshwash-secret-key-2024")
-os.makedirs(app.instance_path, exist_ok=True)
+
+
+def resolve_instance_path():
+    configured_path = os.environ.get("FRESHWASH_INSTANCE_DIR", "").strip()
+    candidates = [configured_path] if configured_path else []
+    candidates.append(app.instance_path)
+    if os.environ.get("VERCEL"):
+        candidates.insert(0, os.path.join(tempfile.gettempdir(), "freshwash-instance"))
+
+    last_error = None
+    for path in candidates:
+        if not path:
+            continue
+        try:
+            os.makedirs(path, exist_ok=True)
+            return path
+        except OSError as exc:
+            last_error = exc
+            print("ERROR: could not initialize instance path:", path, str(exc))
+
+    fallback_path = os.path.join(tempfile.gettempdir(), "freshwash-instance")
+    os.makedirs(fallback_path, exist_ok=True)
+    if last_error:
+        print("ERROR: falling back to temp instance path because default paths failed:", str(last_error))
+    return fallback_path
+
+
+app.instance_path = resolve_instance_path()
 LOCAL_AUTH_DB = os.path.join(app.instance_path, "freshwash_auth.db")
 LOCAL_USERS_JSON = os.path.join(app.instance_path, "freshwash_users.json")
 
@@ -208,6 +237,14 @@ def auth_template_context(form_data=None):
 
 def render_auth_template(template_name, form_data=None):
     return render_template(template_name, **auth_template_context(form_data))
+
+
+def log_exception(label, exc, **context):
+    details = ", ".join(f"{key}={value!r}" for key, value in context.items())
+    if details:
+        print(f"ERROR: {label}: {exc} | {details}")
+    else:
+        print(f"ERROR: {label}: {exc}")
 
 
 def set_auth_modal_state(modal, form_data=None):
@@ -439,14 +476,19 @@ def admin_create_supabase_user(name, email, phone, address, password, role):
     }).user
     if not auth_user:
         raise RuntimeError("Could not create the Supabase admin user.")
-    client.table("profiles").upsert({
-        "id": auth_user.id,
-        "full_name": name,
-        "email": email,
-        "phone": phone,
-        "address": address,
-        "role": role,
-    }).execute()
+    execute_upsert_with_fallback(
+        "profiles",
+        profile_payload_variants({
+            "id": auth_user.id,
+            "full_name": name,
+            "email": email,
+            "phone": phone,
+            "address": address,
+            "role": role,
+        }),
+        conflict_target="id",
+        clients=[("service role", client)],
+    )
     return auth_user
 
 
@@ -456,12 +498,19 @@ def admin_update_supabase_user(user_id, name, phone, address, role):
     profile = client.table("profiles").select("*").eq("id", user_id).single().execute().data
     if not profile:
         raise ValueError("User profile not found.")
-    client.table("profiles").update({
-        "full_name": name,
-        "phone": phone,
-        "address": address,
-        "role": role,
-    }).eq("id", user_id).execute()
+    execute_update_with_fallback(
+        "profiles",
+        profile_payload_variants({
+            "id": user_id,
+            "full_name": name,
+            "phone": phone,
+            "address": address,
+            "role": role,
+        }),
+        "id",
+        user_id,
+        clients=[("service role", client)],
+    )
     try:
         client.auth.admin.update_user_by_id(user_id, {
             "user_metadata": {
@@ -544,6 +593,42 @@ def admin_required(f):
     return decorated
 
 
+@app.errorhandler(Exception)
+def handle_unexpected_error(exc):
+    if isinstance(exc, HTTPException):
+        return exc
+
+    log_exception(
+        "unhandled route error",
+        exc,
+        path=request.path,
+        method=request.method,
+        user=session.get("user", {}).get("email", "anonymous"),
+    )
+    if request.path.startswith("/admin/api") or request.path.startswith("/profile/update"):
+        return jsonify({"ok": False, "error": str(exc)}), 500
+    return f"Internal Server Error: {exc}", 500
+
+
+def refresh_session_token():
+    """Attempt to refresh the Supabase JWT and update the session. Returns the current or refreshed token."""
+    token = session.get("access_token", "")
+    if not token or not is_supabase_enabled() or not supabase:
+        return token
+    try:
+        refresh_token = session.get("refresh_token", "")
+        if not refresh_token:
+            return token
+        res = supabase.auth.refresh_session(refresh_token)
+        if res and res.session:
+            session["access_token"] = res.session.access_token
+            session["refresh_token"] = res.session.refresh_token
+            return res.session.access_token
+    except Exception:
+        pass
+    return token
+
+
 def db():
     """Return an RLS-authenticated Supabase client for the current user."""
     return get_authed_client(session.get("access_token", ""))
@@ -554,6 +639,63 @@ def extract_schema_cache_missing_column(error, table_name):
     pattern = rf"Could not find the '([^']+)' column of '{re.escape(table_name)}' in the schema cache"
     match = re.search(pattern, message, re.IGNORECASE)
     return match.group(1) if match else None
+
+
+def execute_upsert_with_fallback(table_name, payload_variants, conflict_target=None, clients=None):
+    clients = clients or []
+    errors = []
+    for label, client in clients:
+        for payload in payload_variants:
+            try:
+                query = client.table(table_name).upsert(payload, on_conflict=conflict_target) if conflict_target else client.table(table_name).upsert(payload)
+                query.execute()
+                return payload
+            except Exception as exc:
+                missing_column = extract_schema_cache_missing_column(exc, table_name)
+                if missing_column:
+                    errors.append(f"{label}: missing {missing_column}")
+                    continue
+                errors.append(f"{label}: {exc}")
+        if label == "service role":
+            break
+    raise RuntimeError(" / ".join(errors) if errors else f"Could not upsert {table_name}.")
+
+
+def execute_update_with_fallback(table_name, payload_variants, match_column, match_value, clients=None):
+    clients = clients or []
+    errors = []
+    for label, client in clients:
+        for payload in payload_variants:
+            try:
+                client.table(table_name).update(payload).eq(match_column, match_value).execute()
+                return payload
+            except Exception as exc:
+                missing_column = extract_schema_cache_missing_column(exc, table_name)
+                if missing_column:
+                    errors.append(f"{label}: missing {missing_column}")
+                    continue
+                errors.append(f"{label}: {exc}")
+        if label == "service role":
+            break
+    raise RuntimeError(" / ".join(errors) if errors else f"Could not update {table_name}.")
+
+
+def profile_payload_variants(payload):
+    preferred_order = ["id", "email", "full_name", "phone", "address", "avatar", "role", "created_at"]
+    present_keys = [key for key in preferred_order if key in payload]
+    variants = []
+    seen = set()
+    for index in range(len(present_keys), 0, -1):
+        keys = tuple(key for key in present_keys[:index] if key in payload)
+        if "id" not in keys or "full_name" not in keys:
+            continue
+        if keys in seen:
+            continue
+        seen.add(keys)
+        variants.append({key: payload[key] for key in keys})
+    if not variants:
+        variants.append({"id": payload["id"], "full_name": payload["full_name"]})
+    return variants
 
 
 def booking_insert_payload_variants(payload):
@@ -568,6 +710,8 @@ def booking_insert_payload_variants(payload):
         "notes": payload["notes"],
         "status": payload["status"],
     }
+    if "total_price" in payload:
+        base_payload["total_price"] = payload["total_price"]
     address_variants = [
         {"pickup_address": payload["pickup_address"]},
         {"address": payload["pickup_address"]},
@@ -620,6 +764,20 @@ def insert_booking_record(client, payload):
     raise RuntimeError("FreshWash could not save the booking with the current bookings table schema.")
 
 
+def normalize_booking_load_type(value):
+    normalized = str(value or "").strip()
+    if not normalized:
+        return ""
+    compact = re.sub(r"\s+", " ", normalized).strip().lower()
+    if compact in {"light", "light load"}:
+        return "Light"
+    if compact in {"medium", "medium load"}:
+        return "Medium"
+    if compact in {"heavy", "heavy load"}:
+        return "Heavy"
+    return normalized.title()
+
+
 def ensure_profile_record(authed_client, auth_user, defaults=None):
     """Load the user's profile and create a row if it doesn't exist yet."""
     defaults = defaults or {}
@@ -631,6 +789,7 @@ def ensure_profile_record(authed_client, auth_user, defaults=None):
         "full_name": defaults.get("full_name") or metadata.get("full_name") or auth_user.email.split("@")[0],
         "phone": defaults.get("phone", ""),
         "address": defaults.get("address", ""),
+        "avatar": defaults.get("avatar", metadata.get("avatar", "")),
         "role": role,
     }
 
@@ -639,7 +798,13 @@ def ensure_profile_record(authed_client, auth_user, defaults=None):
         if existing.data:
             merged_profile = {**profile_payload, **existing.data}
             if merged_profile.get("email") != auth_user.email:
-                authed_client.table("profiles").update({"email": auth_user.email}).eq("id", auth_user.id).execute()
+                execute_update_with_fallback(
+                    "profiles",
+                    profile_payload_variants({"email": auth_user.email, "id": auth_user.id, "full_name": merged_profile.get("full_name") or profile_payload["full_name"]}),
+                    "id",
+                    auth_user.id,
+                    clients=[("authenticated session", authed_client)],
+                )
                 merged_profile["email"] = auth_user.email
             if not merged_profile.get("role"):
                 merged_profile["role"] = role
@@ -647,7 +812,12 @@ def ensure_profile_record(authed_client, auth_user, defaults=None):
     except Exception:
         pass
 
-    authed_client.table("profiles").upsert(profile_payload).execute()
+    execute_upsert_with_fallback(
+        "profiles",
+        profile_payload_variants(profile_payload),
+        conflict_target="id",
+        clients=[("authenticated session", authed_client)],
+    )
     return profile_payload
 
 
@@ -749,32 +919,14 @@ def admin_dashboard_bookings():
         try:
             result = client.table("bookings").select("*").order("created_at", desc=True).execute()
             bookings = result.data or []
-            for index, booking in enumerate(bookings):
-                booking["machine"] = booking.get("machine") or f"Machine {(index % 8) + 1}"
-                booking["load_type"] = booking.get("load_type") or "Medium Load"
-                price = SERVICES.get(booking.get("service_type", ""), {}).get("price", 0)
-                booking["total_price"] = round(price * float(booking.get("weight", 0) or 0), 2)
+            for booking in bookings:
+                if booking.get("total_price") in (None, ""):
+                    price = SERVICES.get(booking.get("service_type", ""), {}).get("price", 0)
+                    booking["total_price"] = round(price * float(booking.get("weight", 0) or 0), 2)
             return bookings
-        except Exception:
-            pass
-
-    sample_services = list(ADMIN_SERVICE_DEFAULTS.keys())
-    users = admin_dashboard_users()
-    names = [user["name"] for user in users] or ["FreshWash Customer"]
-    return [
-        {
-            "id": f"sample-{index}",
-            "full_name": names[index % len(names)],
-            "service_type": sample_services[index % len(sample_services)],
-            "pickup_date": f"2026-04-{10 + index:02d}",
-            "pickup_time": "10:00",
-            "machine": f"Machine {((index + 1) % 8) + 1}",
-            "load_type": ["Light Load", "Medium Load", "Heavy Load"][index % 3],
-            "status": ["Pending", "In Progress", "Completed", "Cancelled"][index % 4],
-            "total_price": round(249 * (index + 1), 2),
-        }
-        for index in range(1, 7)
-    ]
+        except Exception as exc:
+            log_exception("admin bookings query failed", exc)
+    return []
 
 
 def admin_dashboard_users():
@@ -821,6 +973,31 @@ def admin_dashboard_machines():
     allowed_load_types = settings["machines"]["default_load_types"] or ["Light", "Medium", "Heavy"]
     machines_globally_enabled = settings["machines"]["machines_globally_enabled"]
 
+    def seed_rows_from_local_source():
+        try:
+            with local_auth_conn() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT machine_number, label, status, load_type, enabled
+                    FROM admin_machines
+                    ORDER BY machine_number
+                    """
+                ).fetchall()
+            if rows:
+                return [
+                    {
+                        "machine_number": row["machine_number"],
+                        "label": row["label"],
+                        "status": row["status"],
+                        "load_type": row["load_type"],
+                        "enabled": row["enabled"],
+                    }
+                    for row in rows
+                ]
+        except sqlite3.OperationalError:
+            pass
+        return list(DEFAULT_MACHINE_ROWS)
+
     def normalize_machine(row):
         machine_number = row.get("machine_number")
         name = row.get("label") or row.get("name") or f"Machine {machine_number}"
@@ -839,18 +1016,37 @@ def admin_dashboard_machines():
             "load_type": load_type,
             "enabled": enabled,
             "effective_enabled": effective_enabled,
-            "button_label": "Book Now" if effective_enabled and status == "Available" else ("Select Anyway" if effective_enabled and status == "In Use" else "Unavailable"),
-            "button_disabled": (not effective_enabled) or status not in {"Available", "In Use"},
+            "button_label": "Book Now" if effective_enabled and status == "Available" else "Unavailable",
+            "button_disabled": (not effective_enabled) or status != "Available",
         }
 
     client = admin_db_client()
     if client:
         try:
             rows = client.table("machines").select("*").order("machine_number").execute().data or []
+            if not rows:
+                seed_rows = seed_rows_from_local_source()
+                if seed_rows:
+                    client.table("machines").upsert(
+                        [
+                            {
+                                "machine_number": row.get("machine_number"),
+                                "label": row.get("label") or row.get("name") or f"Machine {row.get('machine_number')}",
+                                "name": row.get("label") or row.get("name") or f"Machine {row.get('machine_number')}",
+                                "status": row.get("status", "Available"),
+                                "load_type": row.get("load_type", "Medium"),
+                                "enabled": bool(row.get("enabled", True)),
+                                "updated_at": datetime.utcnow().isoformat(),
+                            }
+                            for row in seed_rows
+                        ],
+                        on_conflict="machine_number"
+                    ).execute()
+                    rows = client.table("machines").select("*").order("machine_number").execute().data or []
             if rows:
                 return [normalize_machine(row) for row in rows]
-        except Exception:
-            pass
+        except Exception as exc:
+            log_exception("admin machines fetch failed", exc)
 
     try:
         with local_auth_conn() as conn:
@@ -875,6 +1071,16 @@ def admin_dashboard_machines():
         ]
     except sqlite3.OperationalError:
         return [normalize_machine(row) for row in DEFAULT_MACHINE_ROWS]
+
+
+@app.route("/api/machines")
+@login_required
+def machines_api():
+    try:
+        return jsonify({"ok": True, "data": {"machines": admin_dashboard_machines()}})
+    except Exception as exc:
+        log_exception("machines api failed", exc, user=session.get("user", {}).get("email", ""))
+        return jsonify({"ok": False, "error": f"Could not load machines: {exc}"}), 500
 
 
 def admin_dashboard_services():
@@ -938,7 +1144,6 @@ def update_machine(machine_number, name=None, status=None, enabled=None, load_ty
         payload = {
             "machine_number": machine_number,
             "label": machine_name,
-            "name": machine_name,
             "status": machine_status,
             "load_type": machine_load_type,
             "enabled": machine_enabled,
@@ -946,8 +1151,8 @@ def update_machine(machine_number, name=None, status=None, enabled=None, load_ty
         }
         try:
             client.table("machines").upsert(payload, on_conflict="machine_number").execute()
-        except Exception:
-            pass
+        except Exception as exc:
+            log_exception("admin machine upsert failed", exc, machine_number=machine_number)
 
     fields = []
     values = []
@@ -990,8 +1195,8 @@ def update_service(name, price, description):
                 {"name": name, "price": price, "description": description},
                 on_conflict="name"
             ).execute()
-        except Exception:
-            pass
+        except Exception as exc:
+            log_exception("admin service upsert failed", exc, service_name=name)
 
     with local_auth_conn() as conn:
         conn.execute(
@@ -1120,7 +1325,13 @@ def update_admin_profile_settings(user_id, name, email, password=""):
     try:
         if is_supabase_service_role_enabled():
             client = get_service_client()
-            client.table("profiles").update(profile_update).eq("id", user_id).execute()
+            execute_update_with_fallback(
+                "profiles",
+                profile_payload_variants({"id": user_id, **profile_update}),
+                "id",
+                user_id,
+                clients=[("service role", client)],
+            )
             auth_payload = {
                 "email": normalized_email,
                 "user_metadata": {
@@ -1135,7 +1346,13 @@ def update_admin_profile_settings(user_id, name, email, password=""):
             client.auth.admin.update_user_by_id(user_id, auth_payload)
             return
         authed = get_authed_client(access_token)
-        authed.table("profiles").update(profile_update).eq("id", user_id).execute()
+        execute_update_with_fallback(
+            "profiles",
+            profile_payload_variants({"id": user_id, **profile_update}),
+            "id",
+            user_id,
+            clients=[("authenticated session", authed)],
+        )
         auth_payload = {"email": normalized_email, "data": {"full_name": name}}
         if password:
             auth_payload["password"] = password
@@ -1144,28 +1361,45 @@ def update_admin_profile_settings(user_id, name, email, password=""):
         raise ValueError(f"Could not update admin profile: {exc}")
 
 
+# ── FIXED: build_admin_reports now uses camelCase keys to match the JS frontend ──
 def build_admin_reports(bookings, machines):
-    per_day_counter = Counter((booking.get("pickup_date") or booking.get("date") or "Unscheduled") for booking in bookings)
+    per_day_counter = Counter(
+        (booking.get("pickup_date") or booking.get("date") or "Unscheduled")
+        for booking in bookings
+    )
     service_counter = Counter(booking.get("service_type", "Unknown") for booking in bookings)
     machine_counter = Counter(booking.get("machine", "Unassigned") for booking in bookings)
     status_counter = Counter((booking.get("status") or "Pending") for booking in bookings)
 
+    completed_revenue = sum(
+        float(booking.get("total_price", 0) or 0)
+        for booking in bookings
+        if (booking.get("status") or "").lower() == "completed"
+    )
+
     return {
-        "bookings_per_day": [{"label": day, "count": count} for day, count in sorted(per_day_counter.items())[:7]],
-        "most_used_service": service_counter.most_common(1)[0][0] if service_counter else "No data yet",
-        "machine_usage": [
+        "bookingsPerDay": [
+            {"label": day, "count": count}
+            for day, count in sorted(per_day_counter.items())[-7:]
+        ],
+        "mostUsedService": (
+            service_counter.most_common(1)[0][0] if service_counter else "No data yet"
+        ),
+        "machineUsage": [
             {
                 "label": machine["name"],
                 "count": machine_counter.get(machine["name"], 0),
-                "status": machine["status"],
+                "status": machine.get("status_display") or machine.get("status", "Available"),
             }
             for machine in machines
         ],
-        "status_breakdown": {
+        "statusBreakdown": {
             "pending": status_counter.get("Pending", 0),
+            "inProgress": status_counter.get("In Progress", 0),
             "completed": status_counter.get("Completed", 0),
             "cancelled": status_counter.get("Cancelled", 0),
         },
+        "completedRevenue": round(completed_revenue, 2),
     }
 
 
@@ -1203,12 +1437,76 @@ def build_admin_dashboard_payload():
     }
 
 
+# ── FIXED: empty_admin_dashboard_payload now uses camelCase keys to match JS ──
+def empty_admin_dashboard_payload():
+    return {
+        "summary": {
+            "total_users": 0,
+            "total_bookings": 0,
+            "pending_bookings": 0,
+            "cancelled_bookings": 0,
+            "active_machines": 0,
+            "available_machines": 0,
+            "completed_orders": 0,
+            "revenue": 0.0,
+        },
+        "users": [],
+        "bookings": [],
+        "machines": [],
+        "services": [],
+        "reports": {
+            "bookingsPerDay": [],
+            "mostUsedService": "No data yet",
+            "machineUsage": [],
+            "statusBreakdown": {
+                "pending": 0,
+                "inProgress": 0,
+                "completed": 0,
+                "cancelled": 0,
+            },
+            "completedRevenue": 0.0,
+        },
+        "settings": {
+            "profile": {
+                "name": session.get("user", {}).get("name", ""),
+                "email": session.get("user", {}).get("email", ""),
+            },
+            "system": {
+                "shop_name": ADMIN_SETTINGS_DEFAULTS["shop_name"],
+                "contact_number": "",
+                "shop_address": "",
+            },
+            "machines": {
+                "default_load_types": ["Light", "Medium", "Heavy"],
+                "machines_globally_enabled": True,
+            },
+            "theme": {
+                "mode": "light",
+                "accent": "pink-rose",
+            },
+        },
+    }
+
+
 def render_admin_dashboard_view(section="dashboard"):
+    safe_user = session.get("user") or {}
+    safe_section = section or "dashboard"
+    safe_access_token = refresh_session_token() or session.get("access_token", "")
+
+    try:
+        admin_data = build_admin_dashboard_payload() or {}
+    except Exception as exc:
+        log_exception("render_admin_dashboard_view.payload", exc)
+        admin_data = empty_admin_dashboard_payload()
+
     return render_template(
         "admin_dashboard.html",
-        user=session["user"],
-        admin_data=build_admin_dashboard_payload(),
-        initial_section=section,
+        user=safe_user,
+        admin_data=admin_data,
+        initial_section=safe_section,
+        supabase_url=os.environ.get("SUPABASE_URL", ""),
+        supabase_key=os.environ.get("SUPABASE_KEY", ""),
+        access_token=safe_access_token,
     )
 
 
@@ -1348,6 +1646,7 @@ def login():
                     profile = fetch_supabase_profile_or_error(res.user, access_token)
                     user = build_session_user(res.user, profile)
                     persist_session_user(user, access_token)
+                    session["refresh_token"] = res.session.refresh_token or ""
 
                     upsert_local_user(
                         user["name"],
@@ -1386,58 +1685,71 @@ def logout():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    if session["user"].get("is_admin"):
-        return redirect(url_for("admin_dashboard"))
-    user = session["user"]
     try:
-        res = db().table("bookings").select("*") \
-            .eq("user_id", user["id"]) \
-            .order("created_at", desc=True) \
-            .limit(3).execute()
-        recent = res.data or []
-    except Exception:
-        recent = []
-    return render_template("dashboard.html", user=user, recent=recent)
+        if session["user"].get("is_admin"):
+            return redirect(url_for("admin_dashboard"))
+        user = session["user"]
+        try:
+            res = db().table("bookings").select("*") \
+                .eq("user_id", user["id"]) \
+                .order("created_at", desc=True) \
+                .limit(3).execute()
+            recent = res.data or []
+        except Exception as exc:
+            log_exception("dashboard bookings fetch failed", exc, user=user.get("email", ""))
+            recent = []
+        return render_template("dashboard.html", user=user, recent=recent or [])
+    except Exception as exc:
+        log_exception("dashboard route failed", exc, user=session.get("user", {}))
+        flash("FreshWash could not load the dashboard right now.", "error")
+        return render_template("dashboard.html", user=session.get("user", {}), recent=[])
 
 
 @app.route("/admin")
 @app.route("/admin-dashboard")
+@app.route("/admin_dashboard")
 @admin_required
 def admin_dashboard():
     return render_admin_dashboard_view("dashboard")
 
 
 @app.route("/admin-users")
+@app.route("/admin_users")
 @admin_required
 def admin_users():
     return render_admin_dashboard_view("users")
 
 
 @app.route("/admin-bookings")
+@app.route("/admin_bookings")
 @admin_required
 def admin_bookings():
     return render_admin_dashboard_view("bookings")
 
 
 @app.route("/admin-machines")
+@app.route("/admin_machines")
 @admin_required
 def admin_machines():
     return render_admin_dashboard_view("machines")
 
 
 @app.route("/admin-services")
+@app.route("/admin_services")
 @admin_required
 def admin_services():
     return render_admin_dashboard_view("services")
 
 
 @app.route("/admin-reports")
+@app.route("/admin_reports")
 @admin_required
 def admin_reports():
     return render_admin_dashboard_view("reports")
 
 
 @app.route("/admin-settings")
+@app.route("/admin_settings")
 @admin_required
 def admin_settings():
     return render_admin_dashboard_view("settings")
@@ -1506,8 +1818,10 @@ def admin_user_action(user_id=None):
             return jsonify({"ok": False, "error": "Unsupported user action."}), 400
         return jsonify({"ok": True, "data": build_admin_dashboard_payload()})
     except ValueError as exc:
+        log_exception("admin user action validation failed", exc, action=action, user_id=user_id)
         return jsonify({"ok": False, "error": str(exc)}), 400
     except Exception as exc:
+        log_exception("admin user action failed", exc, action=action, user_id=user_id, data=data)
         return jsonify({"ok": False, "error": f"User action failed: {exc}"}), 500
 
 
@@ -1548,6 +1862,7 @@ def admin_booking_action(booking_id):
             return jsonify({"ok": False, "error": "Unsupported booking action."}), 400
         return jsonify({"ok": True, "data": build_admin_dashboard_payload()})
     except Exception as exc:
+        log_exception("admin booking action failed", exc, action=action, booking_id=booking_id, data=data)
         return jsonify({"ok": False, "error": f"Booking update failed: {exc}"}), 500
 
 
@@ -1566,8 +1881,12 @@ def admin_machine_action(machine_number):
         return jsonify({"ok": False, "error": "Invalid machine status."}), 400
     if load_type is not None and load_type not in allowed_load_types:
         return jsonify({"ok": False, "error": "Invalid load type."}), 400
-    update_machine(machine_number, name=name, status=status, enabled=enabled, load_type=load_type)
-    return jsonify({"ok": True, "data": build_admin_dashboard_payload()})
+    try:
+        update_machine(machine_number, name=name, status=status, enabled=enabled, load_type=load_type)
+        return jsonify({"ok": True, "data": build_admin_dashboard_payload()})
+    except Exception as exc:
+        log_exception("admin machine action failed", exc, machine_number=machine_number, data=data)
+        return jsonify({"ok": False, "error": f"Machine update failed: {exc}"}), 500
 
 
 @app.route("/admin/api/services/<path:service_name>", methods=["POST"])
@@ -1594,8 +1913,8 @@ def admin_service_action(service_name=None):
         if client:
             try:
                 client.table("services").delete().eq("name", service_name).execute()
-            except Exception:
-                pass
+            except Exception as exc:
+                log_exception("admin service delete failed", exc, service_name=service_name)
         with local_auth_conn() as conn:
             conn.execute("DELETE FROM admin_services WHERE name = ?", (service_name,))
     elif action == "create":
@@ -1606,16 +1925,26 @@ def admin_service_action(service_name=None):
                     {"name": service_name, "price": price, "description": description},
                     on_conflict="name"
                 ).execute()
-            except Exception:
-                pass
+            except Exception as exc:
+                log_exception("admin service create failed", exc, service_name=service_name)
         with local_auth_conn() as conn:
             conn.execute(
-                "INSERT INTO admin_services (name, price, description) VALUES (?, ?, ?)",
+                """
+                INSERT INTO admin_services (name, price, description)
+                VALUES (?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET
+                  price = excluded.price,
+                  description = excluded.description
+                """,
                 (service_name, price, description)
             )
     else:
         update_service(service_name, price, description)
-    return jsonify({"ok": True, "data": build_admin_dashboard_payload()})
+    try:
+        return jsonify({"ok": True, "data": build_admin_dashboard_payload()})
+    except Exception as exc:
+        log_exception("admin service payload refresh failed", exc, action=action, service_name=service_name)
+        return jsonify({"ok": False, "error": f"Service update failed: {exc}"}), 500
 
 
 @app.route("/admin/api/settings", methods=["POST"])
@@ -1670,8 +1999,10 @@ def admin_settings_action():
             return jsonify({"ok": False, "error": "Unsupported settings action."}), 400
         return jsonify({"ok": True, "data": build_admin_dashboard_payload()})
     except ValueError as exc:
+        log_exception("admin settings validation failed", exc, action=action, data=data)
         return jsonify({"ok": False, "error": str(exc)}), 400
     except Exception as exc:
+        log_exception("admin settings action failed", exc, action=action, data=data)
         return jsonify({"ok": False, "error": f"Settings update failed: {exc}"}), 500
 
 
@@ -1685,18 +2016,28 @@ def services():
 @login_required
 def booking():
     user = session["user"]
-    machines = [machine for machine in admin_dashboard_machines() if machine.get("effective_enabled", machine.get("enabled"))]
+    try:
+        machines = [machine for machine in admin_dashboard_machines() if machine.get("effective_enabled", machine.get("enabled"))]
+    except Exception as exc:
+        log_exception("booking machines fetch failed", exc, user=user.get("email", ""))
+        machines = []
+    machines_by_name = {
+        str(machine.get("name", "")).strip(): machine
+        for machine in machines
+        if str(machine.get("name", "")).strip()
+    }
 
     if request.method == "POST":
         service_type = request.form.get("service_type", "")
         machine      = request.form.get("machine", "").strip()
-        load_type    = request.form.get("load_type", "").strip()
+        load_type    = normalize_booking_load_type(request.form.get("load_type", ""))
         full_name    = request.form.get("full_name", "").strip()
         phone        = request.form.get("phone", "").strip()
         address      = request.form.get("address", "").strip()
         pickup_date  = request.form.get("pickup_date", "")
         pickup_time  = request.form.get("pickup_time", "")
         notes        = request.form.get("notes", "").strip()
+        selected_machine_status = request.form.get("selected_machine_status", "").strip()
 
         try:
             weight = float(request.form.get("weight", 0))
@@ -1708,39 +2049,65 @@ def booking():
         if not phone:                    errors.append("Phone number is required.")
         if not address:                  errors.append("Address is required.")
         if service_type not in SERVICES: errors.append("Invalid service selected.")
+        if not machine:                  errors.append("Please select a machine.")
+        if not load_type:                errors.append("Load type is required.")
         if not pickup_date:              errors.append("Pickup date is required.")
         if not pickup_time:              errors.append("Pickup time is required.")
         if weight <= 0:                  errors.append("Weight must be greater than 0.")
 
+        selected_machine = machines_by_name.get(machine)
+        if machine and not selected_machine:
+            errors.append("Selected machine is no longer available. Please choose another machine.")
+        elif selected_machine and selected_machine.get("status_display") == "Disabled":
+            errors.append("This machine is currently disabled and cannot accept bookings.")
+        elif selected_machine and selected_machine.get("status") != "Available":
+            errors.append("This machine is currently in use. Please select an available machine.")
+        elif selected_machine_status and selected_machine_status not in {"Available", "Disabled", "In Use"}:
+            errors.append("Invalid machine status supplied.")
+
+        if selected_machine and not load_type:
+            load_type = normalize_booking_load_type(selected_machine.get("load_type", ""))
+
         if errors:
             for e in errors:
                 flash(e, "error")
-            return render_template("booking.html", services=SERVICES, user=user, form=request.form, machines=machines)
+            return render_template("booking.html", services=SERVICES, user=user, form=request.form, machines=machines or [])
+
+        payload = {
+            "user_id": user.get("id", ""),
+            "full_name": full_name,
+            "phone": phone,
+            "pickup_address": address,
+            "service_type": service_type,
+            "machine": machine,
+            "load_type": load_type,
+            "pickup_date": pickup_date,
+            "pickup_time": pickup_time,
+            "weight": weight,
+            "total_price": round(float(SERVICES.get(service_type, {}).get("price", 0) or 0) * weight, 2),
+            "notes": notes,
+            "status": "Pending",
+        }
+        print("DATA:", payload)
+        print("USER:", user)
 
         try:
-            insert_booking_record(
-                db(),
-                {
-                    "user_id": user["id"],
-                    "full_name": full_name,
-                    "phone": phone,
-                    "pickup_address": address,
-                    "service_type": service_type,
-                    "machine": machine,
-                    "load_type": load_type,
-                    "pickup_date": pickup_date,
-                    "pickup_time": pickup_time,
-                    "weight": weight,
-                    "notes": notes,
-                    "status": "Pending",
-                }
-            )
-            flash("Booking confirmed! We'll pick up your laundry soon. 🎉", "success")
+            refresh_session_token()
+            insert_booking_record(db(), payload)
+            if selected_machine and selected_machine.get("machine_number") is not None:
+                update_machine(
+                    int(selected_machine["machine_number"]),
+                    status="In Use",
+                    enabled=selected_machine.get("enabled", True),
+                    load_type=normalize_booking_load_type(selected_machine.get("load_type", load_type)),
+                )
+            flash("Booking confirmed! We'll pick up your laundry soon.", "success")
             return redirect(url_for("readers_view", _anchor="my-booking"))
-        except Exception as e:
-            flash(f"Booking failed: {str(e)}", "error")
+        except Exception as exc:
+            log_exception("booking insert failed", exc, payload=payload, user=user.get("email", ""))
+            flash(f"Booking failed: {str(exc)}", "error")
 
-    return render_template("booking.html", services=SERVICES, user=user, form={}, machines=machines)
+    return render_template("booking.html", services=SERVICES, user=user, form={}, machines=machines or [])
 
 
 @app.route("/my-bookings")
@@ -1748,17 +2115,19 @@ def booking():
 def my_bookings():
     user = session["user"]
     try:
+        refresh_session_token()
         res = db().table("bookings").select("*") \
             .eq("user_id", user["id"]) \
             .order("created_at", desc=True).execute()
         bookings = res.data or []
         for b in bookings:
-            price = SERVICES.get(b["service_type"], {}).get("price", 0)
-            b["total_price"] = round(price * float(b.get("weight", 0)), 2)
-    except Exception as e:
-        flash(f"Could not load bookings: {str(e)}", "error")
+            price = SERVICES.get(b.get("service_type", ""), {}).get("price", 0)
+            b["total_price"] = round(price * float(b.get("weight", 0) or 0), 2)
+    except Exception as exc:
+        log_exception("my bookings fetch failed", exc, user=user.get("email", ""))
+        flash(f"Could not load bookings: {str(exc)}", "error")
         bookings = []
-    return render_template("my_bookings.html", bookings=bookings, user=user)
+    return render_template("my_bookings.html", bookings=bookings or [], user=user)
 
 
 @app.route("/readers-view")
@@ -1769,31 +2138,40 @@ def readers_view():
     active_auth_modal, auth_form_data = pop_auth_modal_state()
     recent = []
     bookings = []
+    try:
+        machines = admin_dashboard_machines()
+    except Exception as exc:
+        log_exception("homepage machines fetch failed", exc)
+        machines = []
     if user:
         try:
+            refresh_session_token()
             res = db().table("bookings").select("*") \
                 .eq("user_id", user["id"]) \
                 .order("created_at", desc=True) \
                 .limit(3).execute()
             recent = res.data or []
-        except Exception:
+        except Exception as exc:
+            log_exception("recent bookings fetch failed", exc, user=user.get("email", ""))
             recent = []
         try:
+            refresh_session_token()
             bookings_res = db().table("bookings").select("*") \
                 .eq("user_id", user["id"]) \
                 .order("created_at", desc=True).execute()
             bookings = bookings_res.data or []
             for booking in bookings:
-                price = SERVICES.get(booking["service_type"], {}).get("price", 0)
-                booking["total_price"] = round(price * float(booking.get("weight", 0)), 2)
-        except Exception:
+                price = SERVICES.get(booking.get("service_type", ""), {}).get("price", 0)
+                booking["total_price"] = round(price * float(booking.get("weight", 0) or 0), 2)
+        except Exception as exc:
+            log_exception("homepage bookings fetch failed", exc, user=user.get("email", ""))
             bookings = []
     return render_template(
         "readers_spa.html",
         user=user,
-        recent=recent,
-        bookings=bookings,
-        machines=admin_dashboard_machines(),
+        recent=recent or [],
+        bookings=bookings or [],
+        machines=machines or [],
         services=SERVICES,
         active_auth_modal=active_auth_modal,
         auth_form_data=auth_form_data,
@@ -1821,7 +2199,13 @@ def profile_update():
         if local_auth_enabled():
             update_local_user(user["id"], name, phone, address, update_data.get("avatar", user.get("avatar", "")))
         else:
-            db().table("profiles").update(update_data).eq("id", user["id"]).execute()
+            execute_update_with_fallback(
+                "profiles",
+                profile_payload_variants({"id": user["id"], **update_data}),
+                "id",
+                user["id"],
+                clients=[("authenticated session", db())],
+            )
         session["user"] = {
             **user,
             "name": name,
@@ -1852,11 +2236,18 @@ def profile():
             if local_auth_enabled():
                 update_local_user(user["id"], full_name, phone, address, user.get("avatar", ""))
             else:
-                db().table("profiles").update({
-                    "full_name": full_name,
-                    "phone":     phone,
-                    "address":   address
-                }).eq("id", user["id"]).execute()
+                execute_update_with_fallback(
+                    "profiles",
+                    profile_payload_variants({
+                        "id": user["id"],
+                        "full_name": full_name,
+                        "phone": phone,
+                        "address": address,
+                    }),
+                    "id",
+                    user["id"],
+                    clients=[("authenticated session", db())],
+                )
 
             session["user"] = {**user, "name": full_name, "phone": phone, "address": address}
             flash("Profile updated successfully!", "success")

@@ -65,7 +65,7 @@
 }
 
 .spa-home-grid {
-  grid-template-columns: 1.28fr 0.92fr;
+  grid-template-columns: 1fr;
 }
 
 .spa-book-grid {
@@ -91,6 +91,12 @@
 .spa-view-card,
 .spa-home-services {
   padding: 1.4rem;
+}
+
+@media (max-width: 900px) {
+  .spa-home-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .spa-book-card {
@@ -635,10 +641,6 @@
   gap: 0.55rem;
 }
 
-.spa-home-grid {
-  grid-template-columns: 1fr;
-}
-
 .spa-home-card {
   width: 100%;
   max-width: none;
@@ -991,11 +993,30 @@ body.booking-body {
 }
 
 body.landing-body .page-shell {
-  width: min(1120px, 100%);
+  width: min(1500px, calc(100% - 24px));
   min-height: 100%;
   align-items: stretch;
-  padding: 20px 16px 24px;
+  padding: 20px 12px 24px;
   overflow: visible;
+}
+
+body.landing-body .spa-app-shell {
+  width: 100%;
+  max-width: none;
+}
+
+body.landing-body .spa-home-grid {
+  display: flex;
+  justify-content: stretch;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+}
+
+body.landing-body .spa-home-grid > .hero-copy {
+  flex: 1 1 100%;
+  width: 100%;
+  max-width: none;
 }
 
 .bubble-layer {
@@ -1091,9 +1112,7 @@ body.booking-body .page-shell {
 }
 
 .compact-hero {
-  display: grid;
-  grid-template-columns: 1.45fr 0.85fr;
-  gap: 1rem;
+  display: block;
   margin-bottom: 1rem;
 }
 
@@ -1122,16 +1141,6 @@ body.booking-body .page-shell {
     linear-gradient(135deg, rgba(15, 118, 110, 0.94), rgba(217, 119, 87, 0.88)),
     var(--surface);
   color: white;
-}
-
-.hero-copy::after {
-  content: '';
-  position: absolute;
-  inset: auto -5rem -6rem auto;
-  width: 14rem;
-  height: 14rem;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
 }
 
 .eyebrow {
@@ -1179,6 +1188,12 @@ body.booking-body .page-shell {
   display: grid;
   gap: 0.75rem;
   align-content: center;
+}
+
+.compact-hero > .hero-copy {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
 }
 
 .mini-stat {
@@ -3078,6 +3093,10 @@ body.auth-modal-open {
     min-width: 0;
     justify-items: start;
   }
+
+  .compact-hero {
+    display: block;
+  }
 }
 
 @media (max-width: 780px) {
@@ -3160,6 +3179,11 @@ body.auth-modal-open {
     overflow: visible;
   }
 
+  body.landing-body .page-shell {
+    width: min(100%, calc(100% - 12px));
+    padding: 18px 6px 20px;
+  }
+
   body.booking-body {
     overflow: auto;
   }
@@ -3170,7 +3194,11 @@ body.auth-modal-open {
     padding-top: 0.5rem;
   }
 
-  .hero-copy,
+  body.landing-body .spa-home-grid {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .hero-summary-card,
   .info-card,
   .reader-main-card,
