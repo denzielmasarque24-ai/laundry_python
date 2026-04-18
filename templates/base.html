@@ -389,7 +389,7 @@
     if (navEmail) navEmail.textContent = profile.email || '';
     if (cardMeta) {
       const details = [profile.phone, profile.address].filter(Boolean).join(' - ');
-      cardMeta.textContent = details || {{ safe_user_email | tojson }};
+      cardMeta.textContent = details || {{ safe_user_email | tojson }} || '';
     }
     if (landingProfileMeta) {
       landingProfileMeta.textContent = [profile.phone, profile.address].filter(Boolean).join(' - ') || profile.email || '';

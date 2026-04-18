@@ -24,7 +24,7 @@
   {
     "id": "25c84cfb-80ca-4fd6-8330-bdcd20b72b26",
     "email": "admin@gmail.com",
-    "password_hash": "scrypt:32768:8:1$ZC1kbwvQH5oobb2Q$3ed77251c65e5bec6a05d5fbb73ab5b6cdd0a2a22da88a9c10249dbac49cf7731117334fe73989853c69c8d3216be3690c51293be039b6edec28c72f7f9f3bf1",
+    "password_hash": "scrypt:32768:8:1$4n7XsezEQWDPiiVP$d7d49a981dcd40b60a724b31f3bdd0e0f3877163466537b6148a106fd7842821cb0b33048cbcb8c157cded88f1ca83094a8a73f627c0b218f7d2b885b13af315",
     "full_name": "Denziel Masarque",
     "phone": "09914405837",
     "address": "talisay",
