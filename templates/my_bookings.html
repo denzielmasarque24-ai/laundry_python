@@ -1,32 +1,45 @@
 {% extends "base.html" %}
 {% block title %}My Bookings{% endblock %}
 {% block content %}
-<div class="fw-page my-bookings-page">
-  <div class="page-header d-flex justify-content-between align-items-center">
+{% set pending_count = bookings | selectattr('status','equalto','Pending') | list | length %}
+{% set progress_count = bookings | selectattr('status','equalto','In Progress') | list | length %}
+{% set completed_count = bookings | selectattr('status','equalto','Completed') | list | length %}
+
+<div class="fw-page my-bookings-page my-bookings-v2">
+  <div class="page-header">
     <div>
-      <h2 class="page-title mb-0">My Bookings</h2>
-      <p class="page-sub mb-0">Track all your laundry orders</p>
+      <h2 class="page-title">My Bookings</h2>
+      <p class="page-sub">Track all your laundry orders</p>
     </div>
     <div class="page-header-actions">
       <div class="page-chip">
         <i class="fa-solid fa-wave-square"></i>
         <span>Compact activity overview</span>
       </div>
-      <a href="{{ url_for('booking') }}" class="fw-btn-primary px-3">
-        <i class="fa-solid fa-plus me-1"></i>New Booking
+      <a href="{{ url_for('booking') }}" class="fw-btn-primary my-bookings-new-button">
+        <i class="fa-solid fa-plus"></i>
+        <span>New Booking</span>
       </a>
     </div>
   </div>
 
   {% if bookings %}
-  <!-- Stats -->
+  <section class="fw-section my-bookings-activity-section">
+    <div class="section-heading">
+      <div>
+        <span class="section-kicker">Recent Activity</span>
+        <h2>Your latest bookings at a glance.</h2>
+      </div>
+    </div>
+  </section>
+
   <div class="stats-row my-bookings-stats">
     <div class="stat-glass my-bookings-stat">
       <div class="stat-icon" style="background:linear-gradient(135deg,#ffbfdc,#eb4d98)">
         <i class="fa-solid fa-clock"></i>
       </div>
       <div>
-        <div class="stat-num">{{ bookings | selectattr('status','equalto','Pending') | list | length }}</div>
+        <div class="stat-num">{{ pending_count }}</div>
         <div class="stat-label">Pending</div>
       </div>
     </div>
@@ -35,7 +48,7 @@
         <i class="fa-solid fa-spinner"></i>
       </div>
       <div>
-        <div class="stat-num">{{ bookings | selectattr('status','equalto','In Progress') | list | length }}</div>
+        <div class="stat-num">{{ progress_count }}</div>
         <div class="stat-label">In Progress</div>
       </div>
     </div>
@@ -44,55 +57,71 @@
         <i class="fa-solid fa-circle-check"></i>
       </div>
       <div>
-        <div class="stat-num">{{ bookings | selectattr('status','equalto','Completed') | list | length }}</div>
+        <div class="stat-num">{{ completed_count }}</div>
         <div class="stat-label">Completed</div>
       </div>
     </div>
   </div>
 
-  <!-- Booking Cards -->
-  <div class="bookings-list bookings-grid my-bookings-list mt-4">
+  <div class="bookings-list my-bookings-list">
     {% for b in bookings %}
-    <div class="booking-glass-card booking-grid-card my-booking-card">
-      <div class="booking-card-left">
+    <article class="booking-glass-card my-booking-card-v2">
+      <div class="my-booking-card-icon">
         <div class="booking-service-icon">
-          {% if 'Fold' in b.service_type %}<i class="fa-solid fa-layer-group"></i>
-          {% elif 'Iron' in b.service_type %}<i class="fa-solid fa-temperature-high"></i>
-          {% elif 'Dry' in b.service_type %}<i class="fa-solid fa-wind"></i>
-          {% else %}<i class="fa-solid fa-star"></i>{% endif %}
+          {% if 'Fold' in b.service_type %}
+          <i class="fa-solid fa-layer-group"></i>
+          {% elif 'Iron' in b.service_type %}
+          <i class="fa-solid fa-temperature-high"></i>
+          {% elif 'Dry' in b.service_type %}
+          <i class="fa-solid fa-wind"></i>
+          {% else %}
+          <i class="fa-solid fa-shirt"></i>
+          {% endif %}
         </div>
       </div>
-      <div class="booking-card-body">
-        <div class="booking-card-top">
-          <div class="booking-card-main">
-            <h6 class="booking-service-name">{{ b.service_type }}</h6>
-            <div class="booking-meta my-booking-meta">
-              <span><i class="fa-solid fa-calendar me-1"></i>{{ b.pickup_date }} at {{ b.pickup_time }}</span>
-              <span><i class="fa-solid fa-weight-hanging me-1"></i>{{ b.weight }} kg</span>
-            </div>
-            {% if b.notes %}
-            <div class="booking-notes"><i class="fa-solid fa-note-sticky me-1"></i>{{ b.notes }}</div>
+
+      <div class="my-booking-card-main">
+        <div class="my-booking-card-copy">
+          <h3 class="my-booking-service-title">{{ b.service_type }}</h3>
+          <div class="booking-meta my-booking-meta-v2">
+            <span><i class="fa-solid fa-calendar"></i>{{ b.pickup_date }} at {{ b.pickup_time }}</span>
+            <span><i class="fa-solid fa-weight-hanging"></i>{{ b.weight }} kg</span>
+            {% if b.machine %}
+            <span><i class="fa-solid fa-drum"></i>{{ b.machine }}</span>
             {% endif %}
-            <div class="booking-card-actions my-booking-actions">
-              <button type="button" class="btn-ghost btn-small">View</button>
-              {% if b.status == 'Pending' %}
-              <button type="button" class="btn-primary btn-small">Cancel</button>
-              {% endif %}
-            </div>
           </div>
-          <div class="booking-summary text-end my-booking-summary">
-            <div class="booking-price">₱{{ "%.2f"|format(b.total_price) }}</div>
-            <span class="fw-badge status-{{ b.status | lower | replace(' ','-') }}">{{ b.status }}</span>
+          {% if b.notes %}
+          <div class="booking-notes my-booking-notes-v2"><i class="fa-solid fa-note-sticky"></i>{{ b.notes }}</div>
+          {% endif %}
+          <div class="my-booking-actions-row">
+            <button type="button" class="btn-ghost btn-small">View</button>
+            {% if b.status == 'Pending' %}
+            <button type="button" class="btn-primary btn-small">Cancel</button>
+            {% endif %}
           </div>
         </div>
+
+        <div class="my-booking-card-side">
+          <div class="booking-price my-booking-price-v2">&#8369;{{ "%.2f"|format(b.total_price) }}</div>
+          <span class="fw-badge status-{{ b.status | lower | replace(' ','-') }}">{{ b.status }}</span>
+        </div>
       </div>
-    </div>
+    </article>
     {% endfor %}
   </div>
 
   {% else %}
-    <div class="empty-state mt-5">
-      <div class="empty-icon"><i class="fa-solid fa-basket-shopping"></i></div>
+  <section class="fw-section my-bookings-activity-section">
+    <div class="section-heading">
+      <div>
+        <span class="section-kicker">Recent Activity</span>
+        <h2>Your latest bookings at a glance.</h2>
+      </div>
+    </div>
+  </section>
+
+  <div class="empty-state mt-5">
+    <div class="empty-icon"><i class="fa-solid fa-basket-shopping"></i></div>
     <h5>No bookings yet</h5>
     <p class="text-muted">Schedule your first laundry pickup today!</p>
     <a href="{{ url_for('booking') }}" class="fw-btn-primary px-4">Book Now</a>

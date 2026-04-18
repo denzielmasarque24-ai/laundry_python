@@ -62,6 +62,65 @@ SERVICES = {
     "Premium Wash": {"price": 350, "desc": "Premium treatment with fabric softener and extra care."},
 }
 
+HOMEPAGE_SERVICES = [
+    {
+        "name": "Wash",
+        "description": "Professional washing with premium detergents",
+        "price_label": "From $5/kg",
+        "icon": "fa-soap",
+        "accent": "bubble",
+    },
+    {
+        "name": "Dry Clean",
+        "description": "Gentle dry cleaning for delicate fabrics",
+        "price_label": "From $8/piece",
+        "icon": "fa-shirt",
+        "accent": "lavender",
+    },
+    {
+        "name": "Fold & Pack",
+        "description": "Expertly folded and neatly packed",
+        "price_label": "From $3/kg",
+        "icon": "fa-box-open",
+        "accent": "sky",
+    },
+    {
+        "name": "Iron & Press",
+        "description": "Crisp ironing for a sharp look",
+        "price_label": "From $4/piece",
+        "icon": "fa-fire-flame-curved",
+        "accent": "sunrise",
+    },
+    {
+        "name": "Pickup & Delivery",
+        "description": "Door-to-door laundry service",
+        "price_label": "Free over $30",
+        "icon": "fa-truck-fast",
+        "accent": "mint",
+    },
+]
+
+MACHINE_TYPE_CONTENT = {
+    "Light": {
+        "title": "Light Load Machine",
+        "description": "Ideal for daily wear, smaller loads, and quick refresh cycles.",
+        "icon": "fa-shirt",
+        "accent": "bubble",
+    },
+    "Medium": {
+        "title": "Medium Load Machine",
+        "description": "Balanced capacity for mixed garments, towels, and regular weekly laundry.",
+        "icon": "fa-box-open",
+        "accent": "lavender",
+    },
+    "Heavy": {
+        "title": "Heavy Load Machine",
+        "description": "Built for bulky fabrics, bedding, and larger household loads.",
+        "icon": "fa-drum-steelpan",
+        "accent": "sunrise",
+    },
+}
+
 ADMIN_SERVICE_DEFAULTS = {
     "Wash & Dry Clean": {"price": 249, "desc": "Combined wash and dry clean workflow for mixed laundry loads."},
     "Fold & Pack": {"price": 99, "desc": "Freshly folded and packed items ready for pickup or delivery."},
@@ -195,7 +254,15 @@ def init_local_auth_db():
         if "disk i/o" not in str(error).lower():
             raise
         backup_corrupt_local_auth_db()
-        _init_local_auth_db()
+        try:
+            _init_local_auth_db()
+        except sqlite3.OperationalError as retry_error:
+            if "disk i/o" not in str(retry_error).lower():
+                raise
+            print(
+                "ERROR: local auth database remains unavailable; continuing with JSON auth fallback:",
+                str(retry_error),
+            )
 
 
 def local_auth_conn():
@@ -306,19 +373,100 @@ def resolve_registration_role(email):
 
 
 def load_local_users():
+    try:
+        with local_auth_conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, email, password_hash, full_name, phone, address, avatar, role, created_at
+                FROM users
+                ORDER BY datetime(created_at) DESC, email ASC
+                """
+            ).fetchall()
+    except sqlite3.OperationalError:
+        rows = []
+
+    if rows:
+        return [
+            {
+                "id": row["id"],
+                "email": row["email"],
+                "password_hash": row["password_hash"],
+                "full_name": row["full_name"],
+                "phone": row["phone"],
+                "address": row["address"],
+                "avatar": row["avatar"] or "",
+                "role": row["role"] or "user",
+                "created_at": row["created_at"] or "",
+            }
+            for row in rows
+        ]
+
     if not os.path.exists(LOCAL_USERS_JSON):
         return []
+
     try:
         with open(LOCAL_USERS_JSON, "r", encoding="utf-8") as handle:
             users = json.load(handle)
-            return users if isinstance(users, list) else []
+            if not isinstance(users, list):
+                return []
     except (OSError, json.JSONDecodeError):
         return []
 
+    # Migrate any legacy JSON-backed auth users into SQLite so login/register
+    # use the database consistently.
+    save_local_users(users)
+    return users
+
 
 def save_local_users(users):
+    normalized_users = []
+    seen_emails = set()
+
+    for user in users or []:
+        email = normalize_email(user.get("email", ""))
+        if not email or email in seen_emails:
+            continue
+        seen_emails.add(email)
+        normalized_users.append(
+            {
+                "id": user.get("id") or str(uuid.uuid4()),
+                "email": email,
+                "password_hash": user.get("password_hash", ""),
+                "full_name": user.get("full_name", "").strip(),
+                "phone": user.get("phone", "").strip(),
+                "address": user.get("address", "").strip(),
+                "avatar": user.get("avatar", "") or "",
+                "role": user.get("role", "user") or "user",
+                "created_at": user.get("created_at") or datetime.now().isoformat(),
+            }
+        )
+
     with open(LOCAL_USERS_JSON, "w", encoding="utf-8") as handle:
-        json.dump(users, handle, indent=2)
+        json.dump(normalized_users, handle, indent=2)
+
+    try:
+        with local_auth_conn() as conn:
+            conn.execute("DELETE FROM users")
+            for user in normalized_users:
+                conn.execute(
+                    """
+                    INSERT INTO users (id, email, password_hash, full_name, phone, address, avatar, role, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        user["id"],
+                        user["email"],
+                        user["password_hash"],
+                        user["full_name"],
+                        user["phone"],
+                        user["address"],
+                        user["avatar"],
+                        user["role"],
+                        user["created_at"],
+                    ),
+                )
+    except sqlite3.OperationalError as error:
+        print("ERROR: could not sync local auth users to SQLite, JSON fallback remains active:", str(error))
 
 
 def find_local_user(email):
@@ -885,6 +1033,7 @@ def persist_session_user(user, access_token=""):
     role = user_role_for_email(user.get("email", ""), user.get("role", "user"), user)
     user["role"] = role
     user["is_admin"] = role == "admin"
+    session.permanent = True
     session["user"] = user
     session["access_token"] = access_token
 
@@ -1071,6 +1220,33 @@ def admin_dashboard_machines():
         ]
     except sqlite3.OperationalError:
         return [normalize_machine(row) for row in DEFAULT_MACHINE_ROWS]
+
+
+def build_home_machine_types(machines):
+    cards = []
+    for load_type in ("Light", "Medium", "Heavy"):
+        matching = [machine for machine in (machines or []) if machine.get("load_type") == load_type]
+        available = [
+            machine for machine in matching
+            if machine.get("effective_enabled", machine.get("enabled", True))
+            and machine.get("status") == "Available"
+        ]
+        content = MACHINE_TYPE_CONTENT[load_type]
+        cards.append(
+            {
+                "load_type": load_type,
+                "title": content["title"],
+                "description": content["description"],
+                "icon": content["icon"],
+                "accent": content["accent"],
+                "machine_count": len(matching),
+                "available_count": len(available),
+                "machine_name": available[0]["name"] if available else "",
+                "is_available": bool(available),
+                "button_label": "Book Now" if available else "Unavailable",
+            }
+        )
+    return cards
 
 
 @app.route("/api/machines")
@@ -2167,12 +2343,14 @@ def readers_view():
             log_exception("homepage bookings fetch failed", exc, user=user.get("email", ""))
             bookings = []
     return render_template(
-        "readers_spa.html",
+        "readers_view.html",
         user=user,
         recent=recent or [],
         bookings=bookings or [],
         machines=machines or [],
+        machine_type_cards=build_home_machine_types(machines or []) if user else [],
         services=SERVICES,
+        homepage_services=HOMEPAGE_SERVICES,
         active_auth_modal=active_auth_modal,
         auth_form_data=auth_form_data,
     )
@@ -2215,6 +2393,30 @@ def profile_update():
         }
         return json.dumps({"ok": True})
     except Exception as e:
+        if is_supabase_connection_error(e):
+            try:
+                local_user, _ = find_local_user(user.get("email", ""))
+                if local_user:
+                    update_local_user(
+                        local_user["id"],
+                        name,
+                        phone,
+                        address,
+                        update_data.get("avatar", user.get("avatar", "")),
+                    )
+                session["user"] = {
+                    **user,
+                    "name": name,
+                    "phone": phone,
+                    "address": address,
+                    "avatar": update_data.get("avatar", user.get("avatar", "")),
+                }
+                return json.dumps({
+                    "ok": True,
+                    "warning": "FreshWash updated your current session, but the remote profile service is unavailable right now."
+                })
+            except Exception:
+                pass
         return json.dumps({"ok": False, "error": str(e)}), 500
 
 

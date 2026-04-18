@@ -1,36 +1,69 @@
 [
   {
-    "id": "65083f1c-c254-452a-a6d7-9f83cd2c618f",
-    "email": "flow2@example.com",
-    "password_hash": "scrypt:32768:8:1$hGVXOpsKYI2jz0TA$2f36a2125fa6598d0cb00f1737a42340b5e055380964f66f954ca772195b1f3844b72d6459cc280e44e78b3b7e83a7fbfd2b9e07887b2e20ba40aef0667681af",
-    "full_name": "Flow Two",
+    "id": "733efb99-4f2f-4157-9f16-2e04747db78d",
+    "email": "dupcheck_f0e638b4@example.com",
+    "password_hash": "scrypt:32768:8:1$IKyMLZoQqTAQoU0M$a3430fb4da2a39c0292d35fa2605ab73ba70cd906965365613ce3957e6f0d1be8ce37fc66d61402af86d87156d44731a59f83bd05753e1338a6814043d345ded",
+    "full_name": "Duplicate Check",
     "phone": "09123456789",
-    "address": "Manila",
+    "address": "FreshWash Lane",
     "avatar": "",
     "role": "user",
-    "created_at": "2026-04-16T16:37:11.298699"
+    "created_at": "2026-04-18T16:41:02.071193"
   },
   {
-    "id": "255519ad-2adf-417d-ba5b-d52b875604d7",
-    "email": "zafra@gmail.com",
-    "password_hash": "scrypt:32768:8:1$4XSx2YuP6t9ydnmn$5d216ded92abcda4baf2f93bec7ebc3bc9e0f6c1d6004552115afa2321e10b512d6772cb2c46a36e4adee4b92066cc91e721849c489f1d8e6b775ad9f59a10e9",
-    "full_name": "erl zafra",
-    "phone": "09914405837",
-    "address": "duljo",
+    "id": "21b96756-97eb-4997-a414-14f4d919ad70",
+    "email": "badlogin_8b8be2f4@example.com",
+    "password_hash": "scrypt:32768:8:1$vyroQrdgpHJccQTQ$4df4c3a0dec317087a6bb81c5d081a283ed1579a1a8da36a61fbf610447a4e7acdb127b445cee6e48dba8e3703f3ff6f1b18e4346ae20c256f637d6476665028",
+    "full_name": "Bad Login Check",
+    "phone": "09123456789",
+    "address": "FreshWash Lane",
     "avatar": "",
     "role": "user",
-    "created_at": "2026-04-16T17:34:41.407801"
+    "created_at": "2026-04-18T16:40:52.576329"
   },
   {
-    "id": "25c84cfb-80ca-4fd6-8330-bdcd20b72b26",
-    "email": "admin@gmail.com",
-    "password_hash": "scrypt:32768:8:1$4n7XsezEQWDPiiVP$d7d49a981dcd40b60a724b31f3bdd0e0f3877163466537b6148a106fd7842821cb0b33048cbcb8c157cded88f1ca83094a8a73f627c0b218f7d2b885b13af315",
-    "full_name": "Denziel Masarque",
+    "id": "ee2d3b9e-c8a3-41f6-b809-9cb6611baafe",
+    "email": "layoutauth_710d8546@example.com",
+    "password_hash": "scrypt:32768:8:1$6mN3wtyTTnqxNA24$a6499547fa4264928ced88fa40ddbc6c0f5e35316525f75e7e48a431f9e8fa18a7f055aba044577f02bc5797099d53e6b3339d4dedbb184f5e478a4ed68aaea3",
+    "full_name": "Layout Auth User",
+    "phone": "09123456789",
+    "address": "FreshWash Avenue",
+    "avatar": "",
+    "role": "user",
+    "created_at": "2026-04-18T16:39:28.165294"
+  },
+  {
+    "id": "c6291a6d-1a45-4ccd-a80e-a885cd4c8801",
+    "email": "authfix_596e5bab@example.com",
+    "password_hash": "scrypt:32768:8:1$ECmVA7bT2s8Q1SiX$248cf374b1ab16bc6e73d2c8c6cdfcbc586dcc47408d4a7d8d53742ea257139b06ff7dba255a774ddf225cdfcb397c73a470b3a57840a6302c84dbccf3a72252",
+    "full_name": "Auth Fix User",
+    "phone": "09123456789",
+    "address": "FreshWash Street",
+    "avatar": "",
+    "role": "user",
+    "created_at": "2026-04-18T16:36:02.623107"
+  },
+  {
+    "id": "6be65853-4eed-4c97-b70b-93f39b3432e9",
+    "email": "codex_test_auth@example.com",
+    "password_hash": "scrypt:32768:8:1$KEycOv7X9e6EDCg1$55250cd7411b0bca3c5c31fde86cb91da699cfbcb7be20b2154c542347cda9891d59386f963d4c4b1b1f01c9aa03c09688a8f4c741dbd00ef065bbb6b61180d3",
+    "full_name": "Codex Test",
+    "phone": "09171234567",
+    "address": "Test Address",
+    "avatar": "",
+    "role": "user",
+    "created_at": "2026-04-18T16:33:33.497947"
+  },
+  {
+    "id": "b48159c0-9b06-4a74-9452-563da02c1cd9",
+    "email": "joy@gmail.com",
+    "password_hash": "scrypt:32768:8:1$iOBlDvo0F1K5u18N$fdb9ae4cf000c2da8abbb6bc819676b636c93ec3368842ab44468504f02ab95f6dda882453d338c6837a96a0bcb0fae3673f2011b1e227433fef20ef968c7387",
+    "full_name": "joy gulpan",
     "phone": "09914405837",
     "address": "talisay",
     "avatar": "",
     "role": "user",
-    "created_at": "2026-04-16T17:47:52.571958"
+    "created_at": "2026-04-16T19:02:14.572716"
   },
   {
     "id": "dcd2d815-449c-4845-857e-5e9d6f8782bd",
@@ -44,14 +77,36 @@
     "created_at": "2026-04-16T18:50:02.164888"
   },
   {
-    "id": "b48159c0-9b06-4a74-9452-563da02c1cd9",
-    "email": "joy@gmail.com",
-    "password_hash": "scrypt:32768:8:1$NOd2LSV91erRd3Yy$d4fdd172dd2b0a67de4c696ed5873ff6caf385669bd251909c8e710bc8c26cfb35a08fabc71a112dcb69fc5e2bbc7a4467b39ea2f4baa15a56c65f78c682795c",
-    "full_name": "joy gulpan",
+    "id": "25c84cfb-80ca-4fd6-8330-bdcd20b72b26",
+    "email": "admin@gmail.com",
+    "password_hash": "scrypt:32768:8:1$f2x9J6ZXSqI5FsjQ$80787166042f70ea25475cd1bd3c735c945080b09c2c9f43e5c079ef355a559f289092523c408efbf2f4f901514a805ebd51693d417d56c7ebb10dddc85e9fa9",
+    "full_name": "Denziel Masarque",
     "phone": "09914405837",
     "address": "talisay",
     "avatar": "",
     "role": "user",
-    "created_at": "2026-04-16T19:02:14.572716"
+    "created_at": "2026-04-16T17:47:52.571958"
+  },
+  {
+    "id": "255519ad-2adf-417d-ba5b-d52b875604d7",
+    "email": "zafra@gmail.com",
+    "password_hash": "scrypt:32768:8:1$4XSx2YuP6t9ydnmn$5d216ded92abcda4baf2f93bec7ebc3bc9e0f6c1d6004552115afa2321e10b512d6772cb2c46a36e4adee4b92066cc91e721849c489f1d8e6b775ad9f59a10e9",
+    "full_name": "erl zafra",
+    "phone": "09914405837",
+    "address": "duljo",
+    "avatar": "",
+    "role": "user",
+    "created_at": "2026-04-16T17:34:41.407801"
+  },
+  {
+    "id": "65083f1c-c254-452a-a6d7-9f83cd2c618f",
+    "email": "flow2@example.com",
+    "password_hash": "scrypt:32768:8:1$hGVXOpsKYI2jz0TA$2f36a2125fa6598d0cb00f1737a42340b5e055380964f66f954ca772195b1f3844b72d6459cc280e44e78b3b7e83a7fbfd2b9e07887b2e20ba40aef0667681af",
+    "full_name": "Flow Two",
+    "phone": "09123456789",
+    "address": "Manila",
+    "avatar": "",
+    "role": "user",
+    "created_at": "2026-04-16T16:37:11.298699"
   }
 ]
