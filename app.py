@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from supabase_client import (
     supabase,
-    get_authed_client,
     get_service_client,
     is_supabase_enabled,
     is_supabase_service_role_enabled,
@@ -15,6 +14,7 @@ import uuid
 import re
 import os
 import json
+import base64
 import tempfile
 from collections import Counter
 from datetime import datetime
@@ -24,6 +24,32 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "freshwash-secret-key-2024")
+ADMIN_AVATAR_BUCKET = os.environ.get("SUPABASE_AVATAR_BUCKET", "avatars")
+GCASH_ACCOUNT_NAME = os.environ.get("GCASH_ACCOUNT_NAME", "FreshWash Laundry")
+GCASH_NUMBER = os.environ.get("GCASH_NUMBER", "09XX XXX XXXX")
+GCASH_QR_IMAGE = os.environ.get("GCASH_QR_IMAGE", "img/gcash_qr.png")
+PAYMAYA_ACCOUNT_NAME = os.environ.get("PAYMAYA_ACCOUNT_NAME", GCASH_ACCOUNT_NAME)
+PAYMAYA_NUMBER = os.environ.get("PAYMAYA_NUMBER", "09XX XXX XXXX")
+PAYMAYA_QR_IMAGE = os.environ.get("PAYMAYA_QR_IMAGE", "img/paymaya_qr.png")
+PAYMENT_METHOD_CONFIG = {
+    "GCash": {
+        "label": "GCash",
+        "account_name": GCASH_ACCOUNT_NAME,
+        "mobile_number": GCASH_NUMBER,
+        "qr_image": GCASH_QR_IMAGE,
+        "copy_label": "Copy GCash number",
+    },
+    "PayMaya": {
+        "label": "PayMaya",
+        "account_name": PAYMAYA_ACCOUNT_NAME,
+        "mobile_number": PAYMAYA_NUMBER,
+        "qr_image": PAYMAYA_QR_IMAGE,
+        "copy_label": "Copy PayMaya number",
+    },
+}
+DIGITAL_PAYMENT_METHODS = set(PAYMENT_METHOD_CONFIG)
+VALID_PAYMENT_METHODS = {"Cash on Pickup", "Cash on Delivery", *DIGITAL_PAYMENT_METHODS}
+MAX_PAYMENT_PROOF_BYTES = 2 * 1024 * 1024
 
 
 def resolve_instance_path():
@@ -66,35 +92,40 @@ HOMEPAGE_SERVICES = [
     {
         "name": "Wash",
         "description": "Professional washing with premium detergents",
-        "price_label": "From $5/kg",
+        "price_prefix": "From",
+        "price_value": "₱150 / kg",
         "icon": "fa-soap",
         "accent": "bubble",
     },
     {
         "name": "Dry Clean",
         "description": "Gentle dry cleaning for delicate fabrics",
-        "price_label": "From $8/piece",
+        "price_prefix": "From",
+        "price_value": "₱250 / piece",
         "icon": "fa-shirt",
         "accent": "lavender",
     },
     {
         "name": "Fold & Pack",
         "description": "Expertly folded and neatly packed",
-        "price_label": "From $3/kg",
+        "price_prefix": "From",
+        "price_value": "₱99 / kg",
         "icon": "fa-box-open",
         "accent": "sky",
     },
     {
         "name": "Iron & Press",
         "description": "Crisp ironing for a sharp look",
-        "price_label": "From $4/piece",
+        "price_prefix": "From",
+        "price_value": "₱129 / piece",
         "icon": "fa-fire-flame-curved",
         "accent": "sunrise",
     },
     {
         "name": "Pickup & Delivery",
         "description": "Door-to-door laundry service",
-        "price_label": "Free over $30",
+        "price_prefix": "Free over",
+        "price_value": "₱1500",
         "icon": "fa-truck-fast",
         "accent": "mint",
     },
@@ -148,6 +179,8 @@ DEFAULT_MACHINE_ROWS = [
     }
     for number in range(1, 9)
 ]
+
+VALID_MACHINE_STATUSES = {"Available", "In Use", "Disabled"}
 
 EMAIL_RE = re.compile(r"^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$", re.IGNORECASE)
 
@@ -290,7 +323,7 @@ def normalize_email(email):
 
 
 def configured_admin_emails():
-    raw = os.environ.get("ADMIN_EMAILS", "admin@freshwash.com")
+    raw = os.environ.get("ADMIN_EMAILS", "admin@freshwash.com,admin@gmail.com")
     return {normalize_email(email) for email in raw.split(",") if email.strip()}
 
 
@@ -309,9 +342,14 @@ def render_auth_template(template_name, form_data=None):
 def log_exception(label, exc, **context):
     details = ", ".join(f"{key}={value!r}" for key, value in context.items())
     if details:
-        print(f"ERROR: {label}: {exc} | {details}")
+        print(f"ERROR: {label}: {type(exc).__name__}: {exc!r} | {details}")
     else:
-        print(f"ERROR: {label}: {exc}")
+        print(f"ERROR: {label}: {type(exc).__name__}: {exc!r}")
+
+
+def log_auth_debug(label, **context):
+    details = ", ".join(f"{key}={value!r}" for key, value in context.items())
+    print(f"AUTH: {label}" + (f" | {details}" if details else ""))
 
 
 def set_auth_modal_state(modal, form_data=None):
@@ -325,12 +363,14 @@ def pop_auth_modal_state():
 
 def redirect_to_auth_modal(modal, form_data=None):
     set_auth_modal_state(modal, form_data)
-    return redirect(url_for("readers_view"))
+    return redirect(url_for("home"))
 
 
 def user_role_for_email(email, stored_role="user", metadata=None):
     metadata = metadata or {}
-    if stored_role == "admin" or metadata.get("role") == "admin" or metadata.get("is_admin"):
+    stored_role = (stored_role or "").strip().lower()
+    metadata_role = str(metadata.get("role", "") or "").strip().lower()
+    if stored_role == "admin" or metadata_role == "admin" or metadata.get("is_admin"):
         return "admin"
     if normalize_email(email) in configured_admin_emails():
         return "admin"
@@ -588,7 +628,7 @@ def update_local_user(user_id, name, phone, address, avatar):
     save_local_users(users)
 
 
-def admin_update_local_user(user_id, name, email, role_override=None):
+def admin_update_local_user(user_id, name, email, phone, address, avatar="", role_override=None):
     normalized_email = normalize_email(email)
     role = normalize_profile_role(role_override) if role_override else user_role_for_email(normalized_email)
     users = load_local_users()
@@ -599,6 +639,9 @@ def admin_update_local_user(user_id, name, email, role_override=None):
         if user.get("id") == user_id:
             user["full_name"] = name
             user["email"] = normalized_email
+            user["phone"] = phone
+            user["address"] = address
+            user["avatar"] = avatar or ""
             user["role"] = role
             break
     save_local_users(users)
@@ -640,8 +683,9 @@ def admin_create_supabase_user(name, email, phone, address, password, role):
     return auth_user
 
 
-def admin_update_supabase_user(user_id, name, phone, address, role):
+def admin_update_supabase_user(user_id, name, email, phone, address, avatar, role):
     role = normalize_profile_role(role)
+    normalized_email = normalize_email(email)
     client = get_service_client()
     profile = client.table("profiles").select("*").eq("id", user_id).single().execute().data
     if not profile:
@@ -651,8 +695,10 @@ def admin_update_supabase_user(user_id, name, phone, address, role):
         profile_payload_variants({
             "id": user_id,
             "full_name": name,
+            "email": normalized_email,
             "phone": phone,
             "address": address,
+            "avatar": avatar or "",
             "role": role,
         }),
         "id",
@@ -661,10 +707,13 @@ def admin_update_supabase_user(user_id, name, phone, address, role):
     )
     try:
         client.auth.admin.update_user_by_id(user_id, {
+            "email": normalized_email,
             "user_metadata": {
                 "full_name": name,
+                "email": normalized_email,
                 "phone": phone,
                 "address": address,
+                "avatar": avatar or "",
                 "role": role,
             }
         })
@@ -721,7 +770,8 @@ def validate_login_form(email, password):
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if "user" not in session:
+        user = session.get("user")
+        if not user:
             flash("Please log in to continue.", "error")
             return redirect(url_for("login"))
         return f(*args, **kwargs)
@@ -731,12 +781,30 @@ def login_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if "user" not in session:
+        user = session.get("user")
+        if not user:
+            log_auth_debug("admin access blocked", reason="no active session", path=request.path)
             flash("Please log in to continue.", "error")
             return redirect(url_for("login"))
-        if not session["user"].get("is_admin"):
-            flash("Admin access only.", "error")
-            return redirect(url_for("readers_view"))
+        detected_role = (user or {}).get("role", "")
+        normalized_role = (detected_role or "").strip().lower()
+        is_admin = normalized_role == "admin"
+        log_auth_debug(
+            "admin page protection",
+            email=(user or {}).get("email", ""),
+            role=normalized_role,
+            is_admin=is_admin,
+            path=request.path,
+        )
+        if not is_admin:
+            log_auth_debug(
+                "admin access blocked",
+                email=(user or {}).get("email", ""),
+                role=normalized_role,
+                is_admin=is_admin,
+            )
+            flash("This account is not authorized as admin.", "error")
+            return redirect(url_for("home"))
         return f(*args, **kwargs)
     return decorated
 
@@ -758,28 +826,9 @@ def handle_unexpected_error(exc):
     return f"Internal Server Error: {exc}", 500
 
 
-def refresh_session_token():
-    """Attempt to refresh the Supabase JWT and update the session. Returns the current or refreshed token."""
-    token = session.get("access_token", "")
-    if not token or not is_supabase_enabled() or not supabase:
-        return token
-    try:
-        refresh_token = session.get("refresh_token", "")
-        if not refresh_token:
-            return token
-        res = supabase.auth.refresh_session(refresh_token)
-        if res and res.session:
-            session["access_token"] = res.session.access_token
-            session["refresh_token"] = res.session.refresh_token
-            return res.session.access_token
-    except Exception:
-        pass
-    return token
-
-
 def db():
-    """Return an RLS-authenticated Supabase client for the current user."""
-    return get_authed_client(session.get("access_token", ""))
+    """Return the configured Supabase database client for server-side work."""
+    return admin_db_client()
 
 
 def extract_schema_cache_missing_column(error, table_name):
@@ -835,14 +884,19 @@ def profile_payload_variants(payload):
     seen = set()
     for index in range(len(present_keys), 0, -1):
         keys = tuple(key for key in present_keys[:index] if key in payload)
-        if "id" not in keys or "full_name" not in keys:
+        if "id" not in keys or ("full_name" not in keys and "avatar" not in keys):
             continue
         if keys in seen:
             continue
         seen.add(keys)
         variants.append({key: payload[key] for key in keys})
     if not variants:
-        variants.append({"id": payload["id"], "full_name": payload["full_name"]})
+        fallback = {"id": payload["id"]}
+        if "full_name" in payload:
+            fallback["full_name"] = payload["full_name"]
+        if "avatar" in payload:
+            fallback["avatar"] = payload["avatar"]
+        variants.append(fallback)
     return variants
 
 
@@ -860,6 +914,8 @@ def booking_insert_payload_variants(payload):
     }
     if "total_price" in payload:
         base_payload["total_price"] = payload["total_price"]
+    if "delivery_option" in payload and payload["delivery_option"] not in (None, ""):
+        base_payload["delivery_option"] = payload["delivery_option"]
     address_variants = [
         {"pickup_address": payload["pickup_address"]},
         {"address": payload["pickup_address"]},
@@ -870,17 +926,76 @@ def booking_insert_payload_variants(payload):
         {"load_type": payload["load_type"]},
         {},
     ]
+    payment_payload = {
+        key: payload[key]
+        for key in ("payment_method", "reference_number", "payment_proof", "proof_image", "payment_status")
+        if key in payload and payload[key] not in (None, "")
+    }
+    payment_variants = [{}]
+    if payment_payload:
+        payment_core = {
+            key: payment_payload[key]
+            for key in ("payment_method", "payment_status")
+            if key in payment_payload
+        }
+        payment_without_proof = {
+            key: value
+            for key, value in payment_payload.items()
+            if key not in {"payment_proof", "proof_image"}
+        }
+        payment_variants = [payment_payload, payment_without_proof, payment_core, {}]
 
     variants = []
     seen = set()
-    for address_variant, optional_variant in product(address_variants, optional_variants):
-        variant = {**base_payload, **address_variant, **optional_variant}
+    for address_variant, optional_variant, payment_variant in product(address_variants, optional_variants, payment_variants):
+        variant = {**base_payload, **address_variant, **optional_variant, **payment_variant}
         key = tuple(sorted(variant.keys()))
         if key in seen:
             continue
         seen.add(key)
         variants.append(variant)
     return variants
+
+
+def encode_payment_proof_upload(uploaded_file):
+    if not uploaded_file or not uploaded_file.filename:
+        return ""
+    mimetype = uploaded_file.mimetype or ""
+    if not mimetype.startswith("image/"):
+        raise ValueError("Payment proof must be an image file.")
+    image_bytes = uploaded_file.read()
+    if not image_bytes:
+        raise ValueError("The uploaded payment proof is empty.")
+    if len(image_bytes) > MAX_PAYMENT_PROOF_BYTES:
+        raise ValueError("Payment proof must be 2MB or smaller.")
+    encoded = base64.b64encode(image_bytes).decode("ascii")
+    return f"data:{mimetype};base64,{encoded}"
+
+
+def normalize_payment_method(payment_method):
+    normalized = (payment_method or "Cash on Delivery").strip() or "Cash on Delivery"
+    if normalized == "Maya":
+        return "PayMaya"
+    if normalized == "Cash on Pickup":
+        return "Cash on Delivery"
+    return normalized
+
+
+def booking_template_context(user, form, machines):
+    payment_method_config = {
+        method: {
+            **config,
+            "qr_image_url": url_for("static", filename=config["qr_image"]),
+        }
+        for method, config in PAYMENT_METHOD_CONFIG.items()
+    }
+    return {
+        "services": SERVICES,
+        "user": user,
+        "form": form,
+        "machines": machines or [],
+        "payment_method_config": payment_method_config,
+    }
 
 
 def insert_booking_record(client, payload):
@@ -969,13 +1084,13 @@ def ensure_profile_record(authed_client, auth_user, defaults=None):
     return profile_payload
 
 
-def ensure_supabase_profile_record(auth_user, defaults=None, access_token=""):
+def ensure_supabase_profile_record(auth_user, defaults=None):
     defaults = defaults or {}
     clients = []
     if is_supabase_service_role_enabled():
         clients.append(("service role", get_service_client()))
-    if access_token and access_token.strip():
-        clients.append(("authenticated session", get_authed_client(access_token)))
+    elif supabase:
+        clients.append(("supabase", supabase))
 
     if not clients:
         raise RuntimeError(
@@ -996,21 +1111,92 @@ def ensure_supabase_profile_record(auth_user, defaults=None, access_token=""):
     )
 
 
-def fetch_supabase_profile_or_error(auth_user, access_token):
-    if not access_token or not access_token.strip():
-        raise RuntimeError("Login succeeded, but FreshWash could not open your authenticated session.")
+def fetch_supabase_profile_or_error(auth_user, client=None):
+    client = client or admin_db_client()
+    if not client:
+        raise RuntimeError("Login succeeded, but FreshWash could not connect to the profiles table.")
 
-    authed = get_authed_client(access_token)
     try:
-        result = authed.table("profiles").select("*").eq("id", auth_user.id).single().execute()
+        result = client.table("profiles").select("*").eq("id", auth_user.id).single().execute()
     except Exception as exc:
-        raise RuntimeError(f"Login succeeded, but FreshWash could not load your profile: {exc}")
+        log_exception("profile fetch by id failed", exc, user_id=auth_user.id, email=auth_user.email)
+        result = None
 
-    profile = result.data or {}
+    profile = getattr(result, "data", None) or {}
     if not profile:
-        raise RuntimeError("Login succeeded, but your profile is missing. Please contact FreshWash support.")
+        try:
+            result = client.table("profiles").select("*").eq("email", auth_user.email).single().execute()
+            profile = result.data or {}
+            log_auth_debug(
+                "profile row fetched by email",
+                user_id=auth_user.id,
+                email=auth_user.email,
+                profile_id=profile.get("id", ""),
+                profile_role=profile.get("role", ""),
+            )
+        except Exception as exc:
+            log_exception("profile fetch by email failed", exc, user_id=auth_user.id, email=auth_user.email)
 
-    profile["role"] = normalize_profile_role(profile.get("role"))
+    if not profile:
+        log_auth_debug("profile row missing after auth login", user_id=auth_user.id, email=auth_user.email)
+        metadata = auth_user.user_metadata or {}
+        defaults = {
+            "full_name": metadata.get("full_name") or auth_user.email.split("@")[0],
+            "email": auth_user.email,
+            "phone": metadata.get("phone", ""),
+            "address": metadata.get("address", ""),
+            "avatar": metadata.get("avatar", ""),
+            "role": user_role_for_email(auth_user.email, metadata.get("role", "user"), metadata),
+        }
+        try:
+            profile = ensure_supabase_profile_record(auth_user, defaults)
+        except Exception as exc:
+            raise RuntimeError(f"Admin profile not found: {exc}")
+
+    stored_role = (profile.get("role") or "").strip().lower()
+    profile_role = normalize_profile_role(profile.get("role", "user"))
+    profile["role"] = profile_role
+
+    should_repair_profile = (
+        profile.get("id") != auth_user.id
+        or
+        normalize_email(profile.get("email", "")) != normalize_email(auth_user.email)
+        or stored_role != profile_role
+        or not (profile.get("full_name") or "").strip()
+    )
+    if should_repair_profile:
+        repaired_profile = {
+            "id": auth_user.id,
+            "email": auth_user.email,
+            "full_name": profile.get("full_name") or (auth_user.user_metadata or {}).get("full_name") or auth_user.email.split("@")[0],
+            "phone": profile.get("phone", ""),
+            "address": profile.get("address", ""),
+            "avatar": profile.get("avatar", ""),
+            "role": profile_role,
+        }
+        repair_clients = []
+        if is_supabase_service_role_enabled():
+            repair_clients.append(("service role", get_service_client()))
+        elif client:
+            repair_clients.append(("supabase", client))
+        try:
+            execute_upsert_with_fallback(
+                "profiles",
+                profile_payload_variants(repaired_profile),
+                conflict_target="id",
+                clients=repair_clients,
+            )
+            profile = repaired_profile
+        except Exception as exc:
+            log_exception("profile role/email repair failed during login", exc, email=auth_user.email, user_id=auth_user.id)
+
+    log_auth_debug(
+        "profile row fetched",
+        user_id=auth_user.id,
+        email=auth_user.email,
+        profile_email=profile.get("email", ""),
+        profile_role=profile.get("role", ""),
+    )
     return profile
 
 
@@ -1029,13 +1215,38 @@ def build_session_user(auth_user, profile):
     }
 
 
-def persist_session_user(user, access_token=""):
-    role = user_role_for_email(user.get("email", ""), user.get("role", "user"), user)
+def compact_session_user(user):
+    """Keep Flask's signed cookie small enough to survive redirects."""
+    avatar = user.get("avatar", "") or ""
+    if avatar.startswith("data:") or len(avatar) > 500:
+        avatar = ""
+    return {
+        "id": user.get("id", ""),
+        "email": normalize_email(user.get("email", "")),
+        "name": user.get("name", "") or user.get("email", "").split("@")[0],
+        "phone": user.get("phone", "") or "",
+        "address": user.get("address", "") or "",
+        "avatar": avatar,
+        "role": normalize_profile_role(user.get("role", "user")),
+    }
+
+
+def persist_session_user(user):
+    user = compact_session_user(user)
+    role = user["role"]
     user["role"] = role
     user["is_admin"] = role == "admin"
     session.permanent = True
     session["user"] = user
-    session["access_token"] = access_token
+    session.modified = True
+    log_auth_debug(
+        "session result",
+        email=user.get("email", ""),
+        role=user.get("role", ""),
+        is_admin=user.get("is_admin", False),
+        has_flask_session=True,
+        session_user_bytes=len(json.dumps(user)),
+    )
 
 
 def is_supabase_connection_error(error):
@@ -1088,6 +1299,7 @@ def admin_dashboard_users():
                 "email": row["email"],
                 "phone": row.get("phone", ""),
                 "address": row.get("address", ""),
+                "avatar": row.get("avatar", "") or "",
                 "role": user_role_for_email(row["email"], row.get("role", "user") or "user"),
                 "created_at": row.get("created_at", ""),
             }
@@ -1106,6 +1318,7 @@ def admin_dashboard_users():
                     "email": row.get("email", ""),
                     "phone": row.get("phone", ""),
                     "address": row.get("address", ""),
+                    "avatar": row.get("avatar", "") or "",
                     "role": normalize_profile_role(row.get("role", "user")),
                     "created_at": row.get("created_at", ""),
                 }
@@ -1148,16 +1361,20 @@ def admin_dashboard_machines():
         return list(DEFAULT_MACHINE_ROWS)
 
     def normalize_machine(row):
-        machine_number = row.get("machine_number")
-        name = row.get("label") or row.get("name") or f"Machine {machine_number}"
-        enabled = bool(row.get("enabled", True))
-        effective_enabled = enabled and machines_globally_enabled
+        machine_number = row.get("machine_number") or row.get("id")
+        machine_id = row.get("id") or machine_number
+        name = row.get("name") or row.get("label") or f"Machine {machine_number}"
         status = row.get("status", "Available")
+        if status not in VALID_MACHINE_STATUSES:
+            status = "Available"
+        enabled = bool(row.get("enabled", status != "Disabled")) and status != "Disabled"
+        effective_enabled = enabled and machines_globally_enabled
         load_type = row.get("load_type", "Medium")
         if load_type not in allowed_load_types and allowed_load_types:
             load_type = allowed_load_types[min(1, len(allowed_load_types) - 1)]
-        status_display = status if effective_enabled else "Disabled"
+        status_display = status if effective_enabled and status != "Disabled" else "Disabled"
         return {
+            "id": machine_id,
             "machine_number": machine_number,
             "name": name,
             "status": status,
@@ -1172,26 +1389,37 @@ def admin_dashboard_machines():
     client = admin_db_client()
     if client:
         try:
-            rows = client.table("machines").select("*").order("machine_number").execute().data or []
+            try:
+                rows = client.table("machines").select("*").order("machine_number").execute().data or []
+            except Exception:
+                rows = client.table("machines").select("*").order("id").execute().data or []
+            print(f"[FreshWash] admin_dashboard_machines: Supabase returned {len(rows)} row(s)")
             if not rows:
                 seed_rows = seed_rows_from_local_source()
+                print(f"[FreshWash] admin_dashboard_machines: seeding {len(seed_rows)} machine(s) into Supabase")
                 if seed_rows:
-                    client.table("machines").upsert(
-                        [
-                            {
-                                "machine_number": row.get("machine_number"),
-                                "label": row.get("label") or row.get("name") or f"Machine {row.get('machine_number')}",
-                                "name": row.get("label") or row.get("name") or f"Machine {row.get('machine_number')}",
-                                "status": row.get("status", "Available"),
-                                "load_type": row.get("load_type", "Medium"),
-                                "enabled": bool(row.get("enabled", True)),
-                                "updated_at": datetime.utcnow().isoformat(),
-                            }
-                            for row in seed_rows
-                        ],
-                        on_conflict="machine_number"
-                    ).execute()
-                    rows = client.table("machines").select("*").order("machine_number").execute().data or []
+                    try:
+                        client.table("machines").upsert(
+                            [
+                                {
+                                    "machine_number": row.get("machine_number"),
+                                    "label": row.get("label") or row.get("name") or f"Machine {row.get('machine_number')}",
+                                    "status": row.get("status", "Available"),
+                                    "load_type": row.get("load_type", "Medium"),
+                                    "enabled": bool(row.get("enabled", True)) and row.get("status", "Available") != "Disabled",
+                                    "updated_at": datetime.utcnow().isoformat(),
+                                }
+                                for row in seed_rows
+                            ],
+                            on_conflict="machine_number"
+                        ).execute()
+                        try:
+                            rows = client.table("machines").select("*").order("machine_number").execute().data or []
+                        except Exception:
+                            rows = client.table("machines").select("*").order("id").execute().data or []
+                        print(f"[FreshWash] admin_dashboard_machines: after seed, Supabase returned {len(rows)} row(s)")
+                    except Exception as seed_exc:
+                        log_exception("admin machines seed failed", seed_exc)
             if rows:
                 return [normalize_machine(row) for row in rows]
         except Exception as exc:
@@ -1313,8 +1541,12 @@ def update_machine(machine_number, name=None, status=None, enabled=None, load_ty
     )
     machine_name = (name if name is not None else (current_machine or {}).get("name", base_machine["label"])).strip()
     machine_status = status if status is not None else (current_machine or {}).get("status", base_machine["status"])
+    if machine_status not in VALID_MACHINE_STATUSES:
+        raise ValueError("Invalid machine status.")
     machine_load_type = load_type if load_type is not None else (current_machine or {}).get("load_type", base_machine["load_type"])
     machine_enabled = bool(enabled) if enabled is not None else bool((current_machine or {}).get("enabled", base_machine["enabled"]))
+    if machine_status == "Disabled":
+        machine_enabled = False
     client = admin_db_client()
     if client:
         payload = {
@@ -1361,6 +1593,38 @@ def update_machine(machine_number, name=None, status=None, enabled=None, load_ty
                 """,
                 (machine_number, machine_name, machine_status, machine_load_type, 1 if machine_enabled else 0),
             )
+
+
+def update_machine_status_by_id(machine_id, status, load_type=None):
+    machine_id = str(machine_id or "").strip()
+    if not machine_id:
+        raise ValueError("Machine id is required.")
+    if status not in VALID_MACHINE_STATUSES:
+        raise ValueError("Invalid machine status.")
+
+    machine = next(
+        (
+            current_machine
+            for current_machine in admin_dashboard_machines()
+            if str(current_machine.get("id")) == machine_id
+            or str(current_machine.get("machine_number")) == machine_id
+        ),
+        None,
+    )
+    if not machine:
+        raise ValueError("Machine not found.")
+    allowed_load_types = set(get_admin_settings()["machines"]["default_load_types"])
+    if load_type is not None and load_type not in allowed_load_types:
+        raise ValueError("Invalid load type.")
+
+    update_machine(
+        int(machine.get("machine_number") or machine.get("id")),
+        name=machine.get("name"),
+        status=status,
+        enabled=status != "Disabled",
+        load_type=load_type if load_type is not None else machine.get("load_type"),
+    )
+    return machine
 
 
 def update_service(name, price, description):
@@ -1432,6 +1696,8 @@ def get_admin_settings():
         "profile": {
             "name": session.get("user", {}).get("name", ""),
             "email": session.get("user", {}).get("email", ""),
+            "phone": session.get("user", {}).get("phone", ""),
+            "avatar": session.get("user", {}).get("avatar", ""),
         },
         "system": {
             "shop_name": rows.get("shop_name", ADMIN_SETTINGS_DEFAULTS["shop_name"]),
@@ -1479,8 +1745,9 @@ def save_admin_settings(updates):
             )
 
 
-def update_admin_profile_settings(user_id, name, email, password=""):
+def update_admin_profile_settings(user_id, name, email, phone="", password=""):
     normalized_email = normalize_email(email)
+    phone = (phone or "").strip()
     if local_auth_enabled():
         users = load_local_users()
         for user in users:
@@ -1490,14 +1757,14 @@ def update_admin_profile_settings(user_id, name, email, password=""):
             if user.get("id") == user_id:
                 user["full_name"] = name
                 user["email"] = normalized_email
+                user["phone"] = phone
                 if password:
                     user["password_hash"] = generate_password_hash(password)
                 break
         save_local_users(users)
         return
 
-    profile_update = {"full_name": name, "email": normalized_email}
-    access_token = session.get("access_token", "")
+    profile_update = {"full_name": name, "email": normalized_email, "phone": phone}
     try:
         if is_supabase_service_role_enabled():
             client = get_service_client()
@@ -1512,8 +1779,9 @@ def update_admin_profile_settings(user_id, name, email, password=""):
                 "email": normalized_email,
                 "user_metadata": {
                     "full_name": name,
-                    "phone": session["user"].get("phone", ""),
+                    "phone": phone,
                     "address": session["user"].get("address", ""),
+                    "avatar": session["user"].get("avatar", ""),
                     "role": session["user"].get("role", "admin"),
                 }
             }
@@ -1521,23 +1789,87 @@ def update_admin_profile_settings(user_id, name, email, password=""):
                 auth_payload["password"] = password
             client.auth.admin.update_user_by_id(user_id, auth_payload)
             return
-        authed = get_authed_client(access_token)
-        execute_update_with_fallback(
-            "profiles",
-            profile_payload_variants({"id": user_id, **profile_update}),
-            "id",
-            user_id,
-            clients=[("authenticated session", authed)],
-        )
-        auth_payload = {"email": normalized_email, "data": {"full_name": name}}
-        if password:
-            auth_payload["password"] = password
-        authed.auth.update_user(auth_payload)
+        raise ValueError("Updating Supabase admin profiles requires SUPABASE_SERVICE_ROLE_KEY.")
     except Exception as exc:
         raise ValueError(f"Could not update admin profile: {exc}")
 
 
 # ── FIXED: build_admin_reports now uses camelCase keys to match the JS frontend ──
+def upload_admin_avatar_to_storage(user_id, image_bytes, content_type):
+    if not is_supabase_enabled():
+        raise ValueError("Supabase is not configured.")
+    if not is_supabase_service_role_enabled():
+        raise ValueError("Supabase service role is required to upload admin avatars.")
+    if not user_id:
+        raise ValueError("Missing logged-in user id.")
+
+    extension = "jpg"
+    if "/" in (content_type or ""):
+        extension = (content_type.split("/", 1)[1] or "jpg").split(";", 1)[0].lower() or "jpg"
+    if extension == "jpeg":
+        extension = "jpg"
+    if extension not in {"jpg", "png", "gif", "webp"}:
+        extension = "jpg"
+
+    storage_path = f"{user_id}/admin-profile-{uuid.uuid4().hex}.{extension}"
+    try:
+        client = get_service_client()
+        client.storage.from_(ADMIN_AVATAR_BUCKET).upload(
+            storage_path,
+            image_bytes,
+            {"content-type": content_type or "image/jpeg"},
+        )
+    except Exception as exc:
+        raise ValueError(f"Upload failed for storage bucket '{ADMIN_AVATAR_BUCKET}': {exc}")
+
+    try:
+        public_url = client.storage.from_(ADMIN_AVATAR_BUCKET).get_public_url(storage_path)
+    except Exception as exc:
+        raise ValueError(f"Could not get public URL for uploaded avatar: {exc}")
+    if not public_url:
+        raise ValueError("Supabase did not return a public URL for the uploaded avatar.")
+    return public_url
+
+
+def update_admin_avatar(user_id, avatar):
+    avatar = avatar or ""
+    if not user_id:
+        raise ValueError("Missing logged-in user id.")
+    if not avatar:
+        raise ValueError("Missing uploaded avatar URL.")
+    if local_auth_enabled():
+        users = load_local_users()
+        for user in users:
+            if user.get("id") == user_id:
+                user["avatar"] = avatar
+                break
+        save_local_users(users)
+        return
+
+    profile_update = {"avatar": avatar}
+    try:
+        if is_supabase_service_role_enabled():
+            client = get_service_client()
+            execute_update_with_fallback(
+                "profiles",
+                profile_payload_variants({"id": user_id, **profile_update}),
+                "id",
+                user_id,
+                clients=[("service role", client)],
+            )
+            try:
+                client.auth.admin.update_user_by_id(
+                    user_id,
+                    {"user_metadata": {**(session.get("user") or {}), "avatar": avatar}},
+                )
+            except Exception as exc:
+                log_exception("admin auth metadata avatar sync failed", exc, user=user_id)
+            return
+        raise ValueError("Supabase service role is required to save admin avatar URLs.")
+    except Exception as exc:
+        raise ValueError(f"Profile update failed: {exc}")
+
+
 def build_admin_reports(bookings, machines):
     per_day_counter = Counter(
         (booking.get("pickup_date") or booking.get("date") or "Unscheduled")
@@ -1579,12 +1911,34 @@ def build_admin_reports(bookings, machines):
     }
 
 
+def build_admin_payment_records(bookings):
+    payment_records = []
+    for index, booking in enumerate(bookings or []):
+        payment_method = booking.get("payment_method") or ""
+        if not payment_method:
+            continue
+        payment_records.append({
+            "id": booking.get("id") or f"payment-{index}",
+            "booking_id": booking.get("id") or "No booking linked",
+            "amount": float(booking.get("total_price", 0) or 0),
+            "status": booking.get("payment_status") or "Pending Payment",
+            "method": payment_method,
+            "reference_number": booking.get("reference_number") or "",
+            "payment_proof": booking.get("payment_proof") or booking.get("proof_image") or "",
+            "proof_image": booking.get("payment_proof") or booking.get("proof_image") or "",
+            "paid_at": booking.get("created_at") or booking.get("pickup_date") or "",
+            "customer_name": booking.get("full_name") or "FreshWash Customer",
+        })
+    return payment_records
+
+
 def build_admin_dashboard_payload():
     users = admin_dashboard_users()
     bookings = admin_dashboard_bookings()
     machines = admin_dashboard_machines()
     services = admin_dashboard_services()
     settings = get_admin_settings()
+    payments = build_admin_payment_records(bookings)
     completed_orders = sum(1 for booking in bookings if booking.get("status") == "Completed")
     pending_orders = sum(1 for booking in bookings if booking.get("status") == "Pending")
     cancelled_orders = sum(1 for booking in bookings if booking.get("status") == "Cancelled")
@@ -1606,6 +1960,7 @@ def build_admin_dashboard_payload():
         },
         "users": users,
         "bookings": bookings,
+        "payments": payments,
         "machines": machines,
         "services": services,
         "reports": reports,
@@ -1628,6 +1983,7 @@ def empty_admin_dashboard_payload():
         },
         "users": [],
         "bookings": [],
+        "payments": [],
         "machines": [],
         "services": [],
         "reports": {
@@ -1646,6 +2002,8 @@ def empty_admin_dashboard_payload():
             "profile": {
                 "name": session.get("user", {}).get("name", ""),
                 "email": session.get("user", {}).get("email", ""),
+                "phone": session.get("user", {}).get("phone", ""),
+                "avatar": session.get("user", {}).get("avatar", ""),
             },
             "system": {
                 "shop_name": ADMIN_SETTINGS_DEFAULTS["shop_name"],
@@ -1667,7 +2025,6 @@ def empty_admin_dashboard_payload():
 def render_admin_dashboard_view(section="dashboard"):
     safe_user = session.get("user") or {}
     safe_section = section or "dashboard"
-    safe_access_token = refresh_session_token() or session.get("access_token", "")
 
     try:
         admin_data = build_admin_dashboard_payload() or {}
@@ -1680,23 +2037,14 @@ def render_admin_dashboard_view(section="dashboard"):
         user=safe_user,
         admin_data=admin_data,
         initial_section=safe_section,
-        supabase_url=os.environ.get("SUPABASE_URL", ""),
-        supabase_key=os.environ.get("SUPABASE_KEY", ""),
-        access_token=safe_access_token,
     )
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
-
-@app.route("/")
-def index():
-    return redirect(url_for("readers_view"))
-
-
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if "user" in session:
-        return redirect(url_for("admin_dashboard" if session["user"].get("is_admin") else "readers_view"))
+        return redirect(url_for("admin_dashboard" if session["user"].get("is_admin") else "home"))
 
     if request.method == "GET":
         return redirect_to_auth_modal("register")
@@ -1753,7 +2101,6 @@ def register():
                         "address": address,
                         "role": role,
                     },
-                    access_token=res.session.access_token if res.session else "",
                 )
 
                 upsert_local_user(name, email, phone, address, password)
@@ -1789,8 +2136,10 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if "user" in session:
-        return redirect(url_for("admin_dashboard" if session["user"].get("is_admin") else "readers_view"))
+    if session.get("user"):
+        target = "admin_dashboard" if session["user"].get("is_admin") else "home"
+        log_auth_debug("redirect destination", email=session["user"].get("email", ""), target=url_for(target))
+        return redirect(url_for("admin_dashboard" if session["user"].get("is_admin") else "home"))
 
     if request.method == "GET":
         return redirect_to_auth_modal("login")
@@ -1809,20 +2158,54 @@ def login():
         try:
             if local_auth_enabled():
                 user = authenticate_local_user(email, password)
+                log_auth_debug("local login success", email=email, role=user.get("role", ""), is_admin=user.get("is_admin", False))
                 persist_session_user(user)
             else:
                 try:
+                    log_auth_debug("supabase login attempt", email=email)
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                    login_user = getattr(res, "user", None)
+                    login_session = getattr(res, "session", None)
+                    auth_session = supabase.auth.get_session() or login_session
+                    current_user_response = supabase.auth.get_user()
+                    auth_user = (
+                        getattr(current_user_response, "user", None)
+                        or getattr(getattr(current_user_response, "data", None), "user", None)
+                        or login_user
+                    )
+                    log_auth_debug(
+                        "supabase login result",
+                        email=email,
+                        has_user=bool(login_user),
+                        has_session=bool(login_session),
+                    )
 
-                    if not res.user or not res.session:
+                    if not auth_user or not auth_session:
                         flash("Invalid email or password.", "error")
                         return redirect_to_auth_modal("login", form_data)
 
-                    access_token = res.session.access_token
-                    profile = fetch_supabase_profile_or_error(res.user, access_token)
-                    user = build_session_user(res.user, profile)
-                    persist_session_user(user, access_token)
-                    session["refresh_token"] = res.session.refresh_token or ""
+                    log_auth_debug(
+                        "session result",
+                        email=email,
+                        has_session=bool(auth_session),
+                    )
+                    log_auth_debug(
+                        "current authenticated user",
+                        user_id=getattr(auth_user, "id", ""),
+                        email=getattr(auth_user, "email", ""),
+                    )
+                    profile = fetch_supabase_profile_or_error(auth_user)
+                    user = build_session_user(auth_user, profile)
+                    log_auth_debug(
+                        "login role detected",
+                        email=user.get("email", ""),
+                        auth_user_id=auth_user.id,
+                        profile_email=profile.get("email", ""),
+                        detected_role=user.get("role", ""),
+                        is_admin=user.get("is_admin", False),
+                        has_session=bool(auth_session),
+                    )
+                    persist_session_user(user)
 
                     upsert_local_user(
                         user["name"],
@@ -1830,20 +2213,43 @@ def login():
                         user.get("phone", ""),
                         user.get("address", ""),
                         password,
+                        role_override=user.get("role", "user"),
                     )
                 except Exception as auth_error:
+                    log_exception("supabase login failed", auth_error, email=email)
+                    message = str(auth_error)
+                    lowered = message.lower()
+                    if any(phrase in lowered for phrase in (
+                        "invalid login credentials",
+                        "invalid email or password",
+                        "email not confirmed",
+                        "invalid credentials",
+                    )):
+                        flash("Invalid email or password.", "error")
+                        return redirect_to_auth_modal("login", form_data)
+                    if "admin profile not found" in lowered:
+                        flash("Admin profile not found.", "error")
+                        return redirect_to_auth_modal("login", form_data)
+                    if "not authorized as admin" in lowered:
+                        flash("This account is not authorized as admin.", "error")
+                        return redirect_to_auth_modal("login", form_data)
                     if not is_supabase_connection_error(auth_error):
                         raise
                     user = authenticate_local_user(email, password)
                     persist_session_user(user)
                     flash("Signed in using locally saved account data because Supabase is currently unavailable.", "success")
 
+            if session["user"].get("is_admin"):
+                log_auth_debug("redirect destination", email=session["user"].get("email", ""), target=url_for("admin_dashboard"))
+            else:
+                log_auth_debug("redirect destination", email=session["user"].get("email", ""), target=url_for("home"))
             flash(f"Welcome back, {session['user']['name']}!", "success")
-            return redirect(url_for("admin_dashboard" if session["user"].get("is_admin") else "readers_view"))
+            return redirect(url_for("admin_dashboard" if session["user"].get("is_admin") else "home"))
 
         except ValueError as e:
             flash(str(e), "error")
         except Exception as e:
+            log_exception("login route failed", e, email=email)
             flash(f"Login failed: {str(e)}", "error")
 
         return redirect_to_auth_modal("login", form_data)
@@ -1931,6 +2337,16 @@ def admin_settings():
     return render_admin_dashboard_view("settings")
 
 
+@app.route("/admin/api/dashboard-data", methods=["GET"])
+@admin_required
+def admin_dashboard_data_api():
+    try:
+        return jsonify({"ok": True, "data": build_admin_dashboard_payload()})
+    except Exception as exc:
+        log_exception("admin dashboard data api failed", exc, user=session.get("user", {}).get("email", ""))
+        return jsonify({"ok": False, "error": f"Could not load admin dashboard data: {exc}"}), 500
+
+
 @app.route("/admin/api/users/<user_id>", methods=["POST"])
 @app.route("/admin/api/users", methods=["POST"])
 @admin_required
@@ -1957,30 +2373,35 @@ def admin_user_action(user_id=None):
                 admin_create_supabase_user(name, email, phone, address, password, role)
         elif action == "edit":
             name = data.get("name", "").strip()
+            email = normalize_email(data.get("email", ""))
             phone = data.get("phone", "").strip()
             address = data.get("address", "").strip()
+            avatar = data.get("avatar", "") or ""
             role = normalize_profile_role(data.get("role", "user"))
             if not name:
                 return jsonify({"ok": False, "error": "Name is required."}), 400
+            if not email:
+                return jsonify({"ok": False, "error": "Email is required."}), 400
+            if not is_valid_email(email):
+                return jsonify({"ok": False, "error": "Enter a valid email address."}), 400
+            if not phone:
+                return jsonify({"ok": False, "error": "Phone number is required."}), 400
+            if not address:
+                return jsonify({"ok": False, "error": "Address is required."}), 400
             if local_auth_enabled():
-                email = normalize_email(data.get("email", ""))
-                if not email:
-                    return jsonify({"ok": False, "error": "Email is required."}), 400
-                admin_update_local_user(user_id, name, email, role_override=role)
-                existing_local_user = next((user for user in load_local_users() if user.get("id") == user_id), None)
-                update_local_user(user_id, name, phone, address, (existing_local_user or {}).get("avatar", ""))
+                admin_update_local_user(user_id, name, email, phone, address, avatar, role_override=role)
             else:
                 if not is_supabase_service_role_enabled():
                     return jsonify({"ok": False, "error": "Editing Supabase users requires SUPABASE_SERVICE_ROLE_KEY."}), 400
-                admin_update_supabase_user(user_id, name, phone, address, role)
+                admin_update_supabase_user(user_id, name, email, phone, address, avatar, role)
             if session["user"]["id"] == user_id:
                 session["user"]["name"] = name
-                if local_auth_enabled():
-                    session["user"]["email"] = normalize_email(data.get("email", ""))
+                session["user"]["email"] = email
                 session["user"]["phone"] = phone
                 session["user"]["address"] = address
+                session["user"]["avatar"] = avatar
                 session["user"]["role"] = role
-                persist_session_user(session["user"], session.get("access_token", ""))
+                persist_session_user(session["user"])
         elif action == "delete":
             if session["user"]["id"] == user_id:
                 return jsonify({"ok": False, "error": "You cannot delete the active admin account."}), 400
@@ -2053,7 +2474,7 @@ def admin_machine_action(machine_number):
     allowed_load_types = set(get_admin_settings()["machines"]["default_load_types"])
     if name is not None and not str(name).strip():
         return jsonify({"ok": False, "error": "Machine name is required."}), 400
-    if status is not None and status not in {"Available", "In Use"}:
+    if status is not None and status not in VALID_MACHINE_STATUSES:
         return jsonify({"ok": False, "error": "Invalid machine status."}), 400
     if load_type is not None and load_type not in allowed_load_types:
         return jsonify({"ok": False, "error": "Invalid load type."}), 400
@@ -2063,6 +2484,25 @@ def admin_machine_action(machine_number):
     except Exception as exc:
         log_exception("admin machine action failed", exc, machine_number=machine_number, data=data)
         return jsonify({"ok": False, "error": f"Machine update failed: {exc}"}), 500
+
+
+@app.route("/api/update-machine-status", methods=["PATCH", "POST"])
+@admin_required
+def update_machine_status_api():
+    data = request.get_json() or {}
+    machine_id = data.get("id") or data.get("machine_id") or data.get("machine_number")
+    status = data.get("status")
+    load_type = data.get("load_type")
+    if status not in VALID_MACHINE_STATUSES:
+        return jsonify({"ok": False, "error": "Invalid machine status."}), 400
+    try:
+        update_machine_status_by_id(machine_id, status, load_type=load_type)
+        return jsonify({"ok": True, "data": build_admin_dashboard_payload()})
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        log_exception("machine status api failed", exc, data=data)
+        return jsonify({"ok": False, "error": f"Machine status update failed: {exc}"}), 500
 
 
 @app.route("/admin/api/services/<path:service_name>", methods=["POST"])
@@ -2133,6 +2573,7 @@ def admin_settings_action():
         if action == "profile":
             name = data.get("name", "").strip()
             email = normalize_email(data.get("email", ""))
+            phone = data.get("phone", "").strip()
             password = data.get("password", "").strip()
             if not name:
                 return jsonify({"ok": False, "error": "Admin name is required."}), 400
@@ -2140,10 +2581,11 @@ def admin_settings_action():
                 return jsonify({"ok": False, "error": "Enter a valid admin email."}), 400
             if password and len(password) < 6:
                 return jsonify({"ok": False, "error": "Password must be at least 6 characters."}), 400
-            update_admin_profile_settings(session["user"]["id"], name, email, password)
+            update_admin_profile_settings(session["user"]["id"], name, email, phone, password)
             session["user"]["name"] = name
             session["user"]["email"] = email
-            persist_session_user(session["user"], session.get("access_token", ""))
+            session["user"]["phone"] = phone
+            persist_session_user(session["user"])
         elif action == "system":
             shop_name = data.get("shop_name", "").strip()
             contact_number = data.get("contact_number", "").strip()
@@ -2182,6 +2624,58 @@ def admin_settings_action():
         return jsonify({"ok": False, "error": f"Settings update failed: {exc}"}), 500
 
 
+@app.route("/admin/api/profile-photo", methods=["POST"])
+@admin_required
+def admin_profile_photo_upload():
+    active_user = session.get("user") or {}
+    user_id = active_user.get("id", "")
+    if not user_id:
+        return jsonify({"ok": False, "error": "Missing session. Please log in again."}), 401
+    if not is_supabase_enabled():
+        return jsonify({"ok": False, "error": "Supabase is not configured for profile photo uploads."}), 500
+    if not is_supabase_service_role_enabled():
+        return jsonify({"ok": False, "error": "SUPABASE_SERVICE_ROLE_KEY is required to upload admin profile photos."}), 500
+
+    uploaded = request.files.get("avatar") or request.files.get("profile_image")
+    if not uploaded or not uploaded.filename:
+        return jsonify({"ok": False, "error": "Choose an image to upload."}), 400
+    if not (uploaded.mimetype or "").startswith("image/"):
+        return jsonify({"ok": False, "error": "Only image uploads are allowed."}), 400
+
+    image_bytes = uploaded.read()
+    if not image_bytes:
+        return jsonify({"ok": False, "error": "The selected image is empty."}), 400
+    if len(image_bytes) > 2 * 1024 * 1024:
+        return jsonify({"ok": False, "error": "Profile photo must be 2MB or smaller."}), 400
+
+    try:
+        avatar = upload_admin_avatar_to_storage(
+            user_id,
+            image_bytes,
+            uploaded.mimetype,
+        )
+    except ValueError as exc:
+        log_exception("admin profile photo storage upload failed", exc, user=active_user.get("email", ""))
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+    try:
+        update_admin_avatar(
+            user_id,
+            avatar,
+        )
+    except ValueError as exc:
+        log_exception("admin profile avatar update failed", exc, user=active_user.get("email", ""), avatar=avatar)
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+    try:
+        session["user"]["avatar"] = avatar
+        persist_session_user(session["user"])
+        return jsonify({"ok": True, "avatar": avatar, "data": build_admin_dashboard_payload()})
+    except Exception as exc:
+        log_exception("admin profile photo upload failed", exc, user=session.get("user", {}).get("email", ""))
+        return jsonify({"ok": False, "error": f"Photo upload failed: {exc}"}), 500
+
+
 @app.route("/services")
 @login_required
 def services():
@@ -2207,6 +2701,7 @@ def booking():
         service_type = request.form.get("service_type", "")
         machine      = request.form.get("machine", "").strip()
         load_type    = normalize_booking_load_type(request.form.get("load_type", ""))
+        delivery_option = (request.form.get("delivery_option", "Pickup") or "Pickup").strip().title()
         full_name    = request.form.get("full_name", "").strip()
         phone        = request.form.get("phone", "").strip()
         address      = request.form.get("address", "").strip()
@@ -2214,6 +2709,9 @@ def booking():
         pickup_time  = request.form.get("pickup_time", "")
         notes        = request.form.get("notes", "").strip()
         selected_machine_status = request.form.get("selected_machine_status", "").strip()
+        payment_method = normalize_payment_method(request.form.get("payment_method", "Cash on Delivery"))
+        reference_number = request.form.get("reference_number", "").strip()
+        payment_proof = ""
 
         try:
             weight = float(request.form.get("weight", 0))
@@ -2230,6 +2728,19 @@ def booking():
         if not pickup_date:              errors.append("Pickup date is required.")
         if not pickup_time:              errors.append("Pickup time is required.")
         if weight <= 0:                  errors.append("Weight must be greater than 0.")
+        if delivery_option not in {"Pickup", "Delivery"}:
+            errors.append("Invalid delivery option selected.")
+        if payment_method not in VALID_PAYMENT_METHODS:
+            errors.append("Invalid payment method selected.")
+        if payment_method in DIGITAL_PAYMENT_METHODS and not reference_number:
+            errors.append(f"{payment_method} reference number is required.")
+
+        try:
+            payment_proof = encode_payment_proof_upload(
+                request.files.get("payment_proof") or request.files.get("proof_image")
+            )
+        except ValueError as exc:
+            errors.append(str(exc))
 
         selected_machine = machines_by_name.get(machine)
         if machine and not selected_machine:
@@ -2247,7 +2758,9 @@ def booking():
         if errors:
             for e in errors:
                 flash(e, "error")
-            return render_template("booking.html", services=SERVICES, user=user, form=request.form, machines=machines or [])
+            return render_template("booking.html", **booking_template_context(user, request.form, machines))
+
+        payment_status = "Pending Verification" if payment_method in DIGITAL_PAYMENT_METHODS else "Pending Payment"
 
         payload = {
             "user_id": user.get("id", ""),
@@ -2261,14 +2774,19 @@ def booking():
             "pickup_time": pickup_time,
             "weight": weight,
             "total_price": round(float(SERVICES.get(service_type, {}).get("price", 0) or 0) * weight, 2),
+            "delivery_option": delivery_option,
             "notes": notes,
             "status": "Pending",
+            "payment_method": payment_method,
+            "reference_number": reference_number,
+            "payment_proof": payment_proof,
+            "payment_status": payment_status,
         }
-        print("DATA:", payload)
+        debug_payload = {**payload, "payment_proof": "[uploaded image]" if payment_proof else ""}
+        print("DATA:", debug_payload)
         print("USER:", user)
 
         try:
-            refresh_session_token()
             insert_booking_record(db(), payload)
             if selected_machine and selected_machine.get("machine_number") is not None:
                 update_machine(
@@ -2278,12 +2796,12 @@ def booking():
                     load_type=normalize_booking_load_type(selected_machine.get("load_type", load_type)),
                 )
             flash("Booking confirmed! We'll pick up your laundry soon.", "success")
-            return redirect(url_for("readers_view", _anchor="my-booking"))
+            return redirect(url_for("home", _anchor="my-booking"))
         except Exception as exc:
             log_exception("booking insert failed", exc, payload=payload, user=user.get("email", ""))
             flash(f"Booking failed: {str(exc)}", "error")
 
-    return render_template("booking.html", services=SERVICES, user=user, form={}, machines=machines or [])
+    return render_template("booking.html", **booking_template_context(user, {}, machines))
 
 
 @app.route("/my-bookings")
@@ -2291,7 +2809,6 @@ def booking():
 def my_bookings():
     user = session["user"]
     try:
-        refresh_session_token()
         res = db().table("bookings").select("*") \
             .eq("user_id", user["id"]) \
             .order("created_at", desc=True).execute()
@@ -2306,8 +2823,8 @@ def my_bookings():
     return render_template("my_bookings.html", bookings=bookings or [], user=user)
 
 
-@app.route("/readers-view")
-def readers_view():
+@app.route("/")
+def home():
     user = session.get("user")
     if user and user.get("is_admin"):
         return redirect(url_for("admin_dashboard"))
@@ -2321,7 +2838,6 @@ def readers_view():
         machines = []
     if user:
         try:
-            refresh_session_token()
             res = db().table("bookings").select("*") \
                 .eq("user_id", user["id"]) \
                 .order("created_at", desc=True) \
@@ -2331,7 +2847,6 @@ def readers_view():
             log_exception("recent bookings fetch failed", exc, user=user.get("email", ""))
             recent = []
         try:
-            refresh_session_token()
             bookings_res = db().table("bookings").select("*") \
                 .eq("user_id", user["id"]) \
                 .order("created_at", desc=True).execute()
@@ -2354,6 +2869,11 @@ def readers_view():
         active_auth_modal=active_auth_modal,
         auth_form_data=auth_form_data,
     )
+
+
+@app.route("/readers-view")
+def readers_view():
+    return redirect(url_for("home"))
 
 
 @app.route("/profile/update", methods=["POST"])

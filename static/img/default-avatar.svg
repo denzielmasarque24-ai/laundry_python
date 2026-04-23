@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title desc">
+  <title id="title">Default profile avatar</title>
+  <desc id="desc">A default avatar illustration for FreshWash users.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff9bca" />
+      <stop offset="100%" stop-color="#eb4d98" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="60" fill="url(#bg)" />
+  <circle cx="60" cy="46" r="22" fill="#fff4fa" />
+  <path d="M24 102c7-19 22-29 36-29s29 10 36 29" fill="#fff4fa" />
+</svg>

@@ -19,10 +19,13 @@
 {% set current_phone = (current_user.get('phone') if current_user else '') or '' %}
 {% set current_address = (current_user.get('address') if current_user else '') or '' %}
 {% set current_avatar = (current_user.get('avatar') if current_user else '') or '' %}
-{% set home_href = url_for('readers_view') %}
-{% set about_href = url_for('readers_view', _anchor='about') %}
+{% set home_href = url_for('home') %}
+{% set about_href = url_for('home', _anchor='about') %}
 {% set book_href = url_for('booking') if current_user else '#' %}
 {% set my_booking_href = url_for('my_bookings') if current_user else '#' %}
+{% set services_href = url_for('services') if current_user else '#' %}
+{% set profile_href = url_for('profile') if current_user else '#' %}
+{% set active_nav = 'book' if current_endpoint == 'booking' else ('my-booking' if current_endpoint == 'my_bookings' else 'home') %}
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
@@ -60,14 +63,14 @@
     </button>
 
     <nav class="header-nav" id="headerNav">
-      <a href="{{ home_href }}" class="{% if current_endpoint == 'readers_view' %}active{% endif %}">Home</a>
-      <a href="{{ about_href }}">About</a>
+      <a href="{{ home_href }}" class="{% if active_nav == 'home' %}active{% endif %}" data-nav-item="home" {% if active_nav == 'home' %}aria-current="page"{% endif %}>Home</a>
+      <a href="{{ about_href }}" data-nav-item="about">About</a>
       {% if current_user %}
-      <a href="{{ book_href }}">Book Now</a>
-      <a href="{{ my_booking_href }}">My Booking</a>
+      <a href="{{ book_href }}" class="{% if active_nav == 'book' %}active{% endif %}" data-nav-item="book" {% if active_nav == 'book' %}aria-current="page"{% endif %}>Book Now</a>
+      <a href="{{ my_booking_href }}" class="{% if active_nav == 'my-booking' %}active{% endif %}" data-nav-item="my-booking" {% if active_nav == 'my-booking' %}aria-current="page"{% endif %}>My Booking</a>
       {% else %}
-      <a href="#" data-auth-link="register">Book Now</a>
-      <a href="#" data-auth-link="login">My Booking</a>
+      <a href="#" data-auth-link="register" data-nav-item="book">Book Now</a>
+      <a href="#" data-auth-link="login" data-nav-item="my-booking">My Booking</a>
       {% endif %}
     </nav>
 
@@ -153,7 +156,6 @@
 
     <div class="panel-actions">
       <button type="submit" class="btn-primary">Save Changes</button>
-      <a href="{{ url_for('profile') }}" class="btn-ghost">Open Profile</a>
       <a href="{{ url_for('logout') }}" class="btn-ghost" onclick="logoutUser(event, '{{ url_for('logout') }}')">Logout</a>
     </div>
   </form>
@@ -181,6 +183,9 @@
         <button type="button" class="password-toggle" data-password-toggle="loginPagePassword" aria-label="Show password">
           <i class="fa-regular fa-eye-slash"></i>
         </button>
+      </div>
+      <div class="auth-inline-action">
+        <a href="#" class="forgot-link" data-auth-switch="forgot">Forgot Password?</a>
       </div>
       <button type="submit" class="btn-primary w-full">Login</button>
     </form>
@@ -233,8 +238,86 @@
     </form>
     <p class="auth-foot">Already have an account? <a href="#" class="text-link" data-auth-switch="login">Login</a></p>
   </aside>
+
+  <aside class="auth-modal-shell" id="forgotAuthModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="forgotAuthTitle">
+    <button class="auth-close" type="button" onclick="closeAuthModal()" aria-label="Close">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <div class="auth-brand">
+      <div class="auth-brand-icon"><i class="fa-solid fa-shirt"></i></div>
+      <span>FreshWash</span>
+    </div>
+    <h2 id="forgotAuthTitle">Reset your password</h2>
+    <p class="auth-form-copy">Enter your email and we'll send you a reset link so you can get back to FreshWash quickly.</p>
+    <form class="auth-form" id="forgotPasswordForm" novalidate>
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
+        <input type="email" id="forgotPasswordEmail" class="rv-input" placeholder="Email address" required />
+      </div>
+      <button type="submit" class="btn-primary w-full">Send Reset Link</button>
+    </form>
+    <p class="auth-foot">Remembered it? <a href="#" class="text-link" data-auth-switch="login">Back to login</a></p>
+  </aside>
 </div>
 {% endif %}
+
+<footer class="fw-premium-footer">
+  <div class="fw-premium-footer__wave" aria-hidden="true"></div>
+  <div class="fw-premium-footer__bubbles" aria-hidden="true">
+    <span class="fw-premium-footer__bubble bubble-one"></span>
+    <span class="fw-premium-footer__bubble bubble-two"></span>
+    <span class="fw-premium-footer__bubble bubble-three"></span>
+  </div>
+
+  <div class="fw-premium-footer__inner">
+    <section class="fw-premium-footer__brand">
+      <div class="fw-premium-footer__brand-mark">
+        <span class="fw-premium-footer__brand-icon"><i class="fa-solid fa-soap"></i></span>
+        <div>
+          <strong>FreshWash</strong>
+          <p>Clean laundry, fresh life</p>
+        </div>
+      </div>
+
+      <p class="fw-premium-footer__description">
+        FreshWash makes laundry easy, fast, and hassle-free. Clean clothes, happy life!
+      </p>
+    </section>
+
+    <section class="fw-premium-footer__info">
+      <h3>Contact Us</h3>
+      <div class="fw-premium-footer__contact-list">
+        <a href="mailto:hello@freshwash.app">
+          <i class="fa-solid fa-envelope"></i>
+          <span>hello@freshwash.app</span>
+        </a>
+        <a href="tel:+639171234567">
+          <i class="fa-solid fa-phone"></i>
+          <span>+63 917 123 4567</span>
+        </a>
+        <a href="https://maps.google.com/?q=Cebu+City+Philippines" target="_blank" rel="noreferrer">
+          <i class="fa-solid fa-location-dot"></i>
+          <span>Cebu City, Philippines</span>
+        </a>
+      </div>
+    </section>
+
+    <nav class="fw-premium-footer__info fw-premium-footer__links" aria-label="Quick links">
+      <h3>Quick Links</h3>
+      <a href="{{ home_href }}">Home</a>
+      <a href="{{ services_href }}" {% if not current_user %}data-auth-link="login"{% endif %}>Services</a>
+      <a href="{{ book_href }}" {% if not current_user %}data-auth-link="register"{% endif %}>Book Now</a>
+      <a href="{{ profile_href }}" {% if not current_user %}data-auth-link="login"{% endif %}>Profile</a>
+    </nav>
+  </div>
+
+  <div class="fw-premium-footer__bottom">
+    <p>&copy; 2026 FreshWash. All rights reserved.</p>
+    <div class="fw-premium-footer__bottom-copy">
+      <span>Fresh. Clean. You.</span>
+    </div>
+  </div>
+</footer>
 
 <script>
   const CURRENT_USER = {% if current_user %}{{ current_user | tojson }}{% else %}null{% endif %};
@@ -266,29 +349,66 @@
     const backdrop = document.getElementById("authBackdrop");
     const loginModal = document.getElementById("loginAuthModal");
     const registerModal = document.getElementById("registerAuthModal");
-    if (!backdrop || !loginModal || !registerModal) return;
+    const forgotModal = document.getElementById("forgotAuthModal");
+    if (!backdrop || !loginModal || !registerModal || !forgotModal) return;
     backdrop.classList.add("show");
     backdrop.setAttribute("aria-hidden", "false");
     loginModal.classList.toggle("open", modal === "login");
     registerModal.classList.toggle("open", modal === "register");
+    forgotModal.classList.toggle("open", modal === "forgot");
     loginModal.setAttribute("aria-hidden", String(modal !== "login"));
     registerModal.setAttribute("aria-hidden", String(modal !== "register"));
+    forgotModal.setAttribute("aria-hidden", String(modal !== "forgot"));
     document.body.classList.add("auth-modal-open");
     initPasswordToggles();
+    syncForgotPasswordEmail();
   }
 
   function closeAuthModal() {
     const backdrop = document.getElementById("authBackdrop");
     const loginModal = document.getElementById("loginAuthModal");
     const registerModal = document.getElementById("registerAuthModal");
-    if (!backdrop || !loginModal || !registerModal) return;
+    const forgotModal = document.getElementById("forgotAuthModal");
+    if (!backdrop || !loginModal || !registerModal || !forgotModal) return;
     backdrop.classList.remove("show");
     loginModal.classList.remove("open");
     registerModal.classList.remove("open");
+    forgotModal.classList.remove("open");
     backdrop.setAttribute("aria-hidden", "true");
     loginModal.setAttribute("aria-hidden", "true");
     registerModal.setAttribute("aria-hidden", "true");
+    forgotModal.setAttribute("aria-hidden", "true");
     document.body.classList.remove("auth-modal-open");
+  }
+
+  function syncForgotPasswordEmail() {
+    const loginEmail = document.querySelector('#loginAuthModal input[name="email"]');
+    const forgotEmail = document.getElementById("forgotPasswordEmail");
+    if (!forgotEmail || !loginEmail) return;
+    if (forgotEmail.value.trim()) return;
+    forgotEmail.value = loginEmail.value.trim();
+  }
+
+  function initForgotPasswordForm() {
+    const form = document.getElementById("forgotPasswordForm");
+    const emailInput = document.getElementById("forgotPasswordEmail");
+    if (!form || !emailInput || form.dataset.bound === "true") return;
+    form.dataset.bound = "true";
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      const email = emailInput.value.trim();
+      if (!email) {
+        showToast("Please enter your email address.", true);
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast("Please enter a valid email address.", true);
+        return;
+      }
+      showToast(`Password reset link sent to ${email}.`);
+      form.reset();
+      closeAuthModal();
+    });
   }
 
   function initAuthModalLinks() {
@@ -476,7 +596,7 @@
 
     const defaultSections = Array.from(document.querySelectorAll("[data-home-default-section]"));
     const aboutLinks = Array.from(document.querySelectorAll('a[href$="#about"]'));
-    const homeLinks = Array.from(document.querySelectorAll(`a[href="${window.location.pathname}"], a[href="/"], a[href="{{ url_for('readers_view') }}"]`));
+    const homeLinks = Array.from(document.querySelectorAll(`a[href="${window.location.pathname}"], a[href="/"], a[href="{{ url_for('home') }}"]`));
     let isAboutVisible = false;
 
     const revealAbout = ({ scroll = true, updateHash = true } = {}) => {
@@ -530,7 +650,7 @@
     homeLinks.forEach(link => {
       link.addEventListener("click", event => {
         const href = link.getAttribute("href") || "";
-        const isHomeLink = href === "/" || href === window.location.pathname || href === "{{ url_for('readers_view') }}";
+        const isHomeLink = href === "/" || href === window.location.pathname || href === "{{ url_for('home') }}";
         if (!isHomeLink || !aboutSection.classList.contains("is-visible")) return;
         event.preventDefault();
         hideAbout({ scroll: true });
@@ -546,6 +666,47 @@
     }
   }
 
+  function setActiveNavItem(activeItem) {
+    document.querySelectorAll("[data-nav-item]").forEach(link => {
+      const isActive = link.dataset.navItem === activeItem;
+      link.classList.toggle("active", isActive);
+      if (isActive) {
+        link.setAttribute("aria-current", "page");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+  }
+
+  function initActiveNavigation() {
+    const currentPath = () => window.location.pathname.replace(/\/+$/, "") || "/";
+    const syncFromUrl = () => {
+      const path = currentPath();
+      if (window.location.hash === "#about") {
+        setActiveNavItem("about");
+      } else if (path === "{{ url_for('booking') }}") {
+        setActiveNavItem("book");
+      } else if (path === "{{ url_for('my_bookings') }}") {
+        setActiveNavItem("my-booking");
+      } else {
+        setActiveNavItem("home");
+      }
+    };
+
+    syncFromUrl();
+
+    document.querySelectorAll("[data-nav-item]").forEach(link => {
+      if (link.dataset.navBound === "true") return;
+      link.dataset.navBound = "true";
+      link.addEventListener("click", () => {
+        if (link.hasAttribute("data-auth-link")) return;
+        setActiveNavItem(link.dataset.navItem);
+      });
+    });
+
+    window.addEventListener("hashchange", syncFromUrl);
+  }
+
   document.querySelectorAll(".flash button").forEach(button => {
     button.addEventListener("click", () => button.parentElement.remove());
   });
@@ -553,9 +714,13 @@
   syncProfileStorageFromSession();
   initAuthModalLinks();
   initPasswordToggles();
+  initForgotPasswordForm();
   initAboutSectionVisibility();
+  initActiveNavigation();
   if (ACTIVE_AUTH_MODAL) openAuthModal(ACTIVE_AUTH_MODAL);
 </script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
+
+

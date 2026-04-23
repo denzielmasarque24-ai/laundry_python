@@ -47,6 +47,125 @@
       color: var(--muted);
     }
 
+    .admin-panel-tools {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .admin-panel-tools-spacer {
+      min-height: 1px;
+    }
+
+    .admin-page-heading {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .admin-page-heading-copy {
+      min-width: 0;
+    }
+
+    .admin-page-title-icon {
+      width: 64px;
+      height: 64px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #ff8ebf 0%, #eb4d98 45%, #8e2558 100%);
+      color: #fff;
+      box-shadow: 0 18px 34px rgba(142, 37, 88, 0.18);
+    }
+
+    .admin-page-title-icon i {
+      font-size: 1.5rem;
+    }
+
+    .admin-section-head-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 22px 24px;
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255, 250, 252, 0.98), rgba(255, 243, 248, 0.95));
+      border: 1px solid rgba(242, 122, 178, 0.16);
+      box-shadow: 0 18px 40px rgba(142, 37, 88, 0.08);
+    }
+
+    .admin-section-head-main {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .admin-section-title {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .admin-section-title h2 {
+      margin: 0;
+      font-size: 1.55rem;
+      font-weight: 800;
+      line-height: 1.15;
+      color: #1f1721;
+      letter-spacing: -0.02em;
+    }
+
+    .admin-section-title-icon {
+      width: 64px;
+      height: 64px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #ff8ebf 0%, #eb4d98 45%, #8e2558 100%);
+      color: #fff;
+      box-shadow: 0 18px 34px rgba(142, 37, 88, 0.18);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      animation: adminSectionIconRise 0.45s ease both;
+    }
+
+    .admin-section-title-icon i {
+      font-size: 1.5rem;
+    }
+
+    .admin-section-subtitle {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: #7b7280;
+    }
+
+    .admin-section-head-card:hover .admin-section-title-icon {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 34px rgba(142, 37, 88, 0.2);
+    }
+
+    @keyframes adminSectionIconRise {
+      from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
     .admin-booking-line,
     .admin-user-line,
     .admin-service-line {
@@ -155,6 +274,13 @@
       display: flex;
     }
 
+    .admin-error-banner.is-success {
+      border-color: rgba(34, 197, 94, 0.18);
+      background: rgba(240, 253, 244, 0.96);
+      color: #166534;
+      box-shadow: 0 14px 30px rgba(22, 101, 52, 0.08);
+    }
+
     .admin-machine-grid.admin-machine-grid-panel {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -240,6 +366,23 @@
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
+    }
+
+    .admin-machine-controls label {
+      display: grid;
+      gap: 6px;
+      flex: 1 1 150px;
+      min-width: 0;
+    }
+
+    .admin-machine-controls label span {
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .admin-machine-controls .admin-inline-select {
+      width: 100%;
     }
 
     .admin-button {
@@ -328,8 +471,587 @@
       flex-wrap: wrap;
     }
 
+    .admin-section-head-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .admin-user-edit-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(86, 16, 49, 0.42);
+      backdrop-filter: blur(6px);
+      z-index: 1200;
+    }
+
+    .admin-user-edit-modal.is-open {
+      display: flex;
+    }
+
+    .admin-user-edit-card {
+      width: min(100%, 720px);
+      max-height: calc(100vh - 48px);
+      overflow: auto;
+      padding: 24px;
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(255, 251, 253, 0.98), rgba(255, 242, 248, 0.98));
+      border: 1px solid rgba(242, 122, 178, 0.18);
+      box-shadow: 0 32px 80px rgba(142, 37, 88, 0.22);
+    }
+
+    .admin-user-edit-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .admin-user-edit-head h3,
+    .admin-user-edit-head p {
+      margin: 0;
+    }
+
+    .admin-user-edit-head p {
+      margin-top: 6px;
+      color: var(--muted);
+    }
+
+    .admin-icon-button {
+      width: 42px;
+      height: 42px;
+      border: 0;
+      border-radius: 14px;
+      background: rgba(255, 236, 245, 0.96);
+      color: var(--accent-strong);
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .admin-icon-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 20px rgba(142, 37, 88, 0.12);
+    }
+
+    .admin-user-edit-form {
+      display: grid;
+      gap: 18px;
+    }
+
+    .admin-user-edit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .admin-user-edit-field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .admin-user-edit-field.is-wide {
+      grid-column: 1 / -1;
+    }
+
+    .admin-user-edit-field span {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .admin-user-edit-field input,
+    .admin-user-edit-field select {
+      min-height: 46px;
+      padding: 0 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(242, 122, 178, 0.18);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--text);
+    }
+
+    .admin-user-avatar-panel {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(242, 122, 178, 0.16);
+    }
+
+    .admin-user-avatar-preview {
+      width: 72px;
+      height: 72px;
+      border-radius: 22px;
+      overflow: hidden;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, rgba(255, 196, 224, 0.96), rgba(235, 77, 152, 0.96));
+      color: white;
+      box-shadow: 0 16px 30px rgba(142, 37, 88, 0.18);
+    }
+
+    .admin-user-avatar-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .admin-user-avatar-copy {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .admin-user-avatar-copy p,
+    .admin-user-avatar-copy small {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .admin-user-edit-actions {
+      justify-content: flex-end;
+    }
+
     .admin-booking-filter {
       min-width: 180px;
+    }
+
+    .admin-booking-delivery-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      padding: 0.28rem 0.72rem;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .admin-booking-delivery-badge.is-pickup {
+      color: #5f6472;
+      background: rgba(226, 232, 240, 0.95);
+      border-color: rgba(148, 163, 184, 0.28);
+    }
+
+    .admin-booking-delivery-badge.is-delivery {
+      color: #8e2558;
+      background: rgba(255, 231, 242, 0.95);
+      border-color: rgba(242, 122, 178, 0.28);
+    }
+
+    /* ── Bookings table: compact fixed layout ─────────────────────────── */
+    .admin-bookings-table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-bookings-table {
+      table-layout: fixed;
+      width: 100%;
+      min-width: 1040px;
+      font-size: 0.78rem;
+    }
+
+    .admin-bookings-table th,
+    .admin-bookings-table td {
+      padding: 8px 7px;
+      vertical-align: top;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .admin-bookings-table th { white-space: nowrap; }
+
+    /* Column widths — total ~1040px */
+    .admin-bookings-table .col-id      { width: 72px; }
+    .admin-bookings-table .col-user    { width: 110px; }
+    .admin-bookings-table .col-service { width: 100px; }
+    .admin-bookings-table .col-machine { width: 72px; }
+    .admin-bookings-table .col-date    { width: 80px; }
+    .admin-bookings-table .col-time    { width: 58px; }
+    .admin-bookings-table .col-status  { width: 118px; }
+    .admin-bookings-table .col-price   { width: 72px; }
+    .admin-bookings-table .col-load    { width: 62px; }
+    .admin-bookings-table .col-delivery { width: 88px; }
+    .admin-bookings-table .col-notes   { width: 250px; }
+    .admin-bookings-table .col-action  { width: 62px; }
+
+    .admin-bookings-table td.col-notes {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      line-height: 1.45;
+    }
+
+    .admin-bookings-table .booking-note-text {
+      display: block;
+      max-width: 100%;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(255, 247, 251, 0.76);
+      color: var(--text);
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .admin-bookings-table td.col-action,
+    .admin-bookings-table td.col-status {
+      vertical-align: top;
+    }
+
+    /* ID cell: show only last 8 chars via title tooltip */
+    .admin-bookings-table .cell-id {
+      font-family: monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    /* Compact status dropdown */
+    .admin-bookings-table .admin-inline-select {
+      min-width: 0;
+      width: 100%;
+      min-height: 32px;
+      padding: 0 6px;
+      font-size: 0.75rem;
+      border-radius: 10px;
+    }
+
+    /* Compact save button */
+    .admin-bookings-table .admin-button {
+      min-height: 32px;
+      padding: 0 10px;
+      font-size: 0.75rem;
+      border-radius: 10px;
+      width: 100%;
+    }
+
+    body.admin-dashboard-body.dark-mode {
+      color-scheme: dark;
+      background:
+        radial-gradient(circle at 12% 12%, rgba(255, 79, 163, 0.16), transparent 18rem),
+        radial-gradient(circle at 88% 14%, rgba(255, 110, 168, 0.12), transparent 20rem),
+        linear-gradient(135deg, #180c1f 0%, #2a1024 48%, #3b112c 100%);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-sidebar {
+      background:
+        linear-gradient(180deg, rgba(45, 16, 36, 0.98) 0%, rgba(63, 18, 46, 0.98) 52%, rgba(86, 24, 59, 0.98) 100%);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 24px 0 48px rgba(0, 0, 0, 0.28);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-brand small,
+    body.admin-dashboard-body.dark-mode .admin-kicker,
+    body.admin-dashboard-body.dark-mode .admin-section-copy,
+    body.admin-dashboard-body.dark-mode .admin-header-subtitle,
+    body.admin-dashboard-body.dark-mode .admin-section-subtitle,
+    body.admin-dashboard-body.dark-mode .admin-summary-card span,
+    body.admin-dashboard-body.dark-mode .admin-summary-card small,
+    body.admin-dashboard-body.dark-mode .admin-card p,
+    body.admin-dashboard-body.dark-mode .admin-machine-card p,
+    body.admin-dashboard-body.dark-mode .admin-service-card p,
+    body.admin-dashboard-body.dark-mode .admin-empty,
+    body.admin-dashboard-body.dark-mode .admin-table th,
+    body.admin-dashboard-body.dark-mode .admin-machine-controls label span,
+    body.admin-dashboard-body.dark-mode .admin-user-edit-head p,
+    body.admin-dashboard-body.dark-mode .admin-user-edit-field span,
+    body.admin-dashboard-body.dark-mode .admin-profile-pill small,
+    body.admin-dashboard-body.dark-mode .admin-profile-photo-panel small,
+    body.admin-dashboard-body.dark-mode .admin-settings-card-title p,
+    body.admin-dashboard-body.dark-mode .admin-profile-summary-copy p,
+    body.admin-dashboard-body.dark-mode .admin-settings-group-head p,
+    body.admin-dashboard-body.dark-mode .admin-inline-stat span {
+      color: #d8c7d8;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-header h1,
+    body.admin-dashboard-body.dark-mode .admin-card h2,
+    body.admin-dashboard-body.dark-mode .admin-machine-card h3,
+    body.admin-dashboard-body.dark-mode .admin-service-card h3,
+    body.admin-dashboard-body.dark-mode .admin-section-title h2,
+    body.admin-dashboard-body.dark-mode .admin-table td,
+    body.admin-dashboard-body.dark-mode .admin-table td strong,
+    body.admin-dashboard-body.dark-mode .admin-booking-meta strong,
+    body.admin-dashboard-body.dark-mode .admin-profile-pill strong,
+    body.admin-dashboard-body.dark-mode .admin-settings-hero h2,
+    body.admin-dashboard-body.dark-mode .admin-settings-card-title h2,
+    body.admin-dashboard-body.dark-mode .admin-profile-summary-copy h3,
+    body.admin-dashboard-body.dark-mode .admin-settings-group-head h3,
+    body.admin-dashboard-body.dark-mode .admin-inline-stat strong,
+    body.admin-dashboard-body.dark-mode .admin-highlight-stat,
+    body.admin-dashboard-body.dark-mode .admin-report-item strong {
+      color: #ffffff;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-header,
+    body.admin-dashboard-body.dark-mode .admin-card,
+    body.admin-dashboard-body.dark-mode .admin-summary-card,
+    body.admin-dashboard-body.dark-mode .admin-machine-card,
+    body.admin-dashboard-body.dark-mode .admin-service-card,
+    body.admin-dashboard-body.dark-mode .admin-section-head-card,
+    body.admin-dashboard-body.dark-mode .admin-settings-hero,
+    body.admin-dashboard-body.dark-mode .admin-settings-profile-card,
+    body.admin-dashboard-body.dark-mode .admin-settings-form-card,
+    body.admin-dashboard-body.dark-mode .admin-user-edit-card,
+    body.admin-dashboard-body.dark-mode .admin-report-item,
+    body.admin-dashboard-body.dark-mode .admin-inline-stat,
+    body.admin-dashboard-body.dark-mode .admin-service-create,
+    body.admin-dashboard-body.dark-mode .admin-user-avatar-panel,
+    body.admin-dashboard-body.dark-mode .admin-profile-pill,
+    body.admin-dashboard-body.dark-mode .admin-profile-summary-badge,
+    body.admin-dashboard-body.dark-mode .booking-note-text,
+    body.admin-dashboard-body.dark-mode .admin-empty {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.24);
+      backdrop-filter: blur(12px);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-card-accent,
+    body.admin-dashboard-body.dark-mode .admin-live-machines-card {
+      background:
+        radial-gradient(circle at 100% 0%, rgba(255, 79, 163, 0.16), transparent 12rem),
+        rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-page-title-icon,
+    body.admin-dashboard-body.dark-mode .admin-section-title-icon,
+    body.admin-dashboard-body.dark-mode .admin-summary-card .stat-icon {
+      box-shadow: 0 16px 34px rgba(255, 79, 163, 0.22);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-timeline-item,
+    body.admin-dashboard-body.dark-mode .admin-mini-machine,
+    body.admin-dashboard-body.dark-mode .admin-usage-item,
+    body.admin-dashboard-body.dark-mode .admin-settings-card-title > span,
+    body.admin-dashboard-body.dark-mode .admin-card-accent .admin-mini-machine,
+    body.admin-dashboard-body.dark-mode .admin-live-machines-card .admin-pill,
+    body.admin-dashboard-body.dark-mode .admin-profile-summary-badge,
+    body.admin-dashboard-body.dark-mode .admin-inline-stat {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.1);
+      color: #ffe8f4;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-nav-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-nav-link:hover,
+    body.admin-dashboard-body.dark-mode .admin-nav-link.is-active {
+      background: linear-gradient(135deg, rgba(255, 79, 163, 0.22), rgba(255, 110, 168, 0.16));
+      border-color: rgba(255, 110, 168, 0.26);
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-sidebar .admin-nav-link i,
+    body.admin-dashboard-body.dark-mode .admin-sidebar .admin-nav-link svg,
+    body.admin-dashboard-body.dark-mode .admin-sidebar .admin-nav-link img,
+    body.admin-dashboard-body.dark-mode .admin-sidebar .admin-brand-icon,
+    body.admin-dashboard-body.dark-mode .admin-sidebar .admin-brand-icon i {
+      color: inherit;
+      fill: currentColor;
+      filter: none;
+      opacity: 1;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-pill {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffe8f4;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-inline-input,
+    body.admin-dashboard-body.dark-mode .admin-inline-select,
+    body.admin-dashboard-body.dark-mode .admin-service-form textarea,
+    body.admin-dashboard-body.dark-mode .admin-user-edit-field input,
+    body.admin-dashboard-body.dark-mode .admin-user-edit-field select,
+    body.admin-dashboard-body.dark-mode .admin-settings-form input:not([type="checkbox"]),
+    body.admin-dashboard-body.dark-mode .admin-settings-form select,
+    body.admin-dashboard-body.dark-mode .admin-settings-form textarea,
+    body.admin-dashboard-body.dark-mode .admin-profile-photo-input {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      box-shadow: none;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-inline-input::placeholder,
+    body.admin-dashboard-body.dark-mode .admin-service-form textarea::placeholder,
+    body.admin-dashboard-body.dark-mode .admin-user-edit-field input::placeholder,
+    body.admin-dashboard-body.dark-mode .admin-settings-form input::placeholder,
+    body.admin-dashboard-body.dark-mode .admin-settings-form textarea::placeholder {
+      color: #c8b6c8;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-inline-select option,
+    body.admin-dashboard-body.dark-mode .admin-user-edit-field select option,
+    body.admin-dashboard-body.dark-mode .admin-settings-form select option {
+      background: #2a1024;
+      color: #ffffff;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-inline-input:focus,
+    body.admin-dashboard-body.dark-mode .admin-inline-select:focus,
+    body.admin-dashboard-body.dark-mode .admin-service-form textarea:focus,
+    body.admin-dashboard-body.dark-mode .admin-user-edit-field input:focus,
+    body.admin-dashboard-body.dark-mode .admin-user-edit-field select:focus,
+    body.admin-dashboard-body.dark-mode .admin-settings-form input:focus,
+    body.admin-dashboard-body.dark-mode .admin-settings-form select:focus,
+    body.admin-dashboard-body.dark-mode .admin-settings-form textarea:focus {
+      outline: none;
+      border-color: rgba(255, 110, 168, 0.46);
+      box-shadow: 0 0 0 4px rgba(255, 79, 163, 0.14);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-button-primary {
+      background: linear-gradient(135deg, #ff4fa3, #ff6ea8);
+      color: #ffffff;
+      box-shadow: 0 14px 28px rgba(255, 79, 163, 0.24);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-button-danger {
+      background: linear-gradient(135deg, #ff6ea8, #d83f89);
+      color: #ffffff;
+      box-shadow: 0 14px 28px rgba(255, 79, 163, 0.18);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-button-ghost,
+    body.admin-dashboard-body.dark-mode .admin-icon-button {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffe2ef;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: none;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-button-ghost:hover,
+    body.admin-dashboard-body.dark-mode .admin-icon-button:hover {
+      box-shadow: 0 12px 22px rgba(0, 0, 0, 0.18);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-table th,
+    body.admin-dashboard-body.dark-mode .admin-table td {
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-empty-cell {
+      color: #d8c7d8;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-bookings-table .booking-note-text,
+    body.admin-dashboard-body.dark-mode .admin-empty {
+      color: #f5eaf3;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-booking-delivery-badge.is-pickup {
+      color: #e4deea;
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-booking-delivery-badge.is-delivery {
+      color: #ffd7e8;
+      background: rgba(255, 79, 163, 0.18);
+      border-color: rgba(255, 110, 168, 0.22);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-user-edit-modal {
+      background: rgba(10, 5, 14, 0.68);
+      backdrop-filter: blur(10px);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-error-banner {
+      border-color: rgba(255, 110, 168, 0.18);
+      background: rgba(255, 255, 255, 0.06);
+      color: #ffe2ef;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-error-banner.is-success {
+      border-color: rgba(52, 211, 153, 0.18);
+      background: rgba(52, 211, 153, 0.08);
+      color: #c7ffe4;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-theme-toggle {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-theme-toggle-track {
+      background: rgba(255, 255, 255, 0.14);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-theme-toggle input:checked + .admin-theme-toggle-track {
+      background: linear-gradient(135deg, #ff4fa3, #ff6ea8);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-booking-status.status-pending,
+    body.admin-dashboard-body.dark-mode .admin-user-role.role-user,
+    body.admin-dashboard-body.dark-mode .admin-booking-status.status-in-progress,
+    body.admin-dashboard-body.dark-mode .admin-booking-status.status-completed,
+    body.admin-dashboard-body.dark-mode .admin-user-role.role-admin,
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-available,
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-in-use,
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-disabled,
+    body.admin-dashboard-body.dark-mode .admin-service-price {
+      border: 1px solid transparent;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-booking-status.status-pending,
+    body.admin-dashboard-body.dark-mode .admin-user-role.role-user {
+      color: #ffd2e5;
+      background: rgba(255, 79, 163, 0.16);
+      border-color: rgba(255, 110, 168, 0.22);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-booking-status.status-in-progress,
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-in-use {
+      color: #ffd8bf;
+      background: rgba(251, 146, 60, 0.16);
+      border-color: rgba(251, 146, 60, 0.22);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-booking-status.status-completed,
+    body.admin-dashboard-body.dark-mode .admin-user-role.role-admin,
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-available {
+      color: #d4ffe9;
+      background: rgba(52, 211, 153, 0.14);
+      border-color: rgba(52, 211, 153, 0.2);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-disabled {
+      color: #ebe1ee;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-service-price {
+      color: #ffd8ea;
+      background: rgba(255, 79, 163, 0.14);
+      border-color: rgba(255, 110, 168, 0.2);
     }
 
     @media (max-width: 1180px) {
@@ -345,14 +1067,98 @@
       .admin-service-grid.admin-service-grid-panel {
         grid-template-columns: 1fr;
       }
+
+      .admin-user-edit-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-user-edit-modal {
+        padding: 14px;
+      }
+
+      .admin-user-edit-card {
+        padding: 20px;
+        max-height: calc(100vh - 28px);
+      }
+
+      .admin-user-avatar-panel {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .admin-section-head-card,
+      .admin-settings-hero {
+        padding: 20px;
+      }
+
+      .admin-page-heading {
+        align-items: flex-start;
+        gap: 14px;
+      }
+
+      .admin-panel-tools {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .admin-page-title-icon {
+        width: 58px;
+        height: 58px;
+        border-radius: 16px;
+      }
+
+      .admin-section-head-card {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .admin-section-head-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .admin-section-title-icon {
+        width: 58px;
+        height: 58px;
+        border-radius: 14px;
+      }
+
+      .admin-section-title h2 {
+        font-size: 1.35rem;
+      }
     }
   </style>
+  <script>
+    (function () {
+      const THEME_STORAGE_KEY = "freshwash-admin-theme";
+      try {
+        const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem("theme");
+        if (savedTheme === "dark" || savedTheme === "light") {
+          document.documentElement.style.colorScheme = savedTheme;
+        }
+      } catch (error) {}
+    })();
+  </script>
 </head>
 <body
-  class="admin-dashboard-body"
+  class="admin-dashboard-body {% if (admin_data.get('settings', {}).get('theme', {}).get('mode') or 'light') == 'dark' %}dark-mode dark-theme{% else %}light-theme{% endif %}"
   data-admin-mode="{{ (admin_data.get('settings', {}).get('theme', {}).get('mode') or 'light') | e }}"
   data-admin-accent="{{ (admin_data.get('settings', {}).get('theme', {}).get('accent') or 'pink-rose') | e }}"
 >
+  <script>
+    (function () {
+      const THEME_STORAGE_KEY = "freshwash-admin-theme";
+      try {
+        const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem("theme");
+        if (savedTheme !== "dark" && savedTheme !== "light") return;
+        document.body.classList.toggle("dark-mode", savedTheme === "dark");
+        document.body.classList.toggle("dark-theme", savedTheme === "dark");
+        document.body.classList.toggle("light-theme", savedTheme !== "dark");
+        document.body.dataset.adminMode = savedTheme;
+        document.documentElement.style.colorScheme = savedTheme;
+      } catch (error) {}
+    })();
+  </script>
   {% set safe_user = user or {} %}
   <div class="admin-layout">
     <aside class="admin-sidebar" aria-label="Admin sidebar">
@@ -405,30 +1211,33 @@
     </aside>
 
     <main class="admin-main">
-      <header class="admin-header">
-        <div>
-          <small class="admin-kicker">FreshWash Control Center</small>
-          <h1 id="adminPageTitle">Admin Dashboard</h1>
+      <header class="admin-header {% if initial_section == 'settings' %}is-settings-hidden{% endif %}">
+        <div class="admin-page-heading">
+          <span class="admin-page-title-icon" id="adminPageTitleIcon" aria-hidden="true">
+            <i class="fa-solid fa-table-columns"></i>
+          </span>
+          <div class="admin-page-heading-copy">
+            <small class="admin-kicker">FreshWash Control Center</small>
+            <h1 id="adminPageTitle">{{ 'Settings' if initial_section == 'settings' else 'Admin Dashboard' }}</h1>
+            <p class="admin-header-subtitle" id="adminPageSubtitle">
+              {{ 'Manage your admin account information and password' if initial_section == 'settings' else 'Monitor bookings, customers, machines, and reports in one place.' }}
+            </p>
+          </div>
         </div>
 
         <div class="admin-header-actions">
-          <div class="admin-profile-pill">
+          <a class="admin-profile-pill" href="#settings" data-nav-target="settings" aria-label="Open admin profile settings">
             <span class="admin-profile-avatar">
-              {% if safe_user.get('avatar') %}
-              <img src="{{ safe_user.get('avatar') }}" alt="Admin profile picture" />
-              {% else %}
-              <i class="fa-solid fa-user-shield"></i>
-              {% endif %}
+              <img
+                src="{{ safe_user.get('avatar') or url_for('static', filename='img/default-avatar.svg') }}"
+                alt="Admin profile picture"
+                onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/default-avatar.svg') }}';"
+              />
             </span>
-            <div>
+            <div class="admin-profile-copy">
               <strong id="adminName">{{ safe_user.get('name', 'FreshWash Admin') }}</strong>
               <small id="adminEmail">{{ safe_user.get('email', 'admin@freshwash.app') }}</small>
             </div>
-          </div>
-
-          <a href="{{ url_for('logout') }}" class="btn-ghost">
-            <i class="fa-solid fa-right-from-bracket"></i>
-            <span>Logout</span>
           </a>
         </div>
       </header>
@@ -438,18 +1247,75 @@
         <span id="adminErrorText">Data issues will appear here.</span>
       </div>
 
-      <!-- DASHBOARD -->
-      <section class="admin-panel {% if initial_section == 'dashboard' %}is-active{% endif %}" data-panel="dashboard" aria-labelledby="dashboardPanelTitle">
-        <div class="admin-card">
-          <div class="admin-card-head">
+      <aside id="userEditModal" class="admin-user-edit-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="userEditModalTitle">
+        <div class="admin-user-edit-card">
+          <div class="admin-user-edit-head">
             <div>
-              <small class="admin-kicker">Overview</small>
-              <h2 id="dashboardPanelTitle">FreshWash live snapshot</h2>
+              <small class="admin-kicker">Users</small>
+              <h3 id="userEditModalTitle">Edit User Profile</h3>
+              <p>Update the selected FreshWash user without leaving the table view.</p>
             </div>
-            <span class="admin-pill" id="dashboardLastUpdated">Using initial dashboard data</span>
+            <button type="button" class="admin-icon-button" id="closeUserEditModalButton" aria-label="Close user edit form">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </div>
-          <div id="statsGrid" class="admin-overview-grid admin-overview-grid-dashboard"></div>
+
+          <form id="userEditForm" class="admin-user-edit-form">
+            <input type="hidden" id="editUserId" />
+            <input type="hidden" id="editUserAvatarData" />
+
+            <div class="admin-user-avatar-panel">
+              <div id="editUserAvatarPreview" class="admin-user-avatar-preview" aria-hidden="true">
+                <i class="fa-solid fa-user"></i>
+              </div>
+              <div class="admin-user-avatar-copy">
+                <p>Profile picture</p>
+                <small>Optional. Leave it unchanged if you do not want to replace the current avatar.</small>
+                <input id="editUserAvatarInput" type="file" accept="image/*" />
+              </div>
+            </div>
+
+            <div class="admin-user-edit-grid">
+              <label class="admin-user-edit-field is-wide">
+                <span>Full name</span>
+                <input id="editUserName" type="text" required />
+              </label>
+              <label class="admin-user-edit-field">
+                <span>Email</span>
+                <input id="editUserEmail" type="email" required />
+              </label>
+              <label class="admin-user-edit-field">
+                <span>Phone</span>
+                <input id="editUserPhone" type="text" required />
+              </label>
+              <label class="admin-user-edit-field is-wide">
+                <span>Address</span>
+                <input id="editUserAddress" type="text" required />
+              </label>
+              <label class="admin-user-edit-field">
+                <span>Role</span>
+                <select id="editUserRole" required>
+                  <option value="user">user</option>
+                  <option value="admin">admin</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="admin-action-buttons admin-user-edit-actions">
+              <button type="button" class="admin-button admin-button-ghost" id="cancelUserEditButton">Cancel</button>
+              <button type="submit" class="admin-button admin-button-primary" id="saveUserEditButton">Save</button>
+            </div>
+          </form>
         </div>
+      </aside>
+
+      <!-- DASHBOARD -->
+      <section class="admin-panel {% if initial_section == 'dashboard' %}is-active{% endif %}" data-panel="dashboard" aria-label="Dashboard">
+        <div class="admin-panel-tools">
+          <div class="admin-panel-tools-spacer" aria-hidden="true"></div>
+          <span class="admin-pill" id="dashboardLastUpdated">Using initial dashboard data</span>
+        </div>
+        <div id="statsGrid" class="admin-overview-grid admin-overview-grid-dashboard"></div>
 
         <div class="admin-dashboard-grid">
           <section class="admin-card">
@@ -463,7 +1329,7 @@
             <div id="recentBookingsList" class="admin-timeline" aria-live="polite"></div>
           </section>
 
-          <aside class="admin-card admin-card-accent">
+          <aside class="admin-card admin-card-accent admin-live-machines-card">
             <div class="admin-card-head">
               <div>
                 <small class="admin-kicker">Machine Floor</small>
@@ -471,25 +1337,18 @@
               </div>
               <span class="admin-pill">All machines</span>
             </div>
-            <div id="machineStatusPanel" class="admin-machine-grid" aria-live="polite"></div>
+            <div id="machineStatusPanel" class="admin-machine-grid admin-live-machine-grid" aria-live="polite"></div>
           </aside>
         </div>
       </section>
 
       <!-- USERS -->
-      <section class="admin-panel {% if initial_section == 'users' %}is-active{% endif %}" data-panel="users" aria-labelledby="usersPanelTitle">
+      <section class="admin-panel {% if initial_section == 'users' %}is-active{% endif %}" data-panel="users" aria-label="Users">
+        <div class="admin-panel-tools">
+          <span class="admin-pill" id="usersCountPill">0 users</span>
+          <button type="button" class="admin-button admin-button-primary" id="createUserButton">Add User</button>
+        </div>
         <div class="admin-card">
-          <div class="admin-card-head">
-            <div>
-              <small class="admin-kicker">Customers</small>
-              <h2 id="usersPanelTitle">Users</h2>
-            </div>
-            <div class="admin-section-actions">
-              <span class="admin-pill" id="usersCountPill">0 users</span>
-              <button type="button" class="admin-button admin-button-primary" id="createUserButton">Add User</button>
-            </div>
-          </div>
-          <p class="admin-section-copy">Profiles are loaded from the <code>profiles</code> table.</p>
           <div class="admin-table-wrap">
             <table class="admin-table">
               <thead>
@@ -510,40 +1369,41 @@
       </section>
 
       <!-- BOOKINGS -->
-      <section class="admin-panel {% if initial_section == 'bookings' %}is-active{% endif %}" data-panel="bookings" aria-labelledby="bookingsPanelTitle">
-        <div class="admin-card">
-          <div class="admin-card-head">
-            <div>
-              <small class="admin-kicker">Operations</small>
-              <h2 id="bookingsPanelTitle">Bookings</h2>
-            </div>
-            <div class="admin-section-actions">
-              <span class="admin-pill" id="bookingsCountPill">0 bookings</span>
-              <select id="bookingsStatusFilter" class="admin-inline-select admin-booking-filter">
-                <option value="All">All Statuses</option>
-                <option value="Pending">Pending</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-                <option value="In Progress">In Progress</option>
-              </select>
-            </div>
+      <section class="admin-panel {% if initial_section == 'bookings' %}is-active{% endif %}" data-panel="bookings" aria-label="Bookings">
+        <div class="admin-panel-tools">
+          <span class="admin-pill" id="bookingsCountPill">0 bookings</span>
+          <div class="admin-action-buttons">
+            <select id="bookingsStatusFilter" class="admin-inline-select admin-booking-filter">
+              <option value="All">All Statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
+              <option value="In Progress">In Progress</option>
+            </select>
+            <select id="bookingsDeliveryFilter" class="admin-inline-select admin-booking-filter">
+              <option value="All">All Delivery Options</option>
+              <option value="Pickup">Pickup Only</option>
+              <option value="Delivery">Delivery Only</option>
+            </select>
           </div>
-          <p class="admin-section-copy">Bookings are loaded from the <code>bookings</code> table and sorted by newest first.</p>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
+        </div>
+        <div class="admin-card">
+          <div class="admin-bookings-table-wrap">
+            <table class="admin-table admin-bookings-table">
               <thead>
                 <tr>
-                  <th>Booking ID</th>
-                  <th>User Name</th>
-                  <th>Service</th>
-                  <th>Machine</th>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>Status</th>
-                  <th>Price</th>
-                  <th>Load Type</th>
-                  <th>Notes</th>
-                  <th>Action</th>
+                  <th class="col-id">ID</th>
+                  <th class="col-user">User</th>
+                  <th class="col-service">Service</th>
+                  <th class="col-machine">Machine</th>
+                  <th class="col-date">Date</th>
+                  <th class="col-time">Time</th>
+                  <th class="col-status">Status</th>
+                  <th class="col-price">Price</th>
+                  <th class="col-load">Load</th>
+                  <th class="col-delivery">Delivery</th>
+                  <th class="col-notes">Notes</th>
+                  <th class="col-action">Save</th>
                 </tr>
               </thead>
               <tbody id="bookingsTableBody"></tbody>
@@ -553,31 +1413,21 @@
       </section>
 
       <!-- MACHINES -->
-      <section class="admin-panel {% if initial_section == 'machines' %}is-active{% endif %}" data-panel="machines" aria-labelledby="machinesPanelTitle">
+      <section class="admin-panel {% if initial_section == 'machines' %}is-active{% endif %}" data-panel="machines" aria-label="Machines">
+        <div class="admin-panel-tools">
+          <span class="admin-pill" id="machinesCountPill">0 machines</span>
+        </div>
         <div class="admin-card">
-          <div class="admin-card-head">
-            <div>
-              <small class="admin-kicker">Equipment</small>
-              <h2 id="machinesPanelTitle">Machines</h2>
-            </div>
-            <span class="admin-pill" id="machinesCountPill">0 machines</span>
-          </div>
-          <p class="admin-section-copy">Machine availability is loaded from the <code>machines</code> table.</p>
           <div id="machinesGrid" class="admin-machine-grid admin-machine-grid-panel"></div>
         </div>
       </section>
 
       <!-- SERVICES -->
-      <section class="admin-panel {% if initial_section == 'services' %}is-active{% endif %}" data-panel="services" aria-labelledby="servicesPanelTitle">
+      <section class="admin-panel {% if initial_section == 'services' %}is-active{% endif %}" data-panel="services" aria-label="Services">
+        <div class="admin-panel-tools">
+          <span class="admin-pill" id="servicesCountPill">0 services</span>
+        </div>
         <div class="admin-card">
-          <div class="admin-card-head">
-            <div>
-              <small class="admin-kicker">Offerings</small>
-              <h2 id="servicesPanelTitle">Services</h2>
-            </div>
-            <span class="admin-pill" id="servicesCountPill">0 services</span>
-          </div>
-          <p class="admin-section-copy">Service records are loaded from the <code>services</code> table.</p>
           <div class="admin-service-create">
             <div class="admin-service-form">
               <input id="newServiceName" class="admin-inline-input" type="text" placeholder="New service name" />
@@ -593,18 +1443,9 @@
       </section>
 
       <!-- REPORTS -->
-      <section class="admin-panel {% if initial_section == 'reports' %}is-active{% endif %}" data-panel="reports" aria-labelledby="reportsPanelTitle">
+      <section class="admin-panel {% if initial_section == 'reports' %}is-active{% endif %}" data-panel="reports" aria-label="Reports">
         <div class="admin-reports-grid">
-          <article class="admin-card">
-            <div class="admin-card-head">
-              <div>
-                <small class="admin-kicker">Insights</small>
-                <h2 id="reportsPanelTitle">Reports</h2>
-              </div>
-              <span class="admin-pill">Computed live</span>
-            </div>
-            <div id="reportsStatsInline" class="admin-stats-inline"></div>
-          </article>
+          <div id="reportsStatsInline" class="admin-stats-inline"></div>
 
           <article class="admin-card">
             <div class="admin-card-head">
@@ -664,34 +1505,118 @@
 
       <!-- SETTINGS -->
       <section class="admin-panel {% if initial_section == 'settings' %}is-active{% endif %}" data-panel="settings" aria-labelledby="settingsPanelTitle">
-        <div class="admin-settings-grid">
-          <article class="admin-card admin-settings-card">
-            <div class="admin-card-head">
-              <div class="admin-settings-group-head">
-                <small class="admin-kicker">Profile</small>
+        <div class="admin-settings-shell">
+          <div class="admin-settings-hero admin-section-head-card">
+            <div class="admin-section-head-main">
+              <div class="admin-section-title-icon" aria-hidden="true">
+                <i class="fa-solid fa-gear"></i>
+              </div>
+              <div class="admin-section-title">
                 <h2 id="settingsPanelTitle">Settings</h2>
-                <p>Current admin and system values currently in use by FreshWash.</p>
+                <p class="admin-section-subtitle">Manage your admin account information, theme preferences, and password settings.</p>
               </div>
             </div>
-            <form class="admin-settings-form" id="profileSettingsForm">
-              <label>
-                <span>Admin Name</span>
-                <input id="settingsAdminName" type="text" />
-              </label>
-              <label>
-                <span>Admin Email</span>
-                <input id="settingsAdminEmail" type="text" />
-              </label>
-              <label class="admin-settings-field-wide">
-                <span>Password</span>
-                <input id="settingsAdminPassword" type="password" placeholder="Leave blank to keep current password" />
-              </label>
-              <div class="admin-settings-actions admin-action-buttons admin-settings-field-wide">
-                <button type="button" class="admin-button admin-button-primary" id="saveProfileSettingsButton">Save Profile</button>
-              </div>
-            </form>
-          </article>
+            <label class="admin-theme-toggle" for="settingsDarkModeToggle">
+              <input id="settingsDarkModeToggle" type="checkbox" />
+              <span class="admin-theme-toggle-track" aria-hidden="true">
+                <span class="admin-theme-toggle-thumb"></span>
+              </span>
+              <span>Dark Mode</span>
+            </label>
+          </div>
 
+          <div class="admin-settings-layout-v2">
+            <aside class="admin-settings-profile-card">
+              <div class="admin-profile-photo-panel">
+                <div class="admin-profile-photo-frame">
+                  <img
+                    id="settingsAdminAvatarPreview"
+                    src="{{ safe_user.get('avatar') or url_for('static', filename='img/default-avatar.svg') }}"
+                    alt="Admin profile picture"
+                    onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/default-avatar.svg') }}';"
+                  />
+                  <span id="settingsAdminAvatarFallback" class="admin-profile-photo-fallback" hidden>
+                    <i class="fa-solid fa-user-shield"></i>
+                  </span>
+                </div>
+                <input id="settingsAdminAvatarInput" class="admin-profile-photo-input" type="file" accept="image/*" />
+                <button type="button" class="admin-button admin-button-ghost admin-profile-upload-button" id="uploadAdminAvatarButton">
+                  Upload Photo
+                </button>
+                <small>JPG, PNG, or GIF up to 2MB.</small>
+              </div>
+
+              <div class="admin-profile-summary-copy">
+                <h3 id="settingsProfileName">{{ safe_user.get('name', 'FreshWash Admin') }}</h3>
+                <p id="settingsProfileEmail">{{ safe_user.get('email', 'admin@freshwash.app') }}</p>
+              </div>
+              <div class="admin-profile-summary-badges">
+                <span class="admin-profile-summary-badge">
+                  <i class="fa-solid fa-user-shield"></i>
+                  Admin
+                </span>
+                <span class="admin-profile-summary-badge">
+                  <i class="fa-solid fa-phone"></i>
+                  <span id="settingsProfilePhone">{{ safe_user.get('phone', 'No phone') or 'No phone' }}</span>
+                </span>
+              </div>
+            </aside>
+
+            <div class="admin-settings-form-stack">
+              <article class="admin-settings-form-card">
+                <div class="admin-settings-card-title">
+                  <span><i class="fa-solid fa-user-pen"></i></span>
+                  <div>
+                    <h2>Edit Profile</h2>
+                    <p>Update the account details shown across the admin panel.</p>
+                  </div>
+                </div>
+                <form class="admin-settings-form admin-profile-settings-form" id="profileSettingsForm">
+                <label>
+                  <span>Full name</span>
+                  <input id="settingsAdminName" type="text" />
+                </label>
+                <label>
+                  <span>Email address</span>
+                  <input id="settingsAdminEmail" type="text" />
+                </label>
+                <label class="admin-settings-field-wide">
+                  <span>Phone number</span>
+                  <input id="settingsAdminPhone" type="text" />
+                </label>
+                <div class="admin-settings-actions admin-action-buttons admin-settings-field-wide">
+                  <button type="button" class="admin-button admin-button-primary" id="saveProfileSettingsButton">Save Profile</button>
+                </div>
+              </form>
+              </article>
+
+              <article class="admin-settings-form-card">
+                <div class="admin-settings-card-title">
+                  <span><i class="fa-solid fa-lock"></i></span>
+                  <div>
+                    <h2>Change Password</h2>
+                    <p>Use at least 6 characters. You may need to log in again after changing it.</p>
+                  </div>
+                </div>
+                <form class="admin-settings-form admin-password-settings-form" id="passwordSettingsForm">
+                  <label>
+                    <span>New password</span>
+                    <input id="settingsAdminPassword" type="password" placeholder="Enter new password" />
+                  </label>
+                  <label>
+                    <span>Confirm password</span>
+                    <input id="settingsAdminPasswordConfirm" type="password" placeholder="Confirm new password" />
+                  </label>
+                  <div class="admin-settings-actions admin-action-buttons admin-settings-field-wide">
+                    <button type="button" class="admin-button admin-button-primary" id="savePasswordSettingsButton">Update Password</button>
+                  </div>
+                </form>
+              </article>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-settings-system-hidden" aria-hidden="true">
           <article class="admin-card admin-settings-card">
             <div class="admin-card-head">
               <div class="admin-settings-group-head">
@@ -746,28 +1671,26 @@
     </main>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const DASHBOARD_CONFIG = {
-      supabaseUrl: {{ supabase_url | default('', true) | tojson }},
-      supabaseKey: {{ supabase_key | default('', true) | tojson }},
-      accessToken: {{ access_token | default('', true) | tojson }},
-      refreshToken: {{ session.get('refresh_token', '') | tojson }},
-      logoutUrl: {{ url_for('logout') | tojson }},
-      initialSection: {{ initial_section | default('dashboard', true) | tojson }},
-      currentUser: {{ safe_user | tojson }},
-      routes: {
-        dashboard: {{ url_for('admin_dashboard') | tojson }},
-        users: {{ url_for('admin_users') | tojson }},
-        bookings: {{ url_for('admin_bookings') | tojson }},
-        machines: {{ url_for('admin_machines') | tojson }},
-        services: {{ url_for('admin_services') | tojson }},
-        reports: {{ url_for('admin_reports') | tojson }},
-        settings: {{ url_for('admin_settings') | tojson }}
-      },
-      initialData: {{ admin_data | default({}, true) | tojson }}
-    };
-
+const DASHBOARD_CONFIG = {
+  logoutUrl: {{ url_for('logout') | tojson }},
+  defaultAvatarUrl: {{ url_for('static', filename='img/default-avatar.svg') | tojson }},
+  initialSection: {{ (initial_section or 'dashboard') | tojson }},
+  currentUser: {{ safe_user | tojson }},
+  initialThemeMode: {{ (admin_data.get('settings', {}).get('theme', {}).get('mode') or 'light') | tojson }},
+  initialThemeAccent: {{ (admin_data.get('settings', {}).get('theme', {}).get('accent') or 'pink-rose') | tojson }},
+  routes: {
+    dashboard: {{ url_for('admin_dashboard') | tojson }},
+    users: {{ url_for('admin_users') | tojson }},
+    bookings: {{ url_for('admin_bookings') | tojson }},
+    machines: {{ url_for('admin_machines') | tojson }},
+    services: {{ url_for('admin_services') | tojson }},
+    reports: {{ url_for('admin_reports') | tojson }},
+    settings: {{ url_for('admin_settings') | tojson }}
+  },
+  initialData: {{ (admin_data or {}) | tojson }}
+};
+    const THEME_STORAGE_KEY = "freshwash-admin-theme";
     const SECTION_LABELS = {
       dashboard: "Admin Dashboard",
       users: "Users",
@@ -778,12 +1701,30 @@
       settings: "Settings"
     };
 
-    let supabaseClient = null;
-    let realtimeChannel = null;
+    const SECTION_DESCRIPTIONS = {
+      dashboard: "Monitor bookings, customers, machines, and reports in one place.",
+      users: "Manage customer records and admin access for FreshWash.",
+      bookings: "Review laundry bookings, update statuses, and keep operations moving.",
+      machines: "Track machine availability, load types, and operational status.",
+      services: "Maintain service offerings, pricing, and customer-facing descriptions.",
+      reports: "Review payments, usage, reviews, and performance insights.",
+      settings: "Manage your admin account information and password"
+    };
+
+    const SECTION_ICONS = {
+      dashboard: "fa-table-columns",
+      users: "fa-users",
+      bookings: "fa-calendar-days",
+      machines: "fa-gear",
+      services: "fa-toolbox",
+      reports: "fa-chart-column",
+      settings: "fa-gear"
+    };
+
     let refreshTimer = null;
-    let liveReloadTimer = null;
     let activeSection = DASHBOARD_CONFIG.initialSection || "dashboard";
     let activeBookingFilter = "All";
+    let activeDeliveryFilter = "All";
 
     let dashboardState = {
       users: Array.isArray(DASHBOARD_CONFIG.initialData?.users) ? DASHBOARD_CONFIG.initialData.users : [],
@@ -802,18 +1743,76 @@
       return Array.isArray(configured) && configured.length ? configured : ["Light", "Medium", "Heavy"];
     }
 
+    function getStoredThemePreference() {
+      try {
+        const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem("theme");
+        return savedTheme === "dark" || savedTheme === "light" ? savedTheme : "";
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function getConfiguredThemePreference() {
+      const configuredTheme = DASHBOARD_CONFIG.initialThemeMode || document.body.dataset.adminMode || "light";
+      return configuredTheme === "dark" ? "dark" : "light";
+    }
+
+    function applyThemeAccent(accent) {
+      const nextAccent = accent || DASHBOARD_CONFIG.initialThemeAccent || "pink-rose";
+      document.body.dataset.adminAccent = nextAccent;
+      const accentSelect = document.getElementById("settingsThemeAccent");
+      if (accentSelect) accentSelect.value = nextAccent;
+    }
+
+    function applySettingsTheme(theme) {
+      const nextTheme = theme === "dark" ? "dark" : "light";
+      document.body.classList.toggle("dark-mode", nextTheme === "dark");
+      document.body.classList.toggle("dark-theme", nextTheme === "dark");
+      document.body.classList.toggle("light-theme", nextTheme !== "dark");
+      document.body.dataset.adminMode = nextTheme;
+      document.documentElement.style.colorScheme = nextTheme;
+      const toggle = document.getElementById("settingsDarkModeToggle");
+      if (toggle) toggle.checked = nextTheme === "dark";
+      const themeModeField = document.getElementById("settingsThemeMode");
+      if (themeModeField) themeModeField.value = nextTheme;
+    }
+
+    function initializeSettingsTheme() {
+      applyThemeAccent(document.body.dataset.adminAccent || DASHBOARD_CONFIG.initialThemeAccent || "pink-rose");
+      applySettingsTheme(getStoredThemePreference() || getConfiguredThemePreference());
+    }
+
+    function saveSettingsTheme(theme) {
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, theme);
+        localStorage.setItem("theme", theme);
+      } catch (error) {
+        console.warn("[FreshWash Admin] Theme preference could not be saved.", error);
+      }
+      applySettingsTheme(theme);
+    }
+
     function showError(message) {
       const banner = document.getElementById("adminErrorBanner");
       const text = document.getElementById("adminErrorText");
       if (!banner || !text) return;
       text.textContent = message;
+      banner.classList.remove("is-success");
       banner.classList.add("is-visible");
+    }
+
+    function showSuccess(message) {
+      const banner = document.getElementById("adminErrorBanner");
+      const text = document.getElementById("adminErrorText");
+      if (!banner || !text) return;
+      text.textContent = message;
+      banner.classList.add("is-success", "is-visible");
     }
 
     function clearError() {
       const banner = document.getElementById("adminErrorBanner");
       if (!banner) return;
-      banner.classList.remove("is-visible");
+      banner.classList.remove("is-visible", "is-success");
     }
 
     function logSupabaseError(context, error) {
@@ -827,18 +1826,16 @@
       fetchErrors = [];
     }
 
-    function createSupabaseClient() {
-      if (!DASHBOARD_CONFIG.supabaseUrl || !DASHBOARD_CONFIG.supabaseKey || !window.supabase) return null;
-      const client = window.supabase.createClient(DASHBOARD_CONFIG.supabaseUrl, DASHBOARD_CONFIG.supabaseKey, {
-        auth: { persistSession: false, autoRefreshToken: false }
+    async function fetchAdminDashboardPayload() {
+      const response = await fetch("/admin/api/dashboard-data", {
+        method: "GET",
+        headers: { "Accept": "application/json" }
       });
-      if (DASHBOARD_CONFIG.accessToken && DASHBOARD_CONFIG.refreshToken) {
-        client.auth.setSession({
-          access_token: DASHBOARD_CONFIG.accessToken,
-          refresh_token: DASHBOARD_CONFIG.refreshToken
-        }).catch(error => logSupabaseError("Supabase session setup failed", error));
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.ok === false) {
+        throw new Error(result?.error || "Please log in first");
       }
-      return client;
+      return result?.data || {};
     }
 
     async function postAdminJson(url, payload) {
@@ -852,6 +1849,57 @@
         throw new Error(result?.error || `Request failed with status ${response.status}`);
       }
       return result;
+    }
+
+    async function patchAdminJson(url, payload) {
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {})
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.ok === false) {
+        throw new Error(result?.error || `Request failed with status ${response.status}`);
+      }
+      return result;
+    }
+
+    async function uploadAdminProfilePhoto() {
+      const input = document.getElementById("settingsAdminAvatarInput");
+      const file = input?.files?.[0];
+      if (!file) throw new Error("Choose an image to upload.");
+      if (!file.type.startsWith("image/")) throw new Error("Only image uploads are allowed.");
+      const formData = new FormData();
+      formData.append("avatar", file);
+      const response = await fetch("/admin/api/profile-photo", {
+        method: "POST",
+        body: formData
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.ok === false) {
+        throw new Error(result?.error || `Request failed with status ${response.status}`);
+      }
+      return result;
+    }
+
+    function setAdminAvatarPreview(avatarUrl = "") {
+      const preview = document.getElementById("settingsAdminAvatarPreview");
+      const fallback = document.getElementById("settingsAdminAvatarFallback");
+      const headerAvatar = document.querySelector(".admin-profile-avatar");
+      const hasAvatar = Boolean(avatarUrl);
+      const finalAvatar = hasAvatar ? avatarUrl : DASHBOARD_CONFIG.defaultAvatarUrl;
+      if (preview) {
+        preview.src = finalAvatar;
+        preview.hidden = false;
+        preview.onerror = () => {
+          preview.onerror = null;
+          preview.src = DASHBOARD_CONFIG.defaultAvatarUrl;
+        };
+      }
+      if (fallback) fallback.hidden = true;
+      if (headerAvatar) {
+        headerAvatar.innerHTML = `<img src="${escapeHtml(finalAvatar)}" alt="Admin profile picture" />`;
+      }
     }
 
     function escapeHtml(value) {
@@ -879,6 +1927,7 @@
         email: user?.email || "No email",
         phone: user?.phone || "No phone",
         address: user?.address || "",
+        avatar: user?.avatar || "",
         role: String(user?.role || "user").toLowerCase(),
         created_at: user?.created_at || ""
       };
@@ -889,6 +1938,7 @@
       const machineName = booking?.machine || booking?.machine_name || `Machine ${((index % 8) + 1)}`;
       const rawPrice = Number(booking?.total_price ?? 0);
       const weight = Number(booking?.weight ?? 0);
+      const deliveryOption = String(booking?.delivery_option || "Pickup").trim() || "Pickup";
       return {
         id: booking?.id || `booking-${index}`,
         full_name: booking?.full_name || booking?.name || booking?.user_name || "Unknown user",
@@ -902,20 +1952,22 @@
         total_price: Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 0,
         weight: Number.isFinite(weight) ? weight : 0,
         load_type: booking?.load_type || "",
+        delivery_option: deliveryOption === "Delivery" ? "Delivery" : "Pickup",
         notes: booking?.notes || ""
       };
     }
 
     function normalizeMachine(machine) {
-      const enabled = machine?.enabled !== false;
       const baseStatus = machine?.status || "Available";
+      const enabled = machine?.enabled !== false && baseStatus !== "Disabled";
       const effectiveEnabled = machine?.effective_enabled !== false && enabled;
       return {
-        machine_number: machine?.machine_number ?? "",
+        id: machine?.id ?? machine?.machine_number ?? "",
+        machine_number: machine?.machine_number ?? machine?.id ?? "",
         name: normalizeMachineName(machine),
         label: machine?.label || normalizeMachineName(machine),
         status: baseStatus,
-        status_display: effectiveEnabled ? baseStatus : "Disabled",
+        status_display: effectiveEnabled && baseStatus !== "Disabled" ? baseStatus : "Disabled",
         load_type: machine?.load_type || "Medium",
         enabled,
         effective_enabled: effectiveEnabled
@@ -938,6 +1990,9 @@
         amount: Number(payment?.amount ?? payment?.total ?? 0),
         status: payment?.status || "Pending",
         method: payment?.method || payment?.payment_method || "Unspecified",
+        reference_number: payment?.reference_number || payment?.reference || "",
+        payment_proof: payment?.payment_proof || payment?.proof_image || "",
+        proof_image: payment?.payment_proof || payment?.proof_image || "",
         paid_at: payment?.paid_at || payment?.created_at || "",
         customer_name: payment?.full_name || payment?.customer_name || payment?.name || "FreshWash Customer"
       };
@@ -1019,30 +2074,14 @@
       return { bookingsPerDay, machineUsage, mostUsedService, statusBreakdown, completedRevenue };
     }
 
-    async function fetchTableRows(tableName, normalizer, sortColumn = "", ascending = false, fallbackRows = []) {
-      if (!supabaseClient) return fallbackRows;
+    async function fetchAdminData() {
       try {
-        let query = supabaseClient.from(tableName).select("*");
-        if (sortColumn) query = query.order(sortColumn, { ascending });
-        let { data, error } = await query;
-        if (error && sortColumn) {
-          const retry = await supabaseClient.from(tableName).select("*");
-          data = retry.data; error = retry.error;
-        }
-        if (error) throw error;
-        return Array.isArray(data) ? data.map((row, index) => normalizer(row, index)) : [];
+        return await fetchAdminDashboardPayload();
       } catch (error) {
-        logSupabaseError(`Failed to fetch ${tableName}`, error);
-        return fallbackRows;
+        logSupabaseError("Failed to fetch admin dashboard data", error);
+        return null;
       }
     }
-
-    async function fetchUsers() { return fetchTableRows("profiles", normalizeUser, "created_at", false, dashboardState.users); }
-    async function fetchBookings() { return fetchTableRows("bookings", normalizeBooking, "created_at", false, dashboardState.bookings); }
-    async function fetchMachines() { return fetchTableRows("machines", normalizeMachine, "machine_number", true, dashboardState.machines); }
-    async function fetchServices() { return fetchTableRows("services", normalizeService, "name", true, dashboardState.services); }
-    async function fetchPayments() { return fetchTableRows("payments", normalizePayment, "created_at", false, dashboardState.payments); }
-    async function fetchReviews() { return fetchTableRows("reviews", normalizeReview, "created_at", false, dashboardState.reviews); }
 
     function updateLastUpdatedLabel(sourceLabel) {
       const target = document.getElementById("dashboardLastUpdated");
@@ -1099,7 +2138,7 @@
       panel.innerHTML = machines.map(machine => {
         const status = normalizeMachineStatus(machine);
         return `
-          <article class="admin-machine-card ${status === "Disabled" ? "is-disabled" : ""}">
+          <article class="admin-machine-card admin-live-machine-card ${status === "Disabled" ? "is-disabled" : ""}">
             <div class="admin-machine-head">
               <div class="admin-section-stack">
                 <h3>${escapeHtml(machine.name)}</h3>
@@ -1139,21 +2178,26 @@
       const body = document.getElementById("bookingsTableBody");
       const countPill = document.getElementById("bookingsCountPill");
       if (!body) return;
-      const filtered = activeBookingFilter === "All" ? bookings : bookings.filter(b => b.status === activeBookingFilter);
+      const filtered = bookings.filter((booking) => {
+        const matchesStatus = activeBookingFilter === "All" || booking.status === activeBookingFilter;
+        const matchesDelivery = activeDeliveryFilter === "All" || (booking.delivery_option || "Pickup") === activeDeliveryFilter;
+        return matchesStatus && matchesDelivery;
+      });
       if (countPill) countPill.textContent = `${filtered.length} booking${filtered.length === 1 ? "" : "s"}`;
-      if (!filtered.length) { body.innerHTML = '<tr><td colspan="11" class="admin-empty-cell">No data available</td></tr>'; return; }
-      body.innerHTML = filtered.map(booking => `
+      if (!filtered.length) { body.innerHTML = '<tr><td colspan="12" class="admin-empty-cell">No data available</td></tr>'; return; }
+      body.innerHTML = filtered.map(booking => {
+        const shortId = String(booking.id).slice(-8);
+        const deliveryOption = booking.delivery_option === "Delivery" ? "Delivery" : "Pickup";
+        const deliveryBadgeClass = deliveryOption === "Delivery" ? "is-delivery" : "is-pickup";
+        return `
         <tr>
-          <td>${escapeHtml(booking.id)}</td>
-          <td>
-            <strong>${escapeHtml(booking.full_name)}</strong>
-            <p>${escapeHtml(booking.phone || "No phone")}</p>
-          </td>
-          <td>${escapeHtml(booking.service_type)}</td>
-          <td>${escapeHtml(booking.machine)}</td>
-          <td>${escapeHtml(formatDate(booking.pickup_date))}</td>
-          <td>${escapeHtml(booking.pickup_time || "No time")}</td>
-          <td>
+          <td class="col-id"><span class="cell-id" title="${escapeHtml(booking.id)}">${escapeHtml(shortId)}</span></td>
+          <td class="col-user"><strong>${escapeHtml(booking.full_name)}</strong></td>
+          <td class="col-service">${escapeHtml(booking.service_type)}</td>
+          <td class="col-machine">${escapeHtml(booking.machine)}</td>
+          <td class="col-date">${escapeHtml(formatDate(booking.pickup_date))}</td>
+          <td class="col-time">${escapeHtml(booking.pickup_time || "-")}</td>
+          <td class="col-status">
             <select class="admin-inline-select" id="bookingStatus-${escapeHtml(booking.id)}">
               <option value="Pending" ${booking.status === "Pending" ? "selected" : ""}>Pending</option>
               <option value="In Progress" ${booking.status === "In Progress" ? "selected" : ""}>In Progress</option>
@@ -1161,14 +2205,19 @@
               <option value="Cancelled" ${booking.status === "Cancelled" ? "selected" : ""}>Cancelled</option>
             </select>
           </td>
-          <td>${escapeHtml(formatCurrency(booking.total_price))}</td>
-          <td>${escapeHtml(booking.load_type || "No load type")}</td>
-          <td>${escapeHtml(booking.notes || "No notes")}</td>
-          <td>
+          <td class="col-price">${escapeHtml(formatCurrency(booking.total_price))}</td>
+          <td class="col-load">${escapeHtml(booking.load_type || "-")}</td>
+          <td class="col-delivery">
+            <span class="admin-booking-delivery-badge ${escapeHtml(deliveryBadgeClass)}">${escapeHtml(deliveryOption)}</span>
+          </td>
+          <td class="col-notes" title="${escapeHtml(booking.notes || "")}">
+            <span class="booking-note-text">${escapeHtml(booking.notes || "-")}</span>
+          </td>
+          <td class="col-action">
             <button type="button" class="admin-button admin-button-primary" onclick="updateBookingStatus(${JSON.stringify(String(booking.id)).replace(/"/g,'&quot;')})">Save</button>
           </td>
-        </tr>
-      `).join("");
+        </tr>`;
+      }).join("");
     }
 
     function renderMachinesPanel(machines = []) {
@@ -1181,30 +2230,34 @@
       grid.innerHTML = machines.map(machine => {
         const machineStatus = normalizeMachineStatus(machine);
         const controlStatus = machineStatus === "Disabled" ? "Disabled" : machine.status;
+        const machineKey = machine.id ?? machine.machine_number;
         return `
           <article class="admin-machine-card ${machineStatus === "Disabled" ? "is-disabled" : ""}">
             <div class="admin-machine-head">
               <div class="admin-section-stack">
                 <h3>${escapeHtml(machine.name)}</h3>
-                <p>${escapeHtml(`Machine ${machine.machine_number || "-"}`)}</p>
+                <p>${escapeHtml(machine.load_type || "Medium")} Load</p>
               </div>
               <span class="admin-machine-status-tag ${escapeHtml(formatStatusClass(machineStatus))}">${escapeHtml(machineStatus)}</span>
             </div>
             <div class="admin-machine-controls">
-              <select class="admin-inline-select" id="machineStatus-${escapeHtml(machine.machine_number)}">
+              <label>
+                <span>Status</span>
+                <select class="admin-inline-select" id="machineStatus-${escapeHtml(machineKey)}">
                 <option value="Available" ${controlStatus === "Available" ? "selected" : ""}>Available</option>
                 <option value="In Use" ${controlStatus === "In Use" ? "selected" : ""}>In Use</option>
                 <option value="Disabled" ${controlStatus === "Disabled" ? "selected" : ""}>Disabled</option>
-              </select>
-              <select class="admin-inline-select" id="machineLoad-${escapeHtml(machine.machine_number)}">
+                </select>
+              </label>
+              <label>
+                <span>Load Type</span>
+                <select class="admin-inline-select" id="machineLoad-${escapeHtml(machineKey)}">
                 ${loadOptions.map(lt => `<option value="${escapeHtml(lt)}" ${machine.load_type === lt ? "selected" : ""}>${escapeHtml(lt)}</option>`).join("")}
-              </select>
+                </select>
+              </label>
             </div>
             <div class="admin-action-buttons">
-              <button type="button" class="admin-button admin-button-primary" onclick="saveMachine(${escapeHtml(machine.machine_number)})">Save Machine</button>
-              <button type="button" class="admin-button ${machine.enabled ? "admin-button-danger" : "admin-button-ghost"}" onclick="toggleMachineEnabled(${escapeHtml(machine.machine_number)}, ${machine.enabled ? "true" : "false"})">
-                ${machine.enabled ? "Disable" : "Enable"}
-              </button>
+              <button type="button" class="admin-button admin-button-primary" onclick="saveMachine(${JSON.stringify(String(machineKey)).replace(/"/g,'&quot;')})">Save Machine</button>
             </div>
           </article>`;
       }).join("");
@@ -1292,6 +2345,7 @@
               <span class="admin-service-price">${escapeHtml(formatCurrency(payment.amount))}</span>
             </div>
             <p>${escapeHtml(payment.booking_id)} - ${escapeHtml(payment.method)} - ${escapeHtml(payment.status)}</p>
+            ${payment.reference_number ? `<p>Ref: ${escapeHtml(payment.reference_number)}</p>` : ""}
             <p>${escapeHtml(formatDate(payment.paid_at))}</p>
           </article>
         `).join("");
@@ -1322,13 +2376,26 @@
       const setValue = (id, value) => { const f = document.getElementById(id); if (f) f.value = value || ""; };
       setValue("settingsAdminName", profile.name || DASHBOARD_CONFIG.currentUser?.name || "");
       setValue("settingsAdminEmail", profile.email || DASHBOARD_CONFIG.currentUser?.email || "");
+      setValue("settingsAdminPhone", profile.phone || DASHBOARD_CONFIG.currentUser?.phone || "");
+      setAdminAvatarPreview(profile.avatar || DASHBOARD_CONFIG.currentUser?.avatar || "");
+      const adminNameLabel = document.getElementById("adminName");
+      const adminEmailLabel = document.getElementById("adminEmail");
+      const settingsProfileName = document.getElementById("settingsProfileName");
+      const settingsProfileEmail = document.getElementById("settingsProfileEmail");
+      const settingsProfilePhone = document.getElementById("settingsProfilePhone");
+      if (adminNameLabel) adminNameLabel.textContent = profile.name || DASHBOARD_CONFIG.currentUser?.name || "FreshWash Admin";
+      if (adminEmailLabel) adminEmailLabel.textContent = profile.email || DASHBOARD_CONFIG.currentUser?.email || "admin@freshwash.app";
+      if (settingsProfileName) settingsProfileName.textContent = profile.name || DASHBOARD_CONFIG.currentUser?.name || "FreshWash Admin";
+      if (settingsProfileEmail) settingsProfileEmail.textContent = profile.email || DASHBOARD_CONFIG.currentUser?.email || "admin@freshwash.app";
+      if (settingsProfilePhone) settingsProfilePhone.textContent = profile.phone || DASHBOARD_CONFIG.currentUser?.phone || "No phone";
       setValue("settingsShopName", system.shop_name || "FreshWash");
       setValue("settingsContactNumber", system.contact_number || "");
       setValue("settingsShopAddress", system.shop_address || "");
       setValue("settingsLoadTypes", Array.isArray(machines.default_load_types) ? machines.default_load_types.join(", ") : "");
-      setValue("settingsThemeMode", theme.mode || "light");
-      setValue("settingsThemeAccent", theme.accent || "pink-rose");
+      applyThemeAccent(theme.accent || document.body.dataset.adminAccent || "pink-rose");
+      applySettingsTheme(getStoredThemePreference() || theme.mode || document.body.dataset.adminMode || "light");
       setValue("settingsAdminPassword", "");
+      setValue("settingsAdminPasswordConfirm", "");
       const checkbox = document.getElementById("settingsMachinesEnabled");
       if (checkbox) checkbox.checked = Boolean(machines.machines_globally_enabled);
     }
@@ -1362,6 +2429,49 @@
       return dashboardState.users.find(u => String(u.id) === String(userId)) || null;
     }
 
+    function setEditUserAvatarPreview(avatarUrl = "") {
+      const preview = document.getElementById("editUserAvatarPreview");
+      const hiddenField = document.getElementById("editUserAvatarData");
+      if (!preview || !hiddenField) return;
+      hiddenField.value = avatarUrl || "";
+      preview.innerHTML = avatarUrl
+        ? `<img src="${escapeHtml(avatarUrl)}" alt="User avatar preview" />`
+        : '<i class="fa-solid fa-user"></i>';
+    }
+
+    function openUserEditModal(user) {
+      const modal = document.getElementById("userEditModal");
+      if (!modal || !user) return;
+      const setValue = (id, value) => {
+        const field = document.getElementById(id);
+        if (field) field.value = value || "";
+      };
+      setValue("editUserId", user.id);
+      setValue("editUserName", user.name);
+      setValue("editUserEmail", user.email === "No email" ? "" : user.email);
+      setValue("editUserPhone", user.phone === "No phone" ? "" : user.phone);
+      setValue("editUserAddress", user.address);
+      setValue("editUserRole", user.role || "user");
+      const avatarInput = document.getElementById("editUserAvatarInput");
+      if (avatarInput) avatarInput.value = "";
+      setEditUserAvatarPreview(user.avatar || "");
+      modal.classList.add("is-open");
+      modal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("auth-modal-open");
+      document.getElementById("editUserName")?.focus();
+    }
+
+    function closeUserEditModal() {
+      const modal = document.getElementById("userEditModal");
+      const form = document.getElementById("userEditForm");
+      if (!modal) return;
+      modal.classList.remove("is-open");
+      modal.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("auth-modal-open");
+      if (form) form.reset();
+      setEditUserAvatarPreview("");
+    }
+
     async function createUser() {
       try {
         const name = window.prompt("Full name"); if (!name) return;
@@ -1378,14 +2488,7 @@
     async function editUser(userId) {
       const user = findUserById(userId);
       if (!user) return;
-      try {
-        const name = window.prompt("Full name", user.name || ""); if (!name) return;
-        const phone = window.prompt("Phone number", user.phone || ""); if (phone === null) return;
-        const address = window.prompt("Address", user.address || ""); if (address === null) return;
-        const role = (window.prompt("Role (user/admin)", user.role || "user") || user.role || "user").trim().toLowerCase();
-        await postAdminJson(`/admin/api/users/${encodeURIComponent(userId)}`, { action: "edit", name, email: user.email, phone, address, role });
-        await refreshSectionData("users");
-      } catch (error) { logSupabaseError("User update failed", error); }
+      openUserEditModal(user);
     }
 
     async function deleteUser(userId) {
@@ -1395,21 +2498,53 @@
       try {
         await postAdminJson(`/admin/api/users/${encodeURIComponent(userId)}`, { action: "delete" });
         await refreshSectionData("users");
+        showSuccess("User deleted successfully.");
       } catch (error) { logSupabaseError("User delete failed", error); }
     }
 
-    async function saveMachine(machineNumber) {
+    async function submitUserEditForm(event) {
+      event.preventDefault();
+      const userId = document.getElementById("editUserId")?.value || "";
+      if (!userId) return;
+      const saveButton = document.getElementById("saveUserEditButton");
       try {
-        const statusField = document.getElementById(`machineStatus-${machineNumber}`);
-        const loadField = document.getElementById(`machineLoad-${machineNumber}`);
-        const machine = dashboardState.machines.find(m => String(m.machine_number) === String(machineNumber));
+        clearError();
+        if (saveButton) {
+          saveButton.disabled = true;
+          saveButton.textContent = "Saving...";
+        }
+        const result = await postAdminJson(`/admin/api/users/${encodeURIComponent(userId)}`, {
+          action: "edit",
+          name: document.getElementById("editUserName")?.value.trim() || "",
+          email: document.getElementById("editUserEmail")?.value.trim() || "",
+          phone: document.getElementById("editUserPhone")?.value.trim() || "",
+          address: document.getElementById("editUserAddress")?.value.trim() || "",
+          role: document.getElementById("editUserRole")?.value || "user",
+          avatar: document.getElementById("editUserAvatarData")?.value || ""
+        });
+        applyAdminPayload(result.data || {});
+        closeUserEditModal();
+        showSuccess("User profile updated successfully.");
+      } catch (error) {
+        logSupabaseError("User update failed", error);
+      } finally {
+        if (saveButton) {
+          saveButton.disabled = false;
+          saveButton.textContent = "Save";
+        }
+      }
+    }
+
+    async function saveMachine(machineId) {
+      try {
+        const statusField = document.getElementById(`machineStatus-${machineId}`);
+        const loadField = document.getElementById(`machineLoad-${machineId}`);
+        const machine = dashboardState.machines.find(m => String(m.id) === String(machineId) || String(m.machine_number) === String(machineId));
         if (!statusField || !loadField || !machine) return;
         const selectedStatus = statusField.value;
-        const isDisabled = selectedStatus === "Disabled";
-        await postAdminJson(`/admin/api/machines/${machineNumber}`, {
-          name: machine.name,
-          status: isDisabled ? (machine.status === "In Use" ? "In Use" : "Available") : selectedStatus,
-          enabled: !isDisabled,
+        await patchAdminJson("/api/update-machine-status", {
+          id: machine.id ?? machine.machine_number,
+          status: selectedStatus,
           load_type: loadField.value
         });
         await refreshSectionData("machines");
@@ -1476,10 +2611,32 @@
           action: "profile",
           name: document.getElementById("settingsAdminName")?.value.trim() || "",
           email: document.getElementById("settingsAdminEmail")?.value.trim() || "",
-          password: document.getElementById("settingsAdminPassword")?.value || ""
+          phone: document.getElementById("settingsAdminPhone")?.value.trim() || "",
+          password: ""
         });
+        DASHBOARD_CONFIG.currentUser.name = result.data?.settings?.profile?.name || DASHBOARD_CONFIG.currentUser.name;
+        DASHBOARD_CONFIG.currentUser.email = result.data?.settings?.profile?.email || DASHBOARD_CONFIG.currentUser.email;
+        DASHBOARD_CONFIG.currentUser.phone = result.data?.settings?.profile?.phone || DASHBOARD_CONFIG.currentUser.phone;
+        DASHBOARD_CONFIG.currentUser.avatar = result.data?.settings?.profile?.avatar || DASHBOARD_CONFIG.currentUser.avatar;
         applyAdminPayload(result.data || {});
       } catch (error) { logSupabaseError("Profile settings save failed", error); }
+    }
+
+    async function savePasswordSettings() {
+      try {
+        const password = document.getElementById("settingsAdminPassword")?.value || "";
+        const confirmPassword = document.getElementById("settingsAdminPasswordConfirm")?.value || "";
+        if (!password || password.length < 6) throw new Error("Password must be at least 6 characters.");
+        if (password !== confirmPassword) throw new Error("Passwords do not match.");
+        const result = await postAdminJson("/admin/api/settings", {
+          action: "profile",
+          name: document.getElementById("settingsAdminName")?.value.trim() || DASHBOARD_CONFIG.currentUser?.name || "",
+          email: document.getElementById("settingsAdminEmail")?.value.trim() || DASHBOARD_CONFIG.currentUser?.email || "",
+          phone: document.getElementById("settingsAdminPhone")?.value.trim() || DASHBOARD_CONFIG.currentUser?.phone || "",
+          password
+        });
+        applyAdminPayload(result.data || {});
+      } catch (error) { logSupabaseError("Password update failed", error); }
     }
 
     async function saveSystemSettings() {
@@ -1502,40 +2659,16 @@
           mode: document.getElementById("settingsThemeMode")?.value || "light",
           accent: document.getElementById("settingsThemeAccent")?.value || "pink-rose"
         });
+        saveSettingsTheme(document.getElementById("settingsThemeMode")?.value || "light");
+        applyThemeAccent(document.getElementById("settingsThemeAccent")?.value || "pink-rose");
         applyAdminPayload(result.data || {});
       } catch (error) { logSupabaseError("System settings save failed", error); }
     }
 
     async function refreshSectionData(section) {
       resetFetchErrors();
-      if (section === "dashboard") {
-        const [users, bookings, machines, services, payments, reviews] = await Promise.all([
-          fetchUsers(), fetchBookings(), fetchMachines(), fetchServices(), fetchPayments(), fetchReviews()
-        ]);
-        dashboardState.users = Array.isArray(users) ? users.map(normalizeUser) : dashboardState.users;
-        dashboardState.bookings = Array.isArray(bookings) ? bookings.map((b, i) => normalizeBooking(b, i)) : dashboardState.bookings;
-        dashboardState.machines = Array.isArray(machines) ? machines.map(normalizeMachine) : dashboardState.machines;
-        dashboardState.services = Array.isArray(services) ? services.map((s, i) => normalizeService(s, i)) : dashboardState.services;
-        dashboardState.payments = Array.isArray(payments) ? payments.map((p, i) => normalizePayment(p, i)) : dashboardState.payments;
-        dashboardState.reviews = Array.isArray(reviews) ? reviews.map((r, i) => normalizeReview(r, i)) : dashboardState.reviews;
-      } else if (section === "users") {
-        dashboardState.users = await fetchUsers();
-      } else if (section === "bookings") {
-        dashboardState.bookings = await fetchBookings();
-      } else if (section === "machines") {
-        dashboardState.machines = await fetchMachines();
-      } else if (section === "services") {
-        dashboardState.services = await fetchServices();
-      } else if (section === "reports") {
-        const [bookings, machines, services, payments, reviews] = await Promise.all([
-          fetchBookings(), fetchMachines(), fetchServices(), fetchPayments(), fetchReviews()
-        ]);
-        dashboardState.bookings = Array.isArray(bookings) ? bookings.map((b, i) => normalizeBooking(b, i)) : dashboardState.bookings;
-        dashboardState.machines = Array.isArray(machines) ? machines.map(normalizeMachine) : dashboardState.machines;
-        dashboardState.services = Array.isArray(services) ? services.map((s, i) => normalizeService(s, i)) : dashboardState.services;
-        dashboardState.payments = Array.isArray(payments) ? payments.map((p, i) => normalizePayment(p, i)) : dashboardState.payments;
-        dashboardState.reviews = Array.isArray(reviews) ? reviews.map((r, i) => normalizeReview(r, i)) : dashboardState.reviews;
-      }
+      const payload = await fetchAdminData();
+      if (payload) applyAdminPayload(payload);
       if (fetchErrors.length === 0) clearError();
       renderAllSections(fetchErrors.length === 0 ? "Live data synced" : "Using available data");
     }
@@ -1545,8 +2678,16 @@
       activeSection = safeSection;
       document.querySelectorAll("[data-panel]").forEach(panel => panel.classList.toggle("is-active", panel.dataset.panel === safeSection));
       document.querySelectorAll("[data-section]").forEach(link => link.classList.toggle("is-active", link.dataset.section === safeSection));
+      document.querySelector(".admin-header")?.classList.toggle("is-settings-hidden", safeSection === "settings");
       const pageTitle = document.getElementById("adminPageTitle");
       if (pageTitle) pageTitle.textContent = SECTION_LABELS[safeSection];
+      const pageSubtitle = document.getElementById("adminPageSubtitle");
+      if (pageSubtitle) pageSubtitle.textContent = SECTION_DESCRIPTIONS[safeSection] || "";
+      const pageIcon = document.getElementById("adminPageTitleIcon");
+      if (pageIcon) {
+        const iconClass = SECTION_ICONS[safeSection] || SECTION_ICONS.dashboard;
+        pageIcon.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+      }
       if (updateHistory && DASHBOARD_CONFIG.routes[safeSection]) {
         window.history.replaceState({ section: safeSection }, "", DASHBOARD_CONFIG.routes[safeSection]);
       }
@@ -1556,30 +2697,8 @@
       await refreshSectionData("dashboard");
     }
 
-    function debounceLiveReload() {
-      window.clearTimeout(liveReloadTimer);
-      liveReloadTimer = window.setTimeout(() => {
-        loadDashboardData().catch(error => {
-          logSupabaseError("Dashboard live reload failed", error);
-          renderAllSections("Using cached data");
-        });
-      }, 300);
-    }
-
     function initializeRealtime() {
-      if (!supabaseClient) return;
-      if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
-      realtimeChannel = supabaseClient.channel("freshwash-admin-dashboard-live");
-      realtimeChannel
-        .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, debounceLiveReload)
-        .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, debounceLiveReload)
-        .on("postgres_changes", { event: "*", schema: "public", table: "machines" }, debounceLiveReload)
-        .on("postgres_changes", { event: "*", schema: "public", table: "services" }, debounceLiveReload)
-        .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, debounceLiveReload)
-        .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, debounceLiveReload)
-        .subscribe((status) => {
-          if (status === "CHANNEL_ERROR") logSupabaseError("Supabase realtime channel failed to connect", new Error("Realtime subscription failed"));
-        });
+      // FreshWash now keeps admin data access on the backend only.
     }
 
     function initializeAutoRefresh() {
@@ -1612,14 +2731,98 @@
         });
       }
 
+      const bookingsDeliveryFilter = document.getElementById("bookingsDeliveryFilter");
+      if (bookingsDeliveryFilter) {
+        bookingsDeliveryFilter.addEventListener("change", () => {
+          activeDeliveryFilter = bookingsDeliveryFilter.value || "All";
+          renderBookingsTable(dashboardState.bookings);
+        });
+      }
+
       const createUserButton = document.getElementById("createUserButton");
       if (createUserButton) createUserButton.addEventListener("click", createUser);
+
+      const userEditForm = document.getElementById("userEditForm");
+      if (userEditForm) userEditForm.addEventListener("submit", submitUserEditForm);
+
+      const cancelUserEditButton = document.getElementById("cancelUserEditButton");
+      if (cancelUserEditButton) cancelUserEditButton.addEventListener("click", closeUserEditModal);
+
+      const closeUserEditModalButton = document.getElementById("closeUserEditModalButton");
+      if (closeUserEditModalButton) closeUserEditModalButton.addEventListener("click", closeUserEditModal);
+
+      const userEditModal = document.getElementById("userEditModal");
+      if (userEditModal) {
+        userEditModal.addEventListener("click", (event) => {
+          if (event.target === userEditModal) closeUserEditModal();
+        });
+      }
+
+      const editAvatarInput = document.getElementById("editUserAvatarInput");
+      if (editAvatarInput) {
+        editAvatarInput.addEventListener("change", () => {
+          const file = editAvatarInput.files?.[0];
+          if (!file) return;
+          if (!file.type.startsWith("image/")) {
+            showError("Only image files are allowed for user avatars.");
+            editAvatarInput.value = "";
+            return;
+          }
+          const reader = new FileReader();
+          reader.addEventListener("load", () => setEditUserAvatarPreview(String(reader.result || "")));
+          reader.readAsDataURL(file);
+        });
+      }
 
       const addServiceButton = document.getElementById("addServiceButton");
       if (addServiceButton) addServiceButton.addEventListener("click", addService);
 
       const saveProfileButton = document.getElementById("saveProfileSettingsButton");
       if (saveProfileButton) saveProfileButton.addEventListener("click", saveProfileSettings);
+
+      const savePasswordButton = document.getElementById("savePasswordSettingsButton");
+      if (savePasswordButton) savePasswordButton.addEventListener("click", savePasswordSettings);
+
+      const themeToggle = document.getElementById("settingsDarkModeToggle");
+      if (themeToggle) {
+        themeToggle.addEventListener("change", () => {
+          saveSettingsTheme(themeToggle.checked ? "dark" : "light");
+        });
+      }
+
+      const avatarInput = document.getElementById("settingsAdminAvatarInput");
+      if (avatarInput) {
+        avatarInput.addEventListener("change", () => {
+          const file = avatarInput.files?.[0];
+          if (!file || !file.type.startsWith("image/")) return;
+          const reader = new FileReader();
+          reader.addEventListener("load", () => setAdminAvatarPreview(String(reader.result || "")));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const uploadAvatarButton = document.getElementById("uploadAdminAvatarButton");
+      if (uploadAvatarButton) {
+        uploadAvatarButton.addEventListener("click", async () => {
+          try {
+            uploadAvatarButton.disabled = true;
+            uploadAvatarButton.textContent = "Uploading...";
+            const result = await uploadAdminProfilePhoto();
+            const avatar = result.avatar || result.data?.settings?.profile?.avatar || "";
+            DASHBOARD_CONFIG.currentUser.avatar = avatar;
+            setAdminAvatarPreview(avatar);
+            if (avatarInput) avatarInput.value = "";
+            if (result.data) applyAdminPayload(result.data);
+            showSuccess("Profile photo uploaded successfully.");
+          } catch (error) {
+            logSupabaseError("Profile photo upload failed", error);
+            setAdminAvatarPreview(DASHBOARD_CONFIG.currentUser.avatar || "");
+          } finally {
+            uploadAvatarButton.disabled = false;
+            uploadAvatarButton.textContent = "Upload Photo";
+          }
+        });
+      }
 
       const saveSystemButton = document.getElementById("saveSystemSettingsButton");
       if (saveSystemButton) saveSystemButton.addEventListener("click", saveSystemSettings);
@@ -1636,25 +2839,22 @@
       renderAllSections("Using initial dashboard data");
       setActiveSection(activeSection, false);
       initializeNavigation();
-
-      supabaseClient = createSupabaseClient();
-      if (!supabaseClient) {
-        showError("Supabase client could not be initialized. FreshWash is displaying the server-provided admin data instead.");
-        console.error("[FreshWash Admin] Supabase client could not be initialized.");
-        return;
-      }
-
       await loadDashboardData();
       initializeRealtime();
       initializeAutoRefresh();
     }
 
     document.addEventListener("DOMContentLoaded", () => {
+      initializeSettingsTheme();
       initializeDashboard().catch(error => {
         logSupabaseError("Admin dashboard initialization failed", error);
         renderAllSections("Using fallback data");
         setActiveSection(activeSection, false);
       });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeUserEditModal();
     });
   </script>
 </body>
