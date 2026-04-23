@@ -41,7 +41,8 @@
   <div class="section-heading">
     <div>
       <span class="section-kicker">Load Options</span>
-      <h2>Choose a load size and jump straight into booking.</h2>
+      <h2>Select the Right Laundry Service for Your Needs</h2>
+      <p>Pick from light, medium, or heavy loads depending on your laundry needs. Each option is designed to give you the best care and convenience.</p>
     </div>
   </div>
 
@@ -52,8 +53,8 @@
       {'load_type': 'Heavy', 'title': 'Heavy Load', 'description': 'For towels, bedding, and bulkier items.', 'icon': 'fa-drum', 'is_available': true, 'machine_name': '', 'available_count': 0}
     ] %}
     <a
-      class="load-option-card"
-      href="{% if user %}{{ url_for('booking', load=card.load_type ~ ' Load', machine=card.machine_name or '') }}{% else %}#{% endif %}"
+      class="load-option-card {% if user and not card.is_available %}is-unavailable{% endif %}"
+      href="{% if user and card.is_available %}{{ url_for('booking', load=card.load_type ~ ' Load', machine=card.machine_name or '') }}{% else %}#{% endif %}"
       {% if not user %}data-auth-link="register"{% endif %}
     >
       <span class="load-option-icon"><i class="fa-solid {{ card.icon }}"></i></span>
@@ -62,6 +63,7 @@
       <span class="load-option-meta">
         {% if user %}
         {{ card.available_count }} machine{{ '' if card.available_count == 1 else 's' }} available
+        {% if not card.is_available %} - Unavailable{% endif %}
         {% else %}
         Sign in to book this load
         {% endif %}
@@ -75,7 +77,8 @@
   <div class="section-heading section-heading-services">
     <div>
       <span class="section-kicker">Services</span>
-      <h2>Laundry options visible right on the homepage.</h2>
+      <h2>All-in-One Laundry Services for Your Everyday Needs</h2>
+      <p>Explore our complete range of laundry services designed for convenience, quality, and care. From everyday washing to premium garment treatment, FreshWash has you covered.</p>
     </div>
     <span class="service-inline-chip">Browse without clicking</span>
   </div>
@@ -95,7 +98,10 @@
       <h3>{{ card.name }}</h3>
       <p>{{ card.description }}</p>
       <div class="service-showcase-foot homepage-service-foot">
-        <span class="service-meta-label">{{ card.price_label }}</span>
+        <span class="service-meta-label">
+          <small>{{ card.price_prefix }}</small>
+          <strong>{{ card.price_value }}</strong>
+        </span>
         {% if user %}
         <a href="{{ url_for('booking') }}" class="btn-primary btn-small">Book Now</a>
         {% else %}
@@ -147,25 +153,26 @@
   <div class="section-heading">
     <div>
       <span class="section-kicker">About FreshWash</span>
-      <h2>Clean design, reliable service, and a booking flow built for busy schedules.</h2>
+      <h2>Reliable laundry care designed for busy everyday living.</h2>
+      <p class="about-section-intro">FreshWash makes laundry simple, fast, and dependable through convenient booking, careful garment handling, and customer-friendly service.</p>
     </div>
   </div>
 
   <div class="about-feature-grid">
     <article class="about-feature-card">
       <span class="about-feature-icon"><i class="fa-solid fa-bolt"></i></span>
-      <h3>Fast booking flow</h3>
-      <p>Move from service choice to confirmation with a simple, compact interface that fits laptop screens cleanly.</p>
+      <h3>Fast and easy booking</h3>
+      <p>Book your laundry in just a few steps with a smooth and simple process that saves time and keeps everything hassle-free.</p>
     </article>
     <article class="about-feature-card">
       <span class="about-feature-icon"><i class="fa-solid fa-shield-heart"></i></span>
-      <h3>Reliable garment care</h3>
-      <p>From wash and fold to dry cleaning, each option is presented clearly so the right care level is easy to choose.</p>
+      <h3>Quality garment care</h3>
+      <p>From regular washing to delicate fabric handling, every item is treated with care to keep your clothes fresh, clean, and well-maintained.</p>
     </article>
     <article class="about-feature-card">
       <span class="about-feature-icon"><i class="fa-solid fa-truck-fast"></i></span>
-      <h3>Pickup-ready convenience</h3>
-      <p>Keep everything in one place with synced profile details, recent bookings, and fast rebooking paths.</p>
+      <h3>Convenient service experience</h3>
+      <p>Enjoy an organized laundry experience with clear service options, easy scheduling, and a system built for comfort and convenience.</p>
     </article>
   </div>
 </section>

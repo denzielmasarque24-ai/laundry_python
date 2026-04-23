@@ -57,7 +57,7 @@
   {
     "id": "b48159c0-9b06-4a74-9452-563da02c1cd9",
     "email": "joy@gmail.com",
-    "password_hash": "scrypt:32768:8:1$iOBlDvo0F1K5u18N$fdb9ae4cf000c2da8abbb6bc819676b636c93ec3368842ab44468504f02ab95f6dda882453d338c6837a96a0bcb0fae3673f2011b1e227433fef20ef968c7387",
+    "password_hash": "scrypt:32768:8:1$PL6l0fXYIBCpB11d$2fa0c633280defabddce9b299dece81c111c05d4ec9accb98a30b21c7eb7a6bba69744c50707eb0abbcc0910e6f382339847130636beb7066c674dc3e1f95936",
     "full_name": "joy gulpan",
     "phone": "09914405837",
     "address": "talisay",
@@ -79,12 +79,12 @@
   {
     "id": "25c84cfb-80ca-4fd6-8330-bdcd20b72b26",
     "email": "admin@gmail.com",
-    "password_hash": "scrypt:32768:8:1$f2x9J6ZXSqI5FsjQ$80787166042f70ea25475cd1bd3c735c945080b09c2c9f43e5c079ef355a559f289092523c408efbf2f4f901514a805ebd51693d417d56c7ebb10dddc85e9fa9",
+    "password_hash": "scrypt:32768:8:1$bAryx13TcQUsLkJ3$78f3c5c7232bd2de0b9f69c0cdb665184b5d4edf038f6513eef1cb8f71ff2aeca3cf1985df78c4cc5190674a690c15405d9f3ce15e16a800d5f6615ca76b05ca",
     "full_name": "Denziel Masarque",
     "phone": "09914405837",
     "address": "talisay",
     "avatar": "",
-    "role": "user",
+    "role": "admin",
     "created_at": "2026-04-16T17:47:52.571958"
   },
   {

@@ -22,7 +22,7 @@ def is_supabase_service_role_enabled() -> bool:
     return SUPABASE_SERVICE_ROLE_ENABLED
 
 
-def get_authed_client(access_token: str) -> Client:
+def get_authed_client(access_token: str, refresh_token: str = "") -> Client:
     """Return an RLS-authenticated client using the user's JWT."""
     if not SUPABASE_ENABLED:
         raise RuntimeError("Supabase is not configured.")
@@ -30,6 +30,8 @@ def get_authed_client(access_token: str) -> Client:
     authed: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     if access_token and access_token.strip():
         authed.postgrest.auth(access_token)
+        if refresh_token and refresh_token.strip():
+            authed.auth.set_session(access_token, refresh_token)
     return authed
 
 

@@ -4,8 +4,23 @@
 
 {% block extra_head %}
 <style>
+  body.booking-body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  body.booking-body .site-shell {
+    width: min(1360px, calc(100vw - 40px));
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 0 0 24px;
+  }
+
   .booking-screen {
-    width: min(1120px, 100%);
+    width: 100%;
+    max-width: 1360px;
     margin: 0 auto;
     display: flex;
     justify-content: center;
@@ -13,11 +28,24 @@
     animation: fadeUp 0.55s ease;
   }
 
+  .booking-body .page-shell {
+    width: 100%;
+    max-width: 1360px;
+    min-height: calc(100vh - 88px);
+    margin: 0 auto;
+    padding-top: 0.65rem;
+    padding-right: 0;
+    padding-bottom: 0.65rem;
+    padding-left: 0;
+    justify-content: center;
+    align-items: stretch;
+    overflow: visible;
+  }
+
   .booking-main {
     position: relative;
-    overflow-x: hidden;
-    overflow-y: visible;
-    border-radius: 32px;
+    overflow: visible;
+    border-radius: 26px;
     border: 1px solid rgba(255, 255, 255, 0.65);
     box-shadow: 0 22px 60px rgba(78, 58, 138, 0.16);
     backdrop-filter: blur(22px);
@@ -25,12 +53,15 @@
 
   .booking-main {
     width: 100%;
-    max-width: 1180px;
+    max-width: 1360px;
+    height: auto;
     max-height: none;
-    padding: 1.05rem 1.15rem 1.15rem;
+    min-height: auto;
+    padding: 0.85rem 1rem 1rem;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.28));
     display: grid;
-    gap: 0.72rem;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0.65rem;
   }
 
   .booking-main-top {
@@ -40,7 +71,7 @@
 
   .booking-main-top h2 {
     margin: 0;
-    font-size: 1.24rem;
+    font-size: 1.08rem;
     color: #31204f;
   }
 
@@ -52,32 +83,36 @@
 
   .booking-form-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.62rem 0.82rem;
-    align-content: start;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-content: stretch;
+    align-items: stretch;
+    min-height: 0;
+    width: 100%;
   }
 
-  .booking-field.span-2 {
-    grid-column: span 2;
+  .booking-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.48rem;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .booking-column:last-of-type {
+    height: 100%;
   }
 
   .booking-field .fw-label {
-    margin-bottom: 0.24rem;
+    margin-bottom: 0.16rem;
     color: #655784;
-    font-size: 0.66rem;
-  }
-
-  .booking-field-help {
-    margin-top: 0.18rem;
-    color: #8b789f;
-    font-size: 0.7rem;
-    line-height: 1.28;
+    font-size: 0.62rem;
   }
 
   .booking-field .fw-field {
-    min-height: 44px;
-    padding: 0.02rem 0.72rem;
-    border-radius: 15px;
+    min-height: 40px;
+    padding: 0 0.62rem;
+    border-radius: 13px;
     background: rgba(255, 255, 255, 0.58);
     border-color: rgba(173, 158, 221, 0.22);
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
@@ -89,40 +124,409 @@
   }
 
   .booking-actions {
-    grid-column: span 2;
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    position: static;
+    margin-top: auto;
+    padding: 0;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+
+  .booking-payment-card {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 0.78rem;
+    align-content: start;
+    padding: 1rem;
+    min-height: auto;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 190, 223, 0.54);
+    background: linear-gradient(180deg, rgba(255, 248, 252, 0.92), rgba(255, 239, 248, 0.72));
+    box-shadow: 0 16px 36px rgba(255, 111, 181, 0.14);
+    backdrop-filter: blur(18px);
+  }
+
+  .booking-payment-card.is-digital-payment-active {
+    gap: 0.78rem;
+  }
+
+  .booking-payment-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .booking-payment-title {
+    display: flex;
+    align-items: center;
+    gap: 0.42rem;
+    margin: 0;
+    color: #4b2340;
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+
+  .booking-payment-title i {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: #fff;
+    background: linear-gradient(135deg, #ff8ac4, #eb4d98);
+    box-shadow: 0 10px 22px rgba(235, 77, 152, 0.2);
+  }
+
+  .booking-payment-summary {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.08rem 0 0;
+  }
+
+  .booking-payment-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.85rem;
-    position: static;
-    margin-top: 0.2rem;
-    padding: 0.62rem 0.8rem;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.72);
-    background: rgba(255, 248, 252, 0.88);
-    backdrop-filter: blur(16px);
-    box-shadow: 0 16px 34px rgba(255, 111, 181, 0.14);
+    color: #72576f;
+    font-size: 0.76rem;
   }
 
-  .booking-actions-copy {
-    display: grid;
-    gap: 0.18rem;
+  .booking-payment-row strong {
+    color: #4b2340;
+    font-weight: 800;
+    text-align: right;
   }
 
-  .booking-actions-copy strong {
+  .booking-payment-row.is-total {
+    margin-top: 0.08rem;
+    padding-top: 0.42rem;
+    border-top: 1px solid rgba(235, 77, 152, 0.16);
     color: #4b2340;
     font-size: 0.84rem;
+    font-weight: 800;
   }
 
-  .booking-actions-copy span {
-    color: #8b789f;
-    font-size: 0.72rem;
+  .booking-payment-row.is-total strong {
+    color: #d7348a;
+    font-size: 1rem;
+  }
+
+  .payment-method-label {
+    margin: 0;
+    color: #6f6190;
+    font-size: 0.66rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .payment-method-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .payment-method-option {
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    gap: 0.72rem;
+    padding: 0.64rem 0.82rem;
+    border: 1px solid rgba(198, 178, 212, 0.38);
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.52);
+    color: #3f2a4a;
+    font-weight: 850;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .payment-method-option:hover {
+    transform: translateY(-1px);
+    border-color: rgba(235, 77, 152, 0.45);
+    box-shadow: 0 12px 24px rgba(235, 77, 152, 0.12);
+  }
+
+  .payment-method-option.is-active {
+    border-color: #eb4d98;
+    background: linear-gradient(135deg, rgba(255, 235, 247, 0.96), rgba(255, 248, 252, 0.82));
+    box-shadow: 0 14px 28px rgba(235, 77, 152, 0.14);
+  }
+
+  .payment-method-dot {
+    width: 18px;
+    height: 18px;
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border: 2px solid rgba(123, 109, 142, 0.28);
+    border-radius: 50%;
+  }
+
+  .payment-method-option.is-active .payment-method-dot {
+    border-color: #eb4d98;
+  }
+
+  .payment-method-option.is-active .payment-method-dot::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #eb4d98;
+  }
+
+  .payment-method-icon {
+    width: 38px;
+    height: 34px;
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    color: #fff;
+    background: linear-gradient(135deg, #ff8ac4, #eb4d98);
+    font-size: 0.76rem;
+    font-weight: 900;
+  }
+
+  .payment-method-icon.is-gcash {
+    background: #2468f2;
+  }
+
+  .payment-method-icon.is-maya {
+    background: #47d889;
+    color: #143224;
+  }
+
+  .payment-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .payment-option-card {
+    min-height: 286px;
+    display: grid;
+    align-content: start;
+    gap: 0.68rem;
+    padding: 0.88rem;
+    border: 1px solid rgba(255, 190, 223, 0.62);
+    border-radius: 17px;
+    background: rgba(255, 252, 254, 0.64);
+    box-shadow: 0 14px 30px rgba(235, 77, 152, 0.08);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .payment-option-card.is-active {
+    border-color: rgba(235, 77, 152, 0.78);
+    box-shadow: 0 18px 38px rgba(235, 77, 152, 0.16);
+  }
+
+  .payment-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.48rem;
+    margin: 0;
+    color: #3f2946;
+    font-size: 1rem;
+    font-weight: 900;
+  }
+
+  .payment-card-body {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 0.8rem;
+    align-items: center;
+  }
+
+  .digital-qr-wrap {
+    display: grid;
+    place-items: center;
+    gap: 0.34rem;
+    text-align: center;
+  }
+
+  .digital-qr-wrap img {
+    width: 142px;
+    height: 142px;
+    padding: 0.45rem;
+    border-radius: 16px;
+    object-fit: contain;
+    background: #fff;
+    border: 1px solid rgba(235, 77, 152, 0.16);
+    box-shadow: 0 10px 24px rgba(61, 30, 82, 0.12);
+  }
+
+  .digital-qr-wrap span {
+    color: #7a5070;
+    font-size: 0.68rem;
+    font-weight: 800;
+  }
+
+  .digital-payment-details {
+    display: grid;
+    gap: 0.34rem;
+    min-width: 0;
+  }
+
+  .digital-payment-detail-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.7rem;
+    color: #76596e;
+    font-size: 0.74rem;
+  }
+
+  .digital-payment-detail-row strong {
+    color: #4b2340;
+    text-align: right;
+  }
+
+  .digital-payment-detail-row.is-highlight strong {
+    color: #d7348a;
+    font-size: 1.04rem;
+  }
+
+  .digital-copy-button {
+    width: 30px;
+    height: 30px;
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 10px;
+    color: #d7348a;
+    background: rgba(255, 214, 235, 0.72);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .digital-copy-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(235, 77, 152, 0.18);
+  }
+
+  .digital-number-line {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.3rem;
+  }
+
+  .digital-payment-steps {
+    margin: 0;
+    padding: 0.56rem 0.64rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem 0.5rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.48);
+    color: #6f5268;
+    font-size: 0.66rem;
+    line-height: 1.3;
+  }
+
+  .digital-payment-steps li {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.32rem;
+  }
+
+  .digital-payment-steps li::before {
+    content: counter(list-item);
+    width: 18px;
+    height: 18px;
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: #f271ad;
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 900;
+  }
+
+  .cash-delivery-visual {
+    min-height: 142px;
+    display: grid;
+    place-items: center;
+    color: #eb4d98;
+    font-size: 3.1rem;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(255, 235, 247, 0.92), rgba(255, 255, 255, 0.62));
+  }
+
+  .cash-delivery-copy {
+    display: grid;
+    gap: 0.58rem;
+    color: #4b2340;
+    font-size: 0.86rem;
+    line-height: 1.35;
+    text-align: center;
+  }
+
+  .digital-payment-note {
+    margin: 0;
+    color: #8a5d76;
+    font-size: 0.64rem;
+    line-height: 1.34;
+  }
+
+  .digital-proof-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .digital-proof-grid .fw-field {
+    min-height: 38px;
+  }
+
+  .digital-proof-success {
+    display: none;
+    margin: -0.1rem 0 0;
+    color: #9d2564;
+    font-size: 0.62rem;
+    font-weight: 800;
+  }
+
+  .digital-proof-success.is-visible {
+    display: block;
+  }
+
+  .digital-payment-side-note {
+    display: grid;
+    gap: 0.24rem;
+  }
+
+  .digital-proof-grid.is-hidden {
+    display: none;
+  }
+
+  .payment-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid rgba(255, 190, 223, 0.62);
+    border-radius: 15px;
+    background: rgba(255, 240, 248, 0.68);
   }
 
   .booking-submit {
-    min-width: 172px;
-    min-height: 44px;
-    border-radius: 15px;
+    min-width: 168px;
+    min-height: 42px;
+    border-radius: 14px;
     background: linear-gradient(135deg, #ff6fb5, #ff4fa0 55%, #f08bbd);
     box-shadow: 0 16px 30px rgba(255, 111, 181, 0.22);
   }
@@ -143,6 +547,22 @@
   }
 
   @media (max-width: 980px) {
+    body.booking-body .site-shell {
+      width: min(100%, calc(100vw - 24px));
+    }
+
+    .booking-body .page-shell {
+      height: auto;
+      min-height: auto;
+      overflow: visible;
+    }
+
+    .booking-main {
+      height: auto;
+      min-height: auto;
+      max-height: none;
+    }
+
     .booking-screen {
       width: 100%;
     }
@@ -151,19 +571,44 @@
       grid-template-columns: 1fr;
     }
 
-    .booking-field.span-2 {
-      grid-column: auto;
+    .booking-payment-card,
+    .booking-payment-card.is-digital-payment-active {
+      min-height: auto;
     }
 
     .booking-actions {
-      grid-column: auto;
       position: static;
-      flex-direction: column;
       align-items: stretch;
     }
 
     .booking-submit {
       width: 100%;
+    }
+
+    .payment-method-grid,
+    .payment-card-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .payment-card-body,
+    .digital-proof-grid,
+    .payment-footer {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 560px) {
+    body.booking-body {
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    .payment-method-option {
+      min-height: 50px;
+    }
+
+    .digital-payment-detail-row {
+      align-items: flex-start;
     }
   }
 </style>
@@ -176,129 +621,272 @@
       <h2>Schedule a Pickup</h2>
     </div>
 
-    <form method="POST" id="bookingForm" class="booking-form-grid">
+    <form method="POST" id="bookingForm" class="booking-form-grid" enctype="multipart/form-data">
       <input type="hidden" name="selected_machine_status" id="selectedMachineStatus" value="{{ form.get('selected_machine_status', request.args.get('status', '')) }}"/>
 
-      <div class="booking-field">
-        <label class="fw-label">Full Name</label>
-        <div class="fw-field">
-          <span class="fw-field-icon"><i class="fa-solid fa-user"></i></span>
-          <input type="text" name="full_name" class="fw-input" value="{{ form.get('full_name', (user.name if user else '')) }}" required/>
+      <div class="booking-column">
+        <div class="booking-field">
+          <label class="fw-label">Full Name</label>
+          <div class="fw-field">
+            <span class="fw-field-icon"><i class="fa-solid fa-user"></i></span>
+            <input type="text" name="full_name" class="fw-input" value="{{ form.get('full_name', (user.name if user else '')) }}" required/>
+          </div>
+        </div>
+
+        <div class="booking-field">
+          <label class="fw-label">Pickup Address</label>
+          <div class="fw-field">
+            <span class="fw-field-icon"><i class="fa-solid fa-location-dot"></i></span>
+            <input type="text" name="address" class="fw-input" value="{{ form.get('address', (user.address if user else '')) }}" required/>
+          </div>
+        </div>
+
+        <div class="booking-field">
+          <label class="fw-label">Service</label>
+          <div class="fw-field">
+            <span class="fw-field-icon"><i class="fa-solid fa-shirt"></i></span>
+            <select name="service_type" class="fw-input" id="serviceSelect" required>
+              <option value="">Select service</option>
+              {% for name, info in services.items() %}
+              <option value="{{ name }}" data-price="{{ info.price }}"
+                {% if form.get('service_type')==name or request.args.get('service')==name %}selected{% endif %}>
+                {{ name }} - &#8369;{{ info.price }}/kg
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="booking-field">
+          <label class="fw-label">Weight</label>
+          <div class="fw-field">
+            <span class="fw-field-icon"><i class="fa-solid fa-weight-hanging"></i></span>
+            <input type="number" name="weight" class="fw-input" id="weightInput" value="{{ form.get('weight', request.args.get('weight','')) }}" min="0.5" step="0.5" placeholder="0.5 kg" required/>
+          </div>
+        </div>
+
+        <div class="booking-field">
+          <label class="fw-label">Pickup Date</label>
+          <div class="fw-field">
+            <span class="fw-field-icon"><i class="fa-solid fa-calendar"></i></span>
+            <input type="date" name="pickup_date" class="fw-input" value="{{ form.get('pickup_date','') }}" required/>
+          </div>
         </div>
       </div>
 
-      <div class="booking-field">
-        <label class="fw-label">Phone Number</label>
-        <div class="fw-field">
-          <span class="fw-field-icon"><i class="fa-solid fa-phone"></i></span>
-          <input type="tel" name="phone" class="fw-input" value="{{ form.get('phone', (user.phone if user else '')) }}" placeholder="09XXXXXXXXX" required/>
+      <div class="booking-column">
+        <div class="booking-field">
+          <label class="fw-label">Phone</label>
+          <div class="fw-field">
+            <span class="fw-field-icon"><i class="fa-solid fa-phone"></i></span>
+            <input type="tel" name="phone" class="fw-input" value="{{ form.get('phone', (user.phone if user else '')) }}" placeholder="09XXXXXXXXX" required/>
+          </div>
+        </div>
+
+        <div class="booking-field">
+          <label class="fw-label">Machine</label>
+          <div class="fw-field">
+            <span class="fw-field-icon"><i class="fa-solid fa-drum"></i></span>
+            <select name="machine" class="fw-input" id="machineSelect" required>
+              <option value="">Select machine</option>
+              {% for machine in machines %}
+              <option
+                value="{{ machine.name }}"
+                data-load-type="{{ machine.load_type }}"
+                data-status="{{ machine.status_display }}"
+                data-machine-number="{{ machine.machine_number }}"
+                {% if machine.status != 'Available' or machine.status_display == 'Disabled' %}disabled{% endif %}
+                {% if form.get('machine')==machine.name or request.args.get('machine')==machine.name or request.args.get('machine')==(machine.machine_number|string) %}selected{% endif %}>
+                {{ machine.name }} - {{ machine.load_type }} ({{ machine.status_display }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="booking-field">
+          <label class="fw-label">Load Type</label>
+          <div class="fw-field">
+            <span class="fw-field-icon"><i class="fa-solid fa-basket-shopping"></i></span>
+            <select name="load_type" class="fw-input" id="loadTypeSelect">
+              <option value="">Select load</option>
+              <option value="Light" {% if form.get('load_type') in ['Light', 'Light Load'] or request.args.get('load') in ['Light', 'Light Load'] %}selected{% endif %}>Light</option>
+              <option value="Medium" {% if form.get('load_type') in ['Medium', 'Medium Load'] or request.args.get('load') in ['Medium', 'Medium Load'] %}selected{% endif %}>Medium</option>
+              <option value="Heavy" {% if form.get('load_type') in ['Heavy', 'Heavy Load'] or request.args.get('load') in ['Heavy', 'Heavy Load'] %}selected{% endif %}>Heavy</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="booking-field">
+          <label class="fw-label">Pickup Time</label>
+          <div class="fw-field">
+            <span class="fw-field-icon"><i class="fa-solid fa-clock"></i></span>
+            <input type="time" name="pickup_time" class="fw-input" value="{{ form.get('pickup_time','') }}" required/>
+          </div>
+        </div>
+
+        <div class="booking-field">
+          <label class="fw-label">Delivery Option</label>
+          <div class="fw-field">
+            <span class="fw-field-icon"><i class="fa-solid fa-truck"></i></span>
+            <select name="delivery_option" class="fw-input">
+              <option value="Pickup" {% if form.get('delivery_option', 'Pickup') == 'Pickup' %}selected{% endif %}>Pickup</option>
+              <option value="Delivery" {% if form.get('delivery_option') == 'Delivery' %}selected{% endif %}>Delivery</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <div class="booking-field span-2">
-        <label class="fw-label">Pickup Address</label>
-        <div class="fw-field">
-          <span class="fw-field-icon"><i class="fa-solid fa-location-dot"></i></span>
-          <input type="text" name="address" class="fw-input" value="{{ form.get('address', (user.address if user else '')) }}" required/>
-        </div>
-      </div>
+      <input type="hidden" name="notes" value="{{ form.get('notes','') }}"/>
 
-      <div class="booking-field">
-        <label class="fw-label">Service Type</label>
-        <div class="fw-field">
-          <span class="fw-field-icon"><i class="fa-solid fa-shirt"></i></span>
-          <select name="service_type" class="fw-input" id="serviceSelect" required>
-            <option value="">Select service</option>
-            {% for name, info in services.items() %}
-            <option value="{{ name }}" data-price="{{ info.price }}"
-              {% if form.get('service_type')==name or request.args.get('service')==name %}selected{% endif %}>
-              {{ name }} - &#8369;{{ info.price }}/kg
-            </option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
+      <section class="booking-payment-card" id="paymentCard" aria-labelledby="paymentDetailsTitle">
+          <div class="booking-payment-head">
+            <h3 class="booking-payment-title" id="paymentDetailsTitle">
+              <i class="fa-solid fa-wallet"></i>
+              Payment
+            </h3>
+          </div>
 
-      <div class="booking-field">
-        <label class="fw-label">Machine</label>
-        <div class="fw-field">
-          <span class="fw-field-icon"><i class="fa-solid fa-drum"></i></span>
-          <select name="machine" class="fw-input" id="machineSelect" required>
-            <option value="">Select machine</option>
-            {% for machine in machines %}
-            <option
-              value="{{ machine.name }}"
-              data-load-type="{{ machine.load_type }}"
-              data-status="{{ machine.status_display }}"
-              data-machine-number="{{ machine.machine_number }}"
-              {% if machine.status != 'Available' or machine.status_display == 'Disabled' %}disabled{% endif %}
-              {% if form.get('machine')==machine.name or request.args.get('machine')==machine.name or request.args.get('machine')==(machine.machine_number|string) %}selected{% endif %}>
-              {{ machine.name }} - {{ machine.load_type }} Load ({{ machine.status_display }})
-            </option>
-            {% endfor %}
-          </select>
-        </div>
-        <p class="booking-field-help">
-          {% if machines %}
-          Choose from {{ machines|length }} machine{{ '' if machines|length == 1 else 's' }} loaded from the system. Machines marked In Use cannot be selected.
-          {% else %}
-          No machines found right now. Please check the admin machine setup.
-          {% endif %}
-        </p>
-      </div>
+          <div class="booking-payment-summary" aria-live="polite">
+            <div class="booking-payment-row">
+              <span>Subtotal</span>
+              <strong id="paymentSubtotal">&#8369;0.00</strong>
+            </div>
+            <div class="booking-payment-row is-total">
+              <span>Total</span>
+              <strong id="paymentTotal">&#8369;0.00</strong>
+            </div>
+          </div>
 
-      <div class="booking-field">
-        <label class="fw-label">Weight</label>
-        <div class="fw-field">
-          <span class="fw-field-icon"><i class="fa-solid fa-weight-hanging"></i></span>
-          <input type="number" name="weight" class="fw-input" id="weightInput" value="{{ form.get('weight', request.args.get('weight','')) }}" min="0.5" step="0.5" placeholder="0.5 kg" required/>
-        </div>
-      </div>
+          {% set selected_payment = form.get('payment_method', 'Cash on Delivery') %}
+          {% if selected_payment == 'Maya' %}{% set selected_payment = 'PayMaya' %}{% endif %}
+          {% if selected_payment == 'Cash on Pickup' %}{% set selected_payment = 'Cash on Delivery' %}{% endif %}
 
-      <div class="booking-field">
-        <label class="fw-label">Load Type</label>
-        <div class="fw-field">
-          <span class="fw-field-icon"><i class="fa-solid fa-basket-shopping"></i></span>
-          <select name="load_type" class="fw-input" id="loadTypeSelect">
-            <option value="">Select load size</option>
-            <option value="Light" {% if form.get('load_type') in ['Light', 'Light Load'] or request.args.get('load') in ['Light', 'Light Load'] %}selected{% endif %}>Light Load</option>
-            <option value="Medium" {% if form.get('load_type') in ['Medium', 'Medium Load'] or request.args.get('load') in ['Medium', 'Medium Load'] %}selected{% endif %}>Medium Load</option>
-            <option value="Heavy" {% if form.get('load_type') in ['Heavy', 'Heavy Load'] or request.args.get('load') in ['Heavy', 'Heavy Load'] %}selected{% endif %}>Heavy Load</option>
-          </select>
-        </div>
-      </div>
+          <div>
+            <p class="payment-method-label">Payment Method</p>
+            <input type="hidden" name="payment_method" id="paymentMethodSelect" value="{{ selected_payment }}"/>
+            <div class="payment-method-grid" role="radiogroup" aria-label="Payment method">
+              <button type="button" class="payment-method-option {% if selected_payment == 'GCash' %}is-active{% endif %}" data-payment-method="GCash" role="radio" aria-checked="{{ 'true' if selected_payment == 'GCash' else 'false' }}">
+                <span class="payment-method-dot"></span>
+                <span class="payment-method-icon is-gcash">G</span>
+                <span>GCash</span>
+              </button>
+              <button type="button" class="payment-method-option {% if selected_payment == 'PayMaya' %}is-active{% endif %}" data-payment-method="PayMaya" role="radio" aria-checked="{{ 'true' if selected_payment == 'PayMaya' else 'false' }}">
+                <span class="payment-method-dot"></span>
+                <span class="payment-method-icon is-maya">maya</span>
+                <span>PayMaya</span>
+              </button>
+              <button type="button" class="payment-method-option {% if selected_payment == 'Cash on Delivery' %}is-active{% endif %}" data-payment-method="Cash on Delivery" role="radio" aria-checked="{{ 'true' if selected_payment == 'Cash on Delivery' else 'false' }}">
+                <span class="payment-method-dot"></span>
+                <span class="payment-method-icon"><i class="fa-solid fa-wallet"></i></span>
+                <span>Cash on Delivery</span>
+              </button>
+            </div>
+          </div>
 
-      <div class="booking-field">
-        <label class="fw-label">Pickup Date</label>
-        <div class="fw-field">
-          <span class="fw-field-icon"><i class="fa-solid fa-calendar"></i></span>
-          <input type="date" name="pickup_date" class="fw-input" value="{{ form.get('pickup_date','') }}" required/>
-        </div>
-      </div>
+          <div class="payment-card-grid" aria-live="polite">
+            <article class="payment-option-card {% if selected_payment == 'GCash' %}is-active{% endif %}" data-payment-card="GCash">
+              <h4 class="payment-card-title"><span class="payment-method-icon is-gcash">G</span> GCash</h4>
+              <div class="payment-card-body">
+                <div class="digital-qr-wrap">
+                  <img src="{{ payment_method_config['GCash'].qr_image_url }}" alt="GCash QR code for {{ payment_method_config['GCash'].account_name }}"/>
+                  <span>Scan to Pay via GCash</span>
+                </div>
+                <div class="digital-payment-details">
+                  <div class="digital-payment-detail-row">
+                    <span>Account Name</span>
+                    <strong>{{ payment_method_config['GCash'].account_name }}</strong>
+                  </div>
+                  <div class="digital-payment-detail-row">
+                    <span>Mobile Number</span>
+                    <strong>{{ payment_method_config['GCash'].mobile_number }}</strong>
+                  </div>
+                  <div class="digital-payment-detail-row is-highlight">
+                    <span>Total Amount</span>
+                    <strong class="digitalTotalAmount">&#8369;0.00</strong>
+                  </div>
+                </div>
+              </div>
+              <ol class="digital-payment-steps">
+                <li>Open your GCash app</li>
+                <li>Scan QR code</li>
+                <li>Enter exact amount</li>
+                <li>Complete payment</li>
+              </ol>
+            </article>
 
-      <div class="booking-field">
-        <label class="fw-label">Pickup Time</label>
-        <div class="fw-field">
-          <span class="fw-field-icon"><i class="fa-solid fa-clock"></i></span>
-          <input type="time" name="pickup_time" class="fw-input" value="{{ form.get('pickup_time','') }}" required/>
-        </div>
-      </div>
+            <article class="payment-option-card {% if selected_payment == 'PayMaya' %}is-active{% endif %}" data-payment-card="PayMaya">
+              <h4 class="payment-card-title"><span class="payment-method-icon is-maya">maya</span> PayMaya</h4>
+              <div class="payment-card-body">
+                <div class="digital-qr-wrap">
+                  <img src="{{ payment_method_config['PayMaya'].qr_image_url }}" alt="PayMaya QR code for {{ payment_method_config['PayMaya'].account_name }}"/>
+                  <span>Scan to Pay via PayMaya</span>
+                </div>
+                <div class="digital-payment-details">
+                  <div class="digital-payment-detail-row">
+                    <span>Account Name</span>
+                    <strong>{{ payment_method_config['PayMaya'].account_name }}</strong>
+                  </div>
+                  <div class="digital-payment-detail-row">
+                    <span>Mobile Number</span>
+                    <strong>{{ payment_method_config['PayMaya'].mobile_number }}</strong>
+                  </div>
+                  <div class="digital-payment-detail-row is-highlight">
+                    <span>Total Amount</span>
+                    <strong class="digitalTotalAmount">&#8369;0.00</strong>
+                  </div>
+                </div>
+              </div>
+              <ol class="digital-payment-steps">
+                <li>Open your Maya app</li>
+                <li>Scan QR code</li>
+                <li>Enter exact amount</li>
+                <li>Complete payment</li>
+              </ol>
+            </article>
 
-      <div class="booking-field span-2">
-        <label class="fw-label">Additional Notes</label>
-        <div class="fw-field">
-          <span class="fw-field-icon"><i class="fa-solid fa-note-sticky"></i></span>
-          <input type="text" name="notes" class="fw-input" value="{{ form.get('notes','') }}" placeholder="Fragile fabric, hypoallergenic soap, gate instructions..."/>
-        </div>
-      </div>
+            <article class="payment-option-card {% if selected_payment == 'Cash on Delivery' %}is-active{% endif %}" data-payment-card="Cash on Delivery">
+              <h4 class="payment-card-title"><span class="payment-method-icon"><i class="fa-solid fa-wallet"></i></span> Cash on Delivery</h4>
+              <div class="cash-delivery-visual" aria-hidden="true">
+                <i class="fa-solid fa-box-open"></i>
+              </div>
+              <div class="cash-delivery-copy">
+                <strong>Pay in cash upon pickup or delivery.</strong>
+                <span>No need to pay now. You will pay when we arrive.</span>
+              </div>
+            </article>
+          </div>
 
-      <div class="booking-actions">
-        <div class="booking-actions-copy">
-          <strong>Ready to confirm your booking?</strong>
-          <span>Review your service, machine, load size, date, and time before submitting.</span>
-        </div>
-        <button type="submit" class="fw-btn-primary booking-submit">Confirm Booking</button>
-      </div>
+          <div class="digital-proof-grid" id="paymentProofRow">
+            <div class="booking-field">
+              <label class="fw-label">Reference Number <span>(for GCash / PayMaya only)</span></label>
+              <div class="fw-field">
+                <span class="fw-field-icon"><i class="fa-solid fa-hashtag"></i></span>
+                <input type="text" name="reference_number" class="fw-input" id="paymentReferenceInput" value="{{ form.get('reference_number','') }}" placeholder="Enter reference number"/>
+              </div>
+              <p class="digital-payment-note">Required for GCash and PayMaya payments.</p>
+            </div>
+            <div class="booking-field">
+              <label class="fw-label">Proof of Payment <span>(Screenshot)</span></label>
+              <div class="fw-field">
+                <span class="fw-field-icon"><i class="fa-solid fa-image"></i></span>
+                <input type="file" name="payment_proof" class="fw-input" id="paymentProofInput" accept="image/*"/>
+              </div>
+              <p class="digital-proof-success" id="paymentProofSuccess">Payment screenshot attached.</p>
+            </div>
+          </div>
+
+          <div class="payment-footer">
+            <p class="digital-payment-note">
+              Payment will be verified before processing your booking.<br/>
+              Make sure the amount is correct before confirming.
+            </p>
+            <button type="submit" class="fw-btn-primary booking-submit">
+              <i class="fa-solid fa-check"></i>
+              Confirm Booking
+            </button>
+          </div>
+      </section>
     </form>
   </div>
 </section>
@@ -307,14 +895,28 @@
 {% block scripts %}
 <script>
   const BOOKING_MACHINES_API_URL = {{ url_for('machines_api') | tojson }};
+  const PAYMENT_METHOD_CONFIG = {{ payment_method_config | tojson }};
+  const serviceSelect = document.getElementById('serviceSelect');
   const wt = document.getElementById('weightInput');
   const loadTypeSelect = document.getElementById('loadTypeSelect');
   const machineSelect = document.getElementById('machineSelect');
+  const paymentMethodSelect = document.getElementById('paymentMethodSelect');
+  const paymentSubtotal = document.getElementById('paymentSubtotal');
+  const paymentTotal = document.getElementById('paymentTotal');
+  const paymentCard = document.getElementById('paymentCard');
+  const paymentMethodOptions = Array.from(document.querySelectorAll('[data-payment-method]'));
+  const paymentOptionCards = Array.from(document.querySelectorAll('[data-payment-card]'));
+  const digitalTotalAmounts = Array.from(document.querySelectorAll('.digitalTotalAmount'));
+  const paymentProofRow = document.getElementById('paymentProofRow');
+  const paymentReferenceInput = document.getElementById('paymentReferenceInput');
+  const paymentProofInput = document.getElementById('paymentProofInput');
+  const paymentProofSuccess = document.getElementById('paymentProofSuccess');
   const selectedMachineStatusInput = document.getElementById('selectedMachineStatus');
   const bookingForm = document.getElementById('bookingForm');
   let selectedMachine = null;
   let bookingMachinesRefreshTimer = null;
   const pickupDateInput = document.querySelector('[name="pickup_date"]');
+  const pickupDeliveryFee = 0;
   const loadWeights = {
     'Light': '2.5',
     'Medium': '5',
@@ -328,6 +930,55 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function formatPeso(amount) {
+    const numericAmount = Number.isFinite(amount) ? amount : 0;
+    return `₱${numericAmount.toFixed(2)}`;
+  }
+
+  function getSelectedServicePrice() {
+    const selectedOption = serviceSelect?.options?.[serviceSelect.selectedIndex];
+    return Number.parseFloat(selectedOption?.dataset?.price || '0') || 0;
+  }
+
+  function updatePaymentSummary() {
+    const servicePrice = getSelectedServicePrice();
+    const weight = Number.parseFloat(wt?.value || '0') || 0;
+    const subtotal = servicePrice * weight;
+    const total = subtotal + pickupDeliveryFee;
+
+    if (paymentSubtotal) paymentSubtotal.textContent = formatPeso(subtotal);
+    if (paymentTotal) paymentTotal.textContent = formatPeso(total);
+    digitalTotalAmounts.forEach(totalElement => {
+      totalElement.textContent = formatPeso(total);
+    });
+  }
+
+  function updatePaymentMethodUi() {
+    const selectedMethod = paymentMethodSelect?.value || 'Cash on Delivery';
+    const paymentConfig = PAYMENT_METHOD_CONFIG[selectedMethod];
+    const isDigitalPayment = Boolean(paymentConfig);
+    paymentCard?.classList.toggle('is-digital-payment-active', isDigitalPayment);
+    paymentProofRow?.classList.toggle('is-hidden', !isDigitalPayment);
+    if (paymentReferenceInput) paymentReferenceInput.required = isDigitalPayment;
+
+    paymentMethodOptions.forEach(option => {
+      const isActive = option.dataset.paymentMethod === selectedMethod;
+      option.classList.toggle('is-active', isActive);
+      option.setAttribute('aria-checked', String(isActive));
+    });
+
+    paymentOptionCards.forEach(card => {
+      card.classList.toggle('is-active', card.dataset.paymentCard === selectedMethod);
+    });
+
+    if (!isDigitalPayment) {
+      if (paymentReferenceInput) paymentReferenceInput.value = '';
+      if (paymentProofInput) paymentProofInput.value = '';
+      paymentProofSuccess?.classList.remove('is-visible');
+    }
+    return selectedMethod;
   }
 
   function renderMachineOptions(machines = []) {
@@ -384,6 +1035,7 @@
     if (!selectedOption || !selectedOption.value) {
       selectedMachine = null;
       if (selectedMachineStatusInput) selectedMachineStatusInput.value = '';
+      updatePaymentSummary();
       return;
     }
 
@@ -401,6 +1053,7 @@
       loadTypeSelect.value = selectedMachine.load_type;
       loadTypeSelect.dispatchEvent(new Event('change'));
     }
+    updatePaymentSummary();
   }
 
   if (loadTypeSelect) {
@@ -409,6 +1062,30 @@
       if (suggestedWeight && wt) {
         wt.value = suggestedWeight;
       }
+      updatePaymentSummary();
+    });
+  }
+
+  if (serviceSelect) {
+    serviceSelect.addEventListener('change', updatePaymentSummary);
+  }
+
+  if (wt) {
+    wt.addEventListener('input', updatePaymentSummary);
+    wt.addEventListener('change', updatePaymentSummary);
+  }
+
+  paymentMethodOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      if (paymentMethodSelect) paymentMethodSelect.value = option.dataset.paymentMethod || 'Cash on Delivery';
+      updatePaymentMethodUi();
+      updatePaymentSummary();
+    });
+  });
+
+  if (paymentProofInput) {
+    paymentProofInput.addEventListener('change', () => {
+      paymentProofSuccess?.classList.toggle('is-visible', Boolean(paymentProofInput.files?.length));
     });
   }
 
@@ -424,6 +1101,14 @@
       if (machineStatus === 'disabled' || machineStatus === 'in use') {
         event.preventDefault();
         window.alert('This machine is unavailable for booking right now. Please select an available machine.');
+        return;
+      }
+
+      const selectedPaymentConfig = PAYMENT_METHOD_CONFIG[paymentMethodSelect?.value || ''];
+      if (selectedPaymentConfig && !paymentReferenceInput?.value.trim()) {
+        event.preventDefault();
+        window.alert(`Please enter your ${selectedPaymentConfig.label} reference number before confirming.`);
+        paymentReferenceInput?.focus();
       }
     });
   }
@@ -431,6 +1116,9 @@
   if (pickupDateInput) {
     pickupDateInput.min = new Date().toISOString().split('T')[0];
   }
+
+  updatePaymentMethodUi();
+  updatePaymentSummary();
 
   refreshBookingMachines();
   window.clearInterval(bookingMachinesRefreshTimer);
