@@ -264,49 +264,53 @@
   <!-- ── OTP Verification Modal ─────────────────────────────────────────── -->
   <div class="otp-modal-overlay" id="otpModalOverlay" aria-hidden="true">
     <div class="otp-modal-card" role="dialog" aria-modal="true" aria-labelledby="otpModalTitle">
+
       <button class="otp-modal-close" type="button" id="otpModalClose" aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
       </button>
 
-      <div class="auth-brand">
-        <div class="auth-brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+      <div class="otp-modal-brand">
+        <div class="otp-modal-brand-icon">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
         <span>FreshWash Security</span>
       </div>
 
-      <h2 class="auth-form-title" id="otpModalTitle">Email Verification</h2>
+      <h2 class="otp-modal-title" id="otpModalTitle">Enter Verification Code</h2>
 
-      <div class="auth-success-note" id="otpSignupNote" style="display:none" role="status" aria-live="polite">
-        <i class="fa-solid fa-circle-check"></i> Account created! Please verify your email.
+      <div class="otp-modal-success" id="otpSignupNote" style="display:none" role="status" aria-live="polite">
+        <i class="fa-solid fa-circle-check"></i>
+        Account created! Please verify your email.
       </div>
 
-      <p class="auth-form-copy" id="otpModalEmailCopy">
-        Enter the verification code sent to <strong id="otpModalEmail"></strong>
+      <p class="otp-modal-email-copy" id="otpModalEmailCopy">
+        Verification code sent to <strong id="otpModalEmail"></strong>
       </p>
 
-      <div class="otp-boxes" id="otpModalBoxes" aria-label="Verification code input">
-        <input type="text" class="otp-digit" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="1" aria-label="Digit 1" />
-        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 2" />
-        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 3" />
-        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 4" />
-        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 5" />
-        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 6" />
+      <div class="otp-modal-boxes" id="otpModalBoxes" aria-label="Verification code input">
+        <input type="text" class="otp-modal-digit" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="1" aria-label="Digit 1" />
+        <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 2" />
+        <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 3" />
+        <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 4" />
+        <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 5" />
+        <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 6" />
       </div>
 
-      <p class="rv-error" id="otpModalError" style="display:none" role="alert">
+      <p class="otp-modal-error" id="otpModalError" style="display:none" role="alert">
         <i class="fa-solid fa-circle-exclamation"></i>
         <span id="otpModalErrorText"></span>
       </p>
 
-      <button type="button" class="btn-primary w-full" id="otpModalVerifyBtn">Verify</button>
+      <button type="button" class="otp-modal-verify-btn" id="otpModalVerifyBtn">Verify</button>
 
-      <button type="button" class="btn-ghost w-full" id="otpModalResendBtn" style="margin-top:.5rem">
-        Resend Code
-      </button>
-      <small id="otpModalResendHint" class="otp-resend-hint" aria-live="polite" style="display:block;text-align:center;margin-top:.25rem"></small>
+      <button type="button" class="otp-modal-resend-btn" id="otpModalResendBtn">Resend Code</button>
 
-      <p class="auth-foot" style="margin-top:.75rem">
-        Wrong account? <a href="/" class="text-link">Back to Sign In</a>
+      <small class="otp-modal-resend-hint" id="otpModalResendHint" aria-live="polite"></small>
+
+      <p class="otp-modal-footer">
+        Wrong account? <a href="/" class="otp-modal-back-link">Back to Sign In</a>
       </p>
+
     </div>
   </div>
 
@@ -374,6 +378,7 @@
 <script>
   const CURRENT_USER = {% if current_user %}{{ current_user | tojson }}{% else %}null{% endif %};
   const ACTIVE_AUTH_MODAL = {{ active_auth_modal | default(None, true) | tojson }};
+  const AUTH_FORM_DATA = {{ auth_form_data | default({}, true) | tojson }};
   const PROFILE_STORAGE_KEY = "freshwashProfile";
 
   function toggleNav() {
@@ -847,6 +852,167 @@
   initAboutSectionVisibility();
   initActiveNavigation();
   if (ACTIVE_AUTH_MODAL) openAuthModal(ACTIVE_AUTH_MODAL);
+
+  // ── OTP Modal ──────────────────────────────────────────────────────────────
+  (function () {
+    const OTP_VERIFY_URL  = "/api/otp/verify";
+    const OTP_RESEND_URL  = "/api/otp/resend";
+    const RESEND_COOLDOWN = 60;
+
+    const overlay    = document.getElementById("otpModalOverlay");
+    const closeBtn   = document.getElementById("otpModalClose");
+    const emailEl    = document.getElementById("otpModalEmail");
+    const signupNote = document.getElementById("otpSignupNote");
+    const errorEl    = document.getElementById("otpModalError");
+    const errorText  = document.getElementById("otpModalErrorText");
+    const verifyBtn  = document.getElementById("otpModalVerifyBtn");
+    const resendBtn  = document.getElementById("otpModalResendBtn");
+    const resendHint = document.getElementById("otpModalResendHint");
+    const boxesEl    = document.getElementById("otpModalBoxes");
+    if (!overlay || !boxesEl) return;
+
+    const digits = Array.from(boxesEl.querySelectorAll(".otp-modal-digit"));
+
+    // ── helpers ──
+    const getCode = () => digits.map(d => (d.value || "").replace(/\D/g, "").slice(0, 1)).join("");
+    const clearCode = () => digits.forEach(d => { d.value = ""; });
+    const showError = msg => {
+      errorText.textContent = msg;
+      errorEl.style.display = "flex";
+    };
+    const hideError = () => { errorEl.style.display = "none"; };
+
+    // ── open / close ──
+    window.openOtpModal = function ({ email = "", showSignupNote = false, cooldown = 0 } = {}) {
+      if (emailEl) emailEl.textContent = email;
+      if (signupNote) signupNote.style.display = showSignupNote ? "flex" : "none";
+      hideError();
+      clearCode();
+      overlay.classList.add("is-open");
+      overlay.setAttribute("aria-hidden", "false");
+      document.body.classList.add("otp-modal-open");
+      startResendCountdown(cooldown > 0 ? cooldown : 0);
+      setTimeout(() => { if (digits[0]) digits[0].focus(); }, 80);
+    };
+
+    window.closeOtpModal = function () {
+      overlay.classList.remove("is-open");
+      overlay.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("otp-modal-open");
+    };
+
+    if (closeBtn) closeBtn.addEventListener("click", window.closeOtpModal);
+    overlay.addEventListener("click", e => { if (e.target === overlay) window.closeOtpModal(); });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && overlay.classList.contains("is-open")) window.closeOtpModal();
+    });
+
+    // ── digit inputs ──
+    digits.forEach((input, i) => {
+      input.addEventListener("input", () => {
+        input.value = (input.value || "").replace(/\D/g, "").slice(-1);
+        hideError();
+        if (input.value && i < digits.length - 1) digits[i + 1].focus();
+      });
+      input.addEventListener("keydown", e => {
+        if (e.key === "Backspace" && !input.value && i > 0) digits[i - 1].focus();
+        if (e.key === "ArrowLeft"  && i > 0)               { e.preventDefault(); digits[i - 1].focus(); }
+        if (e.key === "ArrowRight" && i < digits.length - 1) { e.preventDefault(); digits[i + 1].focus(); }
+      });
+      input.addEventListener("paste", e => {
+        const pasted = (e.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, digits.length);
+        if (!pasted) return;
+        e.preventDefault();
+        digits.forEach((d, idx) => { d.value = pasted[idx] || ""; });
+        digits[Math.min(pasted.length, digits.length - 1)].focus();
+      });
+    });
+
+    // ── verify ──
+    if (verifyBtn) verifyBtn.addEventListener("click", async () => {
+      const code = getCode();
+      if (!/^\d{6}$/.test(code)) { showError("Please enter all 6 digits."); return; }
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = "Verifying\u2026";
+      hideError();
+      try {
+        const res  = await fetch(OTP_VERIFY_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ otp_code: code }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          window.location.href = data.redirect || "/";
+        } else {
+          showError(data.error || "Invalid code. Please try again.");
+          clearCode();
+          digits[0].focus();
+          verifyBtn.disabled = false;
+          verifyBtn.textContent = "Verify";
+        }
+      } catch {
+        showError("Network error. Please try again.");
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = "Verify";
+      }
+    });
+
+    // ── resend countdown ──
+    let countdownTimer = null;
+    function startResendCountdown(seconds) {
+      clearInterval(countdownTimer);
+      let remaining = Math.max(0, Math.floor(seconds));
+      resendBtn.disabled = remaining > 0;
+      const render = () => {
+        resendHint.textContent = remaining > 0 ? `Resend code in ${remaining}s` : "";
+        if (remaining <= 0) resendBtn.disabled = false;
+      };
+      render();
+      if (remaining <= 0) return;
+      countdownTimer = setInterval(() => {
+        remaining -= 1;
+        render();
+        if (remaining <= 0) clearInterval(countdownTimer);
+      }, 1000);
+    }
+
+    // ── resend ──
+    if (resendBtn) resendBtn.addEventListener("click", async () => {
+      resendBtn.disabled = true;
+      resendBtn.textContent = "Sending\u2026";
+      hideError();
+      try {
+        const res  = await fetch(OTP_RESEND_URL, { method: "POST" });
+        const data = await res.json();
+        if (data.ok) {
+          clearCode();
+          digits[0].focus();
+          startResendCountdown(RESEND_COOLDOWN);
+          resendBtn.textContent = "Resend Code";
+        } else {
+          showError(data.error || "Could not resend. Please try again.");
+          resendBtn.disabled = false;
+          resendBtn.textContent = "Resend Code";
+        }
+      } catch {
+        showError("Network error. Please try again.");
+        resendBtn.disabled = false;
+        resendBtn.textContent = "Resend Code";
+      }
+    });
+
+    // ── auto-open if Flask set auth_modal = "otp" ──
+    if (ACTIVE_AUTH_MODAL === "otp") {
+      const fd = typeof AUTH_FORM_DATA !== "undefined" ? AUTH_FORM_DATA : {};
+      window.openOtpModal({
+        email:          fd.email          || "",
+        showSignupNote: fd.show_signup_success || false,
+        cooldown:       fd.resend_cooldown || 0,
+      });
+    }
+  })();
+  // ── End OTP Modal ──────────────────────────────────────────────────────────
 </script>
 {% block scripts %}{% endblock %}
 </body>

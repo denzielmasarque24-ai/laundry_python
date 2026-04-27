@@ -10302,3 +10302,304 @@ body .otp-digit:focus {
     border-radius: 12px;
   }
 }
+
+/* ── OTP Verification Modal ─────────────────────────────────────────────── */
+
+.otp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.28s ease, visibility 0.28s ease;
+}
+
+.otp-modal-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+body.otp-modal-open {
+  overflow: hidden;
+}
+
+.otp-modal-card {
+  position: relative;
+  width: 560px;
+  max-width: 92vw;
+  padding: 40px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(235, 77, 152, 0.12);
+  transform: translateY(16px) scale(0.97);
+  transition: transform 0.28s ease;
+  text-align: center;
+}
+
+.otp-modal-overlay.is-open .otp-modal-card {
+  transform: translateY(0) scale(1);
+}
+
+/* Close button */
+.otp-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(242, 122, 178, 0.12);
+  color: #d84d92;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  z-index: 2;
+}
+
+.otp-modal-close:hover {
+  background: rgba(242, 122, 178, 0.22);
+  transform: scale(1.06);
+}
+
+/* Brand header */
+.otp-modal-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  font-family: "Poppins", sans-serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #4c1830;
+}
+
+.otp-modal-brand-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: white;
+  background: linear-gradient(135deg, #ff9dc8, #e65095);
+  box-shadow: 0 12px 24px rgba(230, 80, 149, 0.24);
+  font-size: 1.1rem;
+}
+
+/* Title */
+.otp-modal-title {
+  margin: 0 0 6px;
+  font-family: "Poppins", sans-serif;
+  font-size: clamp(1.55rem, 3vw, 1.9rem);
+  font-weight: 800;
+  color: #3a1428;
+  line-height: 1.1;
+}
+
+/* Success note */
+.otp-modal-success {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0 14px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(220, 252, 231, 0.9), rgba(255, 240, 248, 0.9));
+  border: 1px solid rgba(134, 239, 172, 0.5);
+  color: #166534;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* Email copy */
+.otp-modal-email-copy {
+  margin: 0 0 24px;
+  font-size: 0.9rem;
+  color: #9b6a84;
+  line-height: 1.5;
+}
+
+.otp-modal-email-copy strong {
+  color: #4c1830;
+  font-weight: 700;
+}
+
+/* OTP digit boxes */
+.otp-modal-boxes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.otp-modal-digit {
+  width: 60px;
+  height: 60px;
+  flex: 0 0 60px;
+  border-radius: 14px;
+  border: 2px solid rgba(242, 122, 178, 0.28);
+  background: rgba(255, 248, 251, 0.96);
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #3a1428;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  caret-color: transparent;
+}
+
+.otp-modal-digit:focus {
+  border-color: #e65095;
+  box-shadow: 0 0 0 4px rgba(230, 80, 149, 0.14);
+  transform: translateY(-2px) scale(1.04);
+  background: #fff;
+}
+
+.otp-modal-digit:not(:placeholder-shown) {
+  border-color: rgba(230, 80, 149, 0.5);
+  background: rgba(255, 240, 248, 0.96);
+}
+
+/* Error */
+.otp-modal-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(254, 226, 226, 0.9);
+  border: 1px solid rgba(252, 165, 165, 0.6);
+  color: #b91c1c;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* Verify button */
+.otp-modal-verify-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 56px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff88bc, #e54d92);
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 18px 34px rgba(229, 77, 146, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  margin-bottom: 10px;
+}
+
+.otp-modal-verify-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 42px rgba(229, 77, 146, 0.36);
+}
+
+.otp-modal-verify-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Resend button */
+.otp-modal-resend-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  border: 1px solid rgba(242, 122, 178, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #d84d92;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+  margin-bottom: 6px;
+}
+
+.otp-modal-resend-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(255, 240, 248, 0.9);
+}
+
+.otp-modal-resend-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Resend hint */
+.otp-modal-resend-hint {
+  display: block;
+  min-height: 18px;
+  text-align: center;
+  color: #9b6a84;
+  font-size: 0.82rem;
+  margin-bottom: 14px;
+}
+
+/* Footer */
+.otp-modal-footer {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #9b6a84;
+}
+
+.otp-modal-back-link {
+  color: #d84d92;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.otp-modal-back-link:hover {
+  color: #b82f78;
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 520px) {
+  .otp-modal-card {
+    padding: 28px 20px 24px;
+    border-radius: 22px;
+  }
+
+  .otp-modal-digit {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    font-size: 1.2rem;
+    border-radius: 12px;
+  }
+
+  .otp-modal-boxes {
+    gap: 8px;
+  }
+
+  .otp-modal-verify-btn {
+    height: 50px;
+    font-size: 0.95rem;
+  }
+
+  .otp-modal-title {
+    font-size: 1.4rem;
+  }
+}
