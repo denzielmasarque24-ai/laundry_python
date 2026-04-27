@@ -260,6 +260,56 @@
   </aside>
 
 
+
+  <!-- ── OTP Verification Modal ─────────────────────────────────────────── -->
+  <div class="otp-modal-overlay" id="otpModalOverlay" aria-hidden="true">
+    <div class="otp-modal-card" role="dialog" aria-modal="true" aria-labelledby="otpModalTitle">
+      <button class="otp-modal-close" type="button" id="otpModalClose" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="auth-brand">
+        <div class="auth-brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+        <span>FreshWash Security</span>
+      </div>
+
+      <h2 class="auth-form-title" id="otpModalTitle">Email Verification</h2>
+
+      <div class="auth-success-note" id="otpSignupNote" style="display:none" role="status" aria-live="polite">
+        <i class="fa-solid fa-circle-check"></i> Account created! Please verify your email.
+      </div>
+
+      <p class="auth-form-copy" id="otpModalEmailCopy">
+        Enter the verification code sent to <strong id="otpModalEmail"></strong>
+      </p>
+
+      <div class="otp-boxes" id="otpModalBoxes" aria-label="Verification code input">
+        <input type="text" class="otp-digit" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="1" aria-label="Digit 1" />
+        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 2" />
+        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 3" />
+        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 4" />
+        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 5" />
+        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 6" />
+      </div>
+
+      <p class="rv-error" id="otpModalError" style="display:none" role="alert">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span id="otpModalErrorText"></span>
+      </p>
+
+      <button type="button" class="btn-primary w-full" id="otpModalVerifyBtn">Verify</button>
+
+      <button type="button" class="btn-ghost w-full" id="otpModalResendBtn" style="margin-top:.5rem">
+        Resend Code
+      </button>
+      <small id="otpModalResendHint" class="otp-resend-hint" aria-live="polite" style="display:block;text-align:center;margin-top:.25rem"></small>
+
+      <p class="auth-foot" style="margin-top:.75rem">
+        Wrong account? <a href="/" class="text-link">Back to Sign In</a>
+      </p>
+    </div>
+  </div>
+
 </div>
 {% endif %}
 
