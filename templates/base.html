@@ -202,7 +202,7 @@
     </div>
     <h2 id="registerAuthTitle">Create your account</h2>
     <p class="auth-form-copy">Create your account to explore FreshWash services, check load options, and book laundry with ease.</p>
-    <form method="POST" action="{{ url_for('register') }}" class="auth-form" onsubmit="return validateRegisterPagePasswords()" novalidate>
+    <form method="POST" action="{{ url_for('api_register') }}" class="auth-form" id="registerAjaxForm" novalidate>
       <div class="rv-field">
         <span class="rv-fi"><i class="fa-solid fa-user"></i></span>
         <input type="text" name="name" class="rv-input" placeholder="Full name" value="{{ (auth_form_data or {}).get('name', '') }}" required />
@@ -261,59 +261,61 @@
 
 
 
-  <!-- ── OTP Verification Modal ─────────────────────────────────────────── -->
-  <div class="otp-modal-overlay" id="otpModalOverlay" aria-hidden="true">
-    <div class="otp-modal-card" role="dialog" aria-modal="true" aria-labelledby="otpModalTitle">
+</div>
+{% endif %}
 
-      <button class="otp-modal-close" type="button" id="otpModalClose" aria-label="Close">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
+<!-- ── OTP Verification Modal (outside auth backdrop, always on top) ──────── -->
+{% if not current_user %}
+<div class="otp-modal-overlay" id="otpModalOverlay" aria-hidden="true">
+  <div class="otp-modal-card" role="dialog" aria-modal="true" aria-labelledby="otpModalTitle">
 
-      <div class="otp-modal-brand">
-        <div class="otp-modal-brand-icon">
-          <i class="fa-solid fa-shield-halved"></i>
-        </div>
-        <span>FreshWash Security</span>
+    <button class="otp-modal-close" type="button" id="otpModalClose" aria-label="Close">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <div class="otp-modal-brand">
+      <div class="otp-modal-brand-icon">
+        <i class="fa-solid fa-shield-halved"></i>
       </div>
-
-      <h2 class="otp-modal-title" id="otpModalTitle">Enter Verification Code</h2>
-
-      <div class="otp-modal-success" id="otpSignupNote" style="display:none" role="status" aria-live="polite">
-        <i class="fa-solid fa-circle-check"></i>
-        Account created! Please verify your email.
-      </div>
-
-      <p class="otp-modal-email-copy" id="otpModalEmailCopy">
-        Verification code sent to <strong id="otpModalEmail"></strong>
-      </p>
-
-      <div class="otp-modal-boxes" id="otpModalBoxes" aria-label="Verification code input">
-        <input type="text" class="otp-modal-digit" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="1" aria-label="Digit 1" />
-        <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 2" />
-        <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 3" />
-        <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 4" />
-        <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 5" />
-        <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 6" />
-      </div>
-
-      <p class="otp-modal-error" id="otpModalError" style="display:none" role="alert">
-        <i class="fa-solid fa-circle-exclamation"></i>
-        <span id="otpModalErrorText"></span>
-      </p>
-
-      <button type="button" class="otp-modal-verify-btn" id="otpModalVerifyBtn">Verify</button>
-
-      <button type="button" class="otp-modal-resend-btn" id="otpModalResendBtn">Resend Code</button>
-
-      <small class="otp-modal-resend-hint" id="otpModalResendHint" aria-live="polite"></small>
-
-      <p class="otp-modal-footer">
-        Wrong account? <a href="/" class="otp-modal-back-link">Back to Sign In</a>
-      </p>
-
+      <span>FreshWash Security</span>
     </div>
-  </div>
 
+    <h2 class="otp-modal-title" id="otpModalTitle">Enter Verification Code</h2>
+
+    <div class="otp-modal-success" id="otpSignupNote" style="display:none" role="status" aria-live="polite">
+      <i class="fa-solid fa-circle-check"></i>
+      Account created! Please verify your email.
+    </div>
+
+    <p class="otp-modal-email-copy" id="otpModalEmailCopy">
+      Verification code sent to <strong id="otpModalEmail"></strong>
+    </p>
+
+    <div class="otp-modal-boxes" id="otpModalBoxes" aria-label="Verification code input">
+      <input type="text" class="otp-modal-digit" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="1" aria-label="Digit 1" />
+      <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 2" />
+      <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 3" />
+      <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 4" />
+      <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 5" />
+      <input type="text" class="otp-modal-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 6" />
+    </div>
+
+    <p class="otp-modal-error" id="otpModalError" style="display:none" role="alert">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span id="otpModalErrorText"></span>
+    </p>
+
+    <button type="button" class="otp-modal-verify-btn" id="otpModalVerifyBtn">Verify</button>
+
+    <button type="button" class="otp-modal-resend-btn" id="otpModalResendBtn">Resend Code</button>
+
+    <small class="otp-modal-resend-hint" id="otpModalResendHint" aria-live="polite"></small>
+
+    <p class="otp-modal-footer">
+      Wrong account? <a href="/" class="otp-modal-back-link">Back to Sign In</a>
+    </p>
+
+  </div>
 </div>
 {% endif %}
 
@@ -531,26 +533,71 @@
   }
 
   function initRegisterSubmitGuard() {
-    const registerForm = document.querySelector('#registerAuthModal form[action="{{ url_for("register") }}"]');
+    const registerForm = document.querySelector("#registerAjaxForm");
     if (!registerForm || registerForm.dataset.submitBound === "true") return;
     registerForm.dataset.submitBound = "true";
 
-    registerForm.addEventListener("submit", event => {
+    registerForm.addEventListener("submit", async event => {
+      event.preventDefault();
       if (!validateRegisterPagePasswords()) return;
-      const submitButton = registerForm.querySelector('button[type="submit"]');
-      if (!submitButton) return;
-      if (submitButton.disabled) {
-        event.preventDefault();
-        return;
+
+      const submitBtn = registerForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn ? submitBtn.textContent : "Register";
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Please wait..."; }
+
+      // Remove any previous inline error
+      const prevErr = registerForm.querySelector(".register-ajax-error");
+      if (prevErr) prevErr.remove();
+
+      try {
+        const res  = await fetch(registerForm.action, {
+          method: "POST",
+          body: new FormData(registerForm),
+        });
+        const data = await res.json();
+
+        if (!data.ok) {
+          // Show errors inside the register modal
+          const msg = (data.errors || ["Registration failed. Please try again."]).join(" ");
+          showRegisterError(registerForm, msg);
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText; }
+          return;
+        }
+
+        if (data.otp) {
+          // Success with OTP — close auth modal, then open OTP modal
+          closeAuthModal();
+          setTimeout(() => {
+            if (typeof window.openOtpModal === "function") {
+              window.openOtpModal({
+                email:          data.email    || "",
+                showSignupNote: true,
+                cooldown:       data.cooldown || 60,
+              });
+            }
+          }, 180);
+        } else {
+          // Admin or no-OTP path — redirect
+          window.location.href = data.redirect || "/";
+        }
+      } catch (err) {
+        showRegisterError(registerForm, "Network error. Please check your connection.");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText; }
       }
-      submitButton.disabled = true;
-      submitButton.dataset.originalText = submitButton.textContent || "Register";
-      submitButton.textContent = "Please wait...";
-      window.setTimeout(() => {
-        submitButton.disabled = false;
-        submitButton.textContent = submitButton.dataset.originalText || "Register";
-      }, 12000);
     });
+  }
+
+  function showRegisterError(form, message) {
+    let errEl = form.querySelector(".register-ajax-error");
+    if (!errEl) {
+      errEl = document.createElement("p");
+      errEl.className = "register-ajax-error rv-error";
+      errEl.style.cssText = "margin:6px 0 0;padding:10px 12px;border-radius:12px;background:rgba(254,226,226,0.9);border:1px solid rgba(252,165,165,0.6);color:#b91c1c;font-size:0.88rem;font-weight:600;";
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) form.insertBefore(errEl, submitBtn);
+      else form.appendChild(errEl);
+    }
+    errEl.textContent = message;
   }
 
   function bindFormSubmitLoading(form, buttonText = "Please wait...") {
