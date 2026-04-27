@@ -123,6 +123,18 @@
     box-shadow: 0 10px 24px rgba(108, 93, 163, 0.08);
   }
 
+  .machine-availability-message {
+    display: none;
+    margin: 0.32rem 0 0;
+    color: #9d2564;
+    font-size: 0.66rem;
+    font-weight: 700;
+  }
+
+  .machine-availability-message.is-visible {
+    display: block;
+  }
+
   .booking-actions {
     grid-column: 1 / -1;
     display: flex;
@@ -690,25 +702,28 @@
             <select name="machine" class="fw-input" id="machineSelect" required>
               <option value="">Select machine</option>
               {% for machine in machines %}
+              {% if machine.status == 'Available' and machine.status_display == 'Available' %}
               <option
                 value="{{ machine.name }}"
                 data-load-type="{{ machine.load_type }}"
-                data-status="{{ machine.status_display }}"
+                data-status="{{ machine.status }}"
+                data-status-display="{{ machine.status_display }}"
                 data-machine-number="{{ machine.machine_number }}"
-                {% if machine.status != 'Available' or machine.status_display == 'Disabled' %}disabled{% endif %}
                 {% if form.get('machine')==machine.name or request.args.get('machine')==machine.name or request.args.get('machine')==(machine.machine_number|string) %}selected{% endif %}>
-                {{ machine.name }} - {{ machine.load_type }} ({{ machine.status_display }})
+                {{ machine.name }} - {{ machine.load_type }} Load ({{ machine.status_display }})
               </option>
+              {% endif %}
               {% endfor %}
             </select>
           </div>
+          <p id="machineAvailabilityMessage" class="machine-availability-message" aria-live="polite"></p>
         </div>
 
         <div class="booking-field">
           <label class="fw-label">Load Type</label>
           <div class="fw-field">
             <span class="fw-field-icon"><i class="fa-solid fa-basket-shopping"></i></span>
-            <select name="load_type" class="fw-input" id="loadTypeSelect">
+            <select name="load_type" class="fw-input" id="loadTypeSelect" required>
               <option value="">Select load</option>
               <option value="Light" {% if form.get('load_type') in ['Light', 'Light Load'] or request.args.get('load') in ['Light', 'Light Load'] %}selected{% endif %}>Light</option>
               <option value="Medium" {% if form.get('load_type') in ['Medium', 'Medium Load'] or request.args.get('load') in ['Medium', 'Medium Load'] %}selected{% endif %}>Medium</option>
@@ -912,8 +927,12 @@
   const paymentProofInput = document.getElementById('paymentProofInput');
   const paymentProofSuccess = document.getElementById('paymentProofSuccess');
   const selectedMachineStatusInput = document.getElementById('selectedMachineStatus');
+  const machineAvailabilityMessage = document.getElementById('machineAvailabilityMessage');
   const bookingForm = document.getElementById('bookingForm');
+  const initialRequestedMachine = {{ (form.get('machine') or request.args.get('machine', '')) | tojson }};
   let selectedMachine = null;
+  let bookingMachines = [];
+  let pendingRequestedMachine = initialRequestedMachine || '';
   let bookingMachinesRefreshTimer = null;
   const pickupDateInput = document.querySelector('[name="pickup_date"]');
   const pickupDeliveryFee = 0;
@@ -981,25 +1000,74 @@
     return selectedMethod;
   }
 
-  function renderMachineOptions(machines = []) {
+  function normalizeLoadType(value) {
+    const compact = String(value || '').trim().toLowerCase();
+    if (compact === 'light' || compact === 'light load') return 'Light';
+    if (compact === 'medium' || compact === 'medium load') return 'Medium';
+    if (compact === 'heavy' || compact === 'heavy load') return 'Heavy';
+    return '';
+  }
+
+  function normalizeMachineStatus(value) {
+    const compact = String(value || '').trim().toLowerCase();
+    if (compact === 'available') return 'Available';
+    if (compact === 'in use') return 'In Use';
+    if (compact === 'disabled') return 'Disabled';
+    if (compact === 'unavailable') return 'Unavailable';
+    return '';
+  }
+
+  function isMachineAvailable(machine) {
+    const status = normalizeMachineStatus(machine?.status);
+    const statusDisplay = normalizeMachineStatus(machine?.status_display || machine?.status);
+    return status === 'Available' && statusDisplay === 'Available';
+  }
+
+  function readMachinesFromDom() {
+    if (!machineSelect) return [];
+    return Array.from(machineSelect.options)
+      .filter(option => option.value)
+      .map(option => ({
+        name: option.value,
+        load_type: option.dataset.loadType || '',
+        status: option.dataset.status || '',
+        status_display: option.dataset.statusDisplay || option.dataset.status || '',
+        machine_number: option.dataset.machineNumber || ''
+      }));
+  }
+
+  function updateMachineAvailabilityMessage(availableCount = 0) {
+    if (!machineAvailabilityMessage) return;
+    const loadType = normalizeLoadType(loadTypeSelect?.value || '');
+    const shouldShow = Boolean(loadType) && availableCount === 0;
+    machineAvailabilityMessage.textContent = shouldShow ? 'No available machines for this load type.' : '';
+    machineAvailabilityMessage.classList.toggle('is-visible', shouldShow);
+  }
+
+  function renderMachineOptions({ resetSelection = false } = {}) {
     if (!machineSelect) return;
 
-    const previousValue = machineSelect.value;
-    const selectedFromQuery = {{ request.args.get('machine', '') | tojson }};
-    const requestedMachine = previousValue || selectedFromQuery || '';
+    const selectedLoadType = normalizeLoadType(loadTypeSelect?.value || '');
+    const availableMachines = (bookingMachines || []).filter(machine => {
+      if (!isMachineAvailable(machine)) return false;
+      if (!selectedLoadType) return true;
+      return normalizeLoadType(machine.load_type) === selectedLoadType;
+    });
+    const requestedMachine = resetSelection ? '' : (machineSelect.value || pendingRequestedMachine || '');
+    let requestedMachineMatched = false;
 
     const options = ['<option value="">Select machine</option>'];
-    machines.forEach(machine => {
+    availableMachines.forEach(machine => {
       const statusDisplay = machine.status_display || machine.status || 'Disabled';
-      const isDisabled = machine.status !== 'Available' || statusDisplay === 'Disabled';
       const shouldSelect = requestedMachine && (requestedMachine === machine.name || requestedMachine === String(machine.machine_number));
+      requestedMachineMatched = requestedMachineMatched || Boolean(shouldSelect);
       options.push(`
         <option
           value="${escapeHtml(machine.name)}"
           data-load-type="${escapeHtml(machine.load_type)}"
-          data-status="${escapeHtml(statusDisplay)}"
+          data-status="${escapeHtml(machine.status || statusDisplay)}"
+          data-status-display="${escapeHtml(statusDisplay)}"
           data-machine-number="${escapeHtml(machine.machine_number)}"
-          ${isDisabled ? 'disabled' : ''}
           ${shouldSelect ? 'selected' : ''}
         >
           ${escapeHtml(machine.name)} - ${escapeHtml(machine.load_type)} Load (${escapeHtml(statusDisplay)})
@@ -1007,6 +1075,15 @@
       `);
     });
     machineSelect.innerHTML = options.join('');
+
+    if (resetSelection || !requestedMachineMatched) {
+      machineSelect.value = '';
+    }
+    if (requestedMachineMatched) {
+      pendingRequestedMachine = '';
+    }
+
+    updateMachineAvailabilityMessage(availableMachines.length);
     syncSelectedMachine();
   }
 
@@ -1023,7 +1100,8 @@
         throw new Error(result?.error || 'Failed to load booking machines');
       }
       console.log('[FreshWash Booking] machines:', result?.data?.machines || []);
-      renderMachineOptions(result?.data?.machines || []);
+      bookingMachines = result?.data?.machines || [];
+      renderMachineOptions();
     } catch (error) {
       console.error('[FreshWash Booking] Machine refresh failed:', error);
     }
@@ -1048,20 +1126,18 @@
     if (selectedMachineStatusInput) {
       selectedMachineStatusInput.value = selectedMachine.status;
     }
-
-    if (loadTypeSelect && selectedMachine.load_type) {
-      loadTypeSelect.value = selectedMachine.load_type;
-      loadTypeSelect.dispatchEvent(new Event('change'));
-    }
     updatePaymentSummary();
   }
 
   if (loadTypeSelect) {
     loadTypeSelect.addEventListener('change', () => {
+      pendingRequestedMachine = '';
+      if (machineSelect) machineSelect.value = '';
       const suggestedWeight = loadWeights[loadTypeSelect.value];
       if (suggestedWeight && wt) {
         wt.value = suggestedWeight;
       }
+      renderMachineOptions({ resetSelection: true });
       updatePaymentSummary();
     });
   }
@@ -1090,15 +1166,16 @@
   }
 
   if (machineSelect) {
+    bookingMachines = readMachinesFromDom();
     machineSelect.addEventListener('change', syncSelectedMachine);
-    syncSelectedMachine();
+    renderMachineOptions();
   }
 
   if (bookingForm) {
     bookingForm.addEventListener('submit', (event) => {
       syncSelectedMachine();
-      const machineStatus = String(selectedMachine?.status || '').toLowerCase();
-      if (machineStatus === 'disabled' || machineStatus === 'in use') {
+      const machineStatus = normalizeMachineStatus(selectedMachine?.status || '');
+      if (selectedMachine && machineStatus !== 'Available') {
         event.preventDefault();
         window.alert('This machine is unavailable for booking right now. Please select an available machine.');
         return;

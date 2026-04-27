@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, has_request_context
 from supabase_client import (
     supabase,
     get_service_client,
@@ -16,10 +16,16 @@ import os
 import json
 import base64
 import tempfile
+import random
+import smtplib
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from itertools import product
+from email.message import EmailMessage
+from email.utils import formataddr
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 load_dotenv()
 
 app = Flask(__name__)
@@ -183,6 +189,107 @@ DEFAULT_MACHINE_ROWS = [
 VALID_MACHINE_STATUSES = {"Available", "In Use", "Disabled"}
 
 EMAIL_RE = re.compile(r"^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$", re.IGNORECASE)
+PHONE_E164_RE = re.compile(r"^\+[1-9]\d{7,14}$")
+
+
+def env_flag(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return bool(default)
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+OTP_LENGTH = 6
+OTP_EXPIRY_MINUTES = 5
+OTP_MAX_ATTEMPTS = int(os.environ.get("FRESHWASH_OTP_MAX_ATTEMPTS", "3") or 3)
+OTP_RESEND_COOLDOWN_SECONDS = int(os.environ.get("FRESHWASH_OTP_RESEND_COOLDOWN_SECONDS", "60") or 60)
+ENABLE_LOGIN_OTP = env_flag("ENABLE_LOGIN_OTP", default=env_flag("FRESHWASH_ENABLE_LOGIN_OTP", default=False))
+VERIFICATION_SEND_COOLDOWN_SECONDS = OTP_RESEND_COOLDOWN_SECONDS
+
+
+def otp_email_configured():
+    cfg = otp_smtp_settings()
+    return bool(cfg["username"] and cfg["password"] and cfg["sender_email"])
+
+
+def otp_setup_message():
+    cfg = otp_smtp_settings()
+    missing = []
+    if not cfg["username"]:
+        missing.append("EMAIL_USER or FRESHWASH_OTP_SMTP_USER")
+    if not cfg["password"]:
+        missing.append("EMAIL_PASS or FRESHWASH_OTP_SMTP_PASSWORD")
+    if not cfg["sender_email"]:
+        missing.append("FRESHWASH_OTP_SENDER_EMAIL")
+    if missing:
+        return f"OTP email is not configured on this server. Set {', '.join(missing)} in .env."
+    return "OTP email is not configured on this server."
+
+
+def safe_email_for_log(email):
+    normalized = normalize_email(email or "")
+    if "@" not in normalized:
+        return "<missing>"
+    local, domain = normalized.split("@", 1)
+    if len(local) <= 2:
+        masked_local = "*" * len(local)
+    else:
+        masked_local = local[:2] + ("*" * (len(local) - 2))
+    return f"{masked_local}@{domain}"
+
+
+def validate_otp_email_configuration():
+    if otp_email_configured():
+        cfg = otp_smtp_settings()
+        print(
+            "AUTH: OTP SMTP is configured.",
+            f"host={cfg['host']}",
+            f"port={cfg['port']}",
+            f"sender={cfg['sender_email']}",
+        )
+    else:
+        print(f"AUTH: warning | {otp_setup_message()}")
+
+
+def otp_smtp_settings():
+    username = (
+        os.environ.get("EMAIL_USER")
+        or os.environ.get("FRESHWASH_OTP_SMTP_USER")
+        or os.environ.get("BREVO_SMTP_LOGIN")
+        or ""
+    ).strip()
+    password = (
+        os.environ.get("EMAIL_PASS")
+        or os.environ.get("FRESHWASH_OTP_SMTP_PASSWORD")
+        or os.environ.get("BREVO_SMTP_KEY")
+        or ""
+    ).replace(" ", "").strip()
+    sender_email = (
+        os.environ.get("FRESHWASH_OTP_SENDER_EMAIL")
+        or os.environ.get("BREVO_SENDER_EMAIL")
+        or os.environ.get("FRESHWASH_OTP_FROM_EMAIL")
+        or (username if "@" in username else "")
+    ).strip()
+    sender_name = (
+        os.environ.get("FRESHWASH_OTP_SENDER_NAME")
+        or os.environ.get("BREVO_SENDER_NAME")
+        or "FreshWash"
+    ).strip()
+    host = (os.environ.get("FRESHWASH_OTP_SMTP_HOST") or "smtp-relay.brevo.com").strip()
+    try:
+        port = int(os.environ.get("FRESHWASH_OTP_SMTP_PORT", "587") or 587)
+    except ValueError:
+        port = 587
+    use_tls = env_flag("FRESHWASH_OTP_SMTP_TLS", default=True)
+    return {
+        "host": host,
+        "port": port,
+        "use_tls": use_tls,
+        "username": username,
+        "password": password,
+        "sender_email": sender_email,
+        "sender_name": sender_name,
+    }
 
 
 def backup_corrupt_local_auth_db():
@@ -211,13 +318,41 @@ def _init_local_auth_db():
                 address TEXT NOT NULL,
                 avatar TEXT DEFAULT '',
                 role TEXT NOT NULL DEFAULT 'user',
+                otp_code TEXT,
+                otp_expiry TEXT,
+                is_verified INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS email_otps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                purpose TEXT NOT NULL,
+                otp_code TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                is_used INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_email_otps_email_purpose
+            ON email_otps(email, purpose, created_at DESC)
             """
         )
         columns = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
         if "role" not in columns:
             conn.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'")
+        if "otp_code" not in columns:
+            conn.execute("ALTER TABLE users ADD COLUMN otp_code TEXT")
+        if "otp_expiry" not in columns:
+            conn.execute("ALTER TABLE users ADD COLUMN otp_expiry TEXT")
+        if "is_verified" not in columns:
+            conn.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER NOT NULL DEFAULT 1")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS admin_machines (
@@ -322,6 +457,21 @@ def normalize_email(email):
     return email.strip().lower()
 
 
+def normalize_phone(phone):
+    raw = re.sub(r"[^\d+]", "", str(phone or "").strip())
+    if not raw:
+        return ""
+    if raw.startswith("00"):
+        raw = "+" + raw[2:]
+    if raw.startswith("0"):
+        raw = "+63" + raw[1:]
+    elif raw.startswith("63"):
+        raw = "+" + raw
+    elif not raw.startswith("+"):
+        raw = "+" + raw
+    return raw
+
+
 def configured_admin_emails():
     raw = os.environ.get("ADMIN_EMAILS", "admin@freshwash.com,admin@gmail.com")
     return {normalize_email(email) for email in raw.split(",") if email.strip()}
@@ -329,6 +479,19 @@ def configured_admin_emails():
 
 def is_valid_email(email):
     return bool(EMAIL_RE.match(normalize_email(email)))
+
+
+def is_valid_phone(phone):
+    return bool(PHONE_E164_RE.match(normalize_phone(phone)))
+
+
+def masked_phone(phone):
+    normalized = normalize_phone(phone)
+    if not normalized:
+        return ""
+    if len(normalized) <= 7:
+        return normalized
+    return f"{normalized[:4]}{'*' * max(1, len(normalized) - 7)}{normalized[-3:]}"
 
 
 def auth_template_context(form_data=None):
@@ -364,6 +527,413 @@ def pop_auth_modal_state():
 def redirect_to_auth_modal(modal, form_data=None):
     set_auth_modal_state(modal, form_data)
     return redirect(url_for("home"))
+
+
+def parse_iso_datetime(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def generate_otp_code():
+    upper = (10 ** OTP_LENGTH) - 1
+    lower = 10 ** (OTP_LENGTH - 1)
+    return str(random.randint(lower, upper))
+
+
+def otp_modal_form_data(challenge=None):
+    challenge = challenge or (session.get("pending_otp") or {})
+    resend_at = parse_iso_datetime(challenge.get("resend_available_at"))
+    remaining = max(0, int((resend_at - datetime.now(timezone.utc)).total_seconds())) if resend_at else 0
+    return {
+        "email": challenge.get("email", ""),
+        "purpose": challenge.get("purpose", ""),
+        "resend_cooldown": remaining,
+        "attempts_remaining": int(challenge.get("attempts_remaining", OTP_MAX_ATTEMPTS) or OTP_MAX_ATTEMPTS),
+    }
+
+
+def set_pending_otp_challenge(email, purpose, pending_user=None, pending_signup=None):
+    challenge = {
+        "email": normalize_email(email),
+        "purpose": purpose,
+        "attempts_remaining": OTP_MAX_ATTEMPTS,
+        "resend_available_at": (datetime.now(timezone.utc) + timedelta(seconds=OTP_RESEND_COOLDOWN_SECONDS)).isoformat(),
+    }
+    if pending_user:
+        challenge["pending_user"] = compact_session_user(pending_user)
+    if isinstance(pending_signup, dict) and pending_signup:
+        challenge["pending_signup"] = {
+            "full_name": str(pending_signup.get("full_name", "") or "").strip(),
+            "email": normalize_email(pending_signup.get("email", email)),
+            "phone": str(pending_signup.get("phone", "") or "").strip(),
+            "address": str(pending_signup.get("address", "") or "").strip(),
+            "role": normalize_profile_role(pending_signup.get("role", "user")),
+            "password": str(pending_signup.get("password", "") or ""),
+        }
+    session["pending_otp"] = challenge
+    session.modified = True
+    return challenge
+
+
+def get_pending_otp_challenge():
+    challenge = session.get("pending_otp")
+    if not challenge:
+        return None
+    return challenge
+
+
+def clear_pending_otp_challenge():
+    session.pop("pending_otp", None)
+    session.modified = True
+
+
+def _verification_send_cache():
+    cache = session.get("verification_send_cache")
+    if not isinstance(cache, dict):
+        cache = {}
+    return cache
+
+
+def verification_send_key(email, purpose):
+    return f"{normalize_email(email)}::{(purpose or 'signup').strip().lower()}"
+
+
+def verification_send_wait_seconds(email, purpose):
+    cache = _verification_send_cache()
+    key = verification_send_key(email, purpose)
+    last_sent_iso = cache.get(key)
+    last_sent = parse_iso_datetime(last_sent_iso)
+    if not last_sent:
+        return 0
+    if isinstance(last_sent, datetime) and last_sent.tzinfo is None:
+        last_sent = last_sent.replace(tzinfo=timezone.utc)
+    next_allowed = last_sent + timedelta(seconds=VERIFICATION_SEND_COOLDOWN_SECONDS)
+    remaining = int((next_allowed - datetime.now(timezone.utc)).total_seconds())
+    return max(0, remaining)
+
+
+def resend_wait_message(wait_seconds):
+    return f"Resend code in {max(1, int(wait_seconds))}s"
+
+
+def mark_verification_send(email, purpose):
+    cache = _verification_send_cache()
+    key = verification_send_key(email, purpose)
+    cache[key] = datetime.now(timezone.utc).isoformat()
+    session["verification_send_cache"] = cache
+    session.modified = True
+
+
+def resolve_supabase_email_redirect_to():
+    configured = (os.environ.get("FRESHWASH_SUPABASE_EMAIL_REDIRECT_TO") or "").strip()
+    if configured:
+        return configured
+    if has_request_context():
+        try:
+            return url_for("home", _external=True)
+        except Exception:
+            return ""
+    return ""
+
+
+def extract_supabase_error_message(error):
+    if error is None:
+        return "Unknown error."
+
+    message = getattr(error, "message", None)
+    if isinstance(message, str) and message.strip():
+        return message.strip()
+    details = getattr(error, "details", None)
+    if isinstance(details, str) and details.strip():
+        return details.strip()
+    error_description = getattr(error, "error_description", None)
+    if isinstance(error_description, str) and error_description.strip():
+        return error_description.strip()
+
+    if isinstance(error, dict):
+        for key in ("message", "error_description", "details", "error"):
+            value = error.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        try:
+            serialized = json.dumps(error, default=str)
+            if serialized and serialized != "{}":
+                return serialized
+        except Exception:
+            pass
+
+    args = getattr(error, "args", None)
+    if isinstance(args, tuple):
+        for arg in args:
+            if isinstance(arg, str) and arg.strip():
+                return arg.strip()
+
+    try:
+        payload = getattr(error, "__dict__", None)
+        if isinstance(payload, dict) and payload:
+            serialized = json.dumps(payload, default=str)
+            if serialized and serialized != "{}":
+                return serialized
+    except Exception:
+        pass
+
+    fallback = str(error or "").strip()
+    if fallback:
+        return fallback
+    return "Unknown error."
+
+
+def classify_otp_send_error(raw_message):
+    lowered = (raw_message or "").lower()
+    if not lowered:
+        return ""
+    if "email rate limit exceeded" in lowered or "rate limit" in lowered:
+        return "Please wait before requesting another code."
+    if "authentication" in lowered or "badcredentials" in lowered or "535" in lowered:
+        return "Invalid SMTP credentials. Check EMAIL_USER and EMAIL_PASS in .env, then restart FreshWash."
+    if "not authorized" in lowered or "email address not authorized" in lowered:
+        return "Email address is not authorized for OTP delivery."
+    if "smtp" in lowered and ("not configured" in lowered or "disabled" in lowered or "provider" in lowered):
+        return "Email could not be sent. Check SMTP configuration."
+    return ""
+
+
+def otp_send_failure_message():
+    return "Verification code was not sent. Check SMTP settings and try again."
+
+
+def otp_send_delivery_note():
+    return "If no code arrives, check spam folder or verify your Brevo sender configuration."
+
+
+def send_otp_email(email, otp_code):
+    if not otp_email_configured():
+        raise RuntimeError(otp_setup_message())
+
+    email = normalize_email(email)
+    if not email:
+        raise ValueError("Email is required for verification.")
+    if not is_valid_email(email):
+        raise ValueError("Enter a valid email address.")
+
+    cfg = otp_smtp_settings()
+    subject = "FreshWash Verification Code"
+    text_body = (
+        f"Your FreshWash verification code is: {otp_code}\n"
+        f"This code will expire in {OTP_EXPIRY_MINUTES} minutes."
+    )
+    html_body = (
+        "<h2>FreshWash Verification Code</h2>"
+        f"<p>Your FreshWash verification code is: <strong>{otp_code}</strong></p>"
+        f"<p>This code will expire in {OTP_EXPIRY_MINUTES} minutes.</p>"
+    )
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = formataddr((cfg["sender_name"], cfg["sender_email"]))
+    message["To"] = email
+    message.set_content(text_body)
+    message.add_alternative(html_body, subtype="html")
+
+    try:
+        with smtplib.SMTP(cfg["host"], cfg["port"], timeout=30) as smtp:
+            smtp.ehlo()
+            if cfg["use_tls"]:
+                smtp.starttls()
+                smtp.ehlo()
+            smtp.login(cfg["username"], cfg["password"])
+            smtp.send_message(message)
+    except Exception as exc:
+        log_exception("otp email send failed", exc, email=safe_email_for_log(email), smtp_host=cfg["host"])
+        normalized_message = extract_supabase_error_message(exc)
+        classified = classify_otp_send_error(normalized_message)
+        if classified:
+            raise ValueError(classified) from exc
+        raise ValueError(f"Failed to send verification. SMTP error: {normalized_message}") from exc
+
+    log_auth_debug("email sending result", email=safe_email_for_log(email), status="sent")
+
+
+def set_verification_state(email, is_verified):
+    email = normalize_email(email)
+    if local_auth_enabled():
+        user, users = find_local_user(email)
+        if not user:
+            raise ValueError("Account not found.")
+        user["is_verified"] = bool(is_verified)
+        save_local_users(users)
+        return
+
+    client = admin_db_client()
+    if not client:
+        raise RuntimeError("Verification needs an available database connection.")
+    client.table("profiles").update({"is_verified": bool(is_verified)}).eq("email", email).execute()
+
+
+def set_otp_for_account(email, otp_code, otp_expiry):
+    email = normalize_email(email)
+    expiry_value = otp_expiry.isoformat() if isinstance(otp_expiry, datetime) else str(otp_expiry or "")
+    if local_auth_enabled():
+        user, users = find_local_user(email)
+        if not user:
+            raise ValueError("Account not found.")
+        user["otp_code"] = otp_code or ""
+        user["otp_expiry"] = expiry_value if otp_code else ""
+        save_local_users(users)
+        return
+
+    client = admin_db_client()
+    if not client:
+        raise RuntimeError("OTP setup needs an available database connection.")
+    payload = {"otp_code": otp_code or "", "otp_expiry": expiry_value if otp_code else None}
+    client.table("profiles").update(payload).eq("email", email).execute()
+
+
+def clear_otp_for_account(email):
+    set_otp_for_account(email, "", "")
+
+
+def store_email_otp(email, purpose, otp_code, expires_at):
+    normalized_email = normalize_email(email)
+    normalized_purpose = (purpose or "signup").strip().lower()
+    expiry_value = expires_at.isoformat() if isinstance(expires_at, datetime) else str(expires_at or "")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    with local_auth_conn() as conn:
+        conn.execute(
+            "UPDATE email_otps SET is_used = 1 WHERE email = ? AND purpose = ? AND is_used = 0",
+            (normalized_email, normalized_purpose),
+        )
+        conn.execute(
+            """
+            INSERT INTO email_otps (email, purpose, otp_code, expires_at, is_used, created_at)
+            VALUES (?, ?, ?, ?, 0, ?)
+            """,
+            (normalized_email, normalized_purpose, str(otp_code), expiry_value, now_iso),
+        )
+
+
+def get_email_otp(email, purpose):
+    normalized_email = normalize_email(email)
+    normalized_purpose = (purpose or "signup").strip().lower()
+    with local_auth_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT id, email, purpose, otp_code, expires_at, is_used, created_at
+            FROM email_otps
+            WHERE email = ? AND purpose = ? AND is_used = 0
+            ORDER BY datetime(created_at) DESC, id DESC
+            LIMIT 1
+            """,
+            (normalized_email, normalized_purpose),
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "id": row["id"],
+        "email": row["email"],
+        "purpose": row["purpose"],
+        "otp_code": str(row["otp_code"] or ""),
+        "expires_at": parse_iso_datetime(row["expires_at"]),
+        "is_used": bool(row["is_used"]),
+        "created_at": parse_iso_datetime(row["created_at"]),
+    }
+
+
+def mark_email_otp_used(record_id):
+    if not record_id:
+        return
+    with local_auth_conn() as conn:
+        conn.execute("UPDATE email_otps SET is_used = 1 WHERE id = ?", (record_id,))
+
+
+def clear_email_otps(email, purpose=None):
+    normalized_email = normalize_email(email)
+    with local_auth_conn() as conn:
+        if purpose:
+            normalized_purpose = (purpose or "signup").strip().lower()
+            conn.execute(
+                "UPDATE email_otps SET is_used = 1 WHERE email = ? AND purpose = ? AND is_used = 0",
+                (normalized_email, normalized_purpose),
+            )
+        else:
+            conn.execute(
+                "UPDATE email_otps SET is_used = 1 WHERE email = ? AND is_used = 0",
+                (normalized_email,),
+            )
+
+
+def get_account_security_state(email):
+    email = normalize_email(email)
+    if local_auth_enabled():
+        user, _ = find_local_user(email)
+        if not user:
+            return None
+        return {
+            "email": user["email"],
+            "is_verified": bool(user.get("is_verified", True)),
+            "otp_code": str(user.get("otp_code", "") or ""),
+            "otp_expiry": parse_iso_datetime(user.get("otp_expiry")),
+        }
+
+    client = admin_db_client()
+    if not client:
+        raise RuntimeError("Account lookup needs an available database connection.")
+    result = client.table("profiles").select("email,is_verified,otp_code,otp_expiry").eq("email", email).limit(1).execute()
+    rows = result.data or []
+    if not rows:
+        return None
+    row = rows[0]
+    has_verified_flag = "is_verified" in row and row.get("is_verified") is not None
+    return {
+        "email": row.get("email", email),
+        "is_verified": bool(row.get("is_verified")) if has_verified_flag else True,
+        "otp_code": str(row.get("otp_code", "") or ""),
+        "otp_expiry": parse_iso_datetime(row.get("otp_expiry")),
+    }
+
+
+def issue_otp_challenge(email, purpose, pending_user=None, trigger_send=True, pending_signup=None):
+    email = normalize_email(email)
+    normalized_purpose = (purpose or "signup").strip().lower()
+
+    if trigger_send:
+        wait_seconds = verification_send_wait_seconds(email, normalized_purpose)
+        if wait_seconds > 0:
+            raise ValueError(resend_wait_message(wait_seconds))
+        otp_code = generate_otp_code()
+        otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRY_MINUTES)
+        log_auth_debug(
+            "otp generation result",
+            email=safe_email_for_log(email),
+            purpose=normalized_purpose,
+            expires_at=otp_expiry.isoformat(),
+        )
+        store_email_otp(email, normalized_purpose, otp_code, otp_expiry)
+        try:
+            set_otp_for_account(email, otp_code, otp_expiry)
+        except Exception as storage_error:
+            log_exception("otp profile storage skipped", storage_error, email=safe_email_for_log(email))
+        try:
+            send_otp_email(email, otp_code)
+        except Exception:
+            clear_email_otps(email, normalized_purpose)
+            try:
+                clear_otp_for_account(email)
+            except Exception:
+                pass
+            raise
+        mark_verification_send(email, normalized_purpose)
+    challenge = set_pending_otp_challenge(
+        email,
+        normalized_purpose,
+        pending_user=pending_user,
+        pending_signup=pending_signup,
+    )
+    return challenge
 
 
 def user_role_for_email(email, stored_role="user", metadata=None):
@@ -412,12 +982,152 @@ def resolve_registration_role(email):
     return "user"
 
 
+def safe_auth_user_email(auth_user):
+    return normalize_email(getattr(auth_user, "email", "") or "")
+
+
+def safe_auth_user_metadata(auth_user):
+    metadata = getattr(auth_user, "user_metadata", None)
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def resolve_signup_auth_user(signup_result, fallback_email=""):
+    direct_user = getattr(signup_result, "user", None)
+    if direct_user and getattr(direct_user, "id", None):
+        return direct_user
+
+    try:
+        current_user_response = supabase.auth.get_user()
+        user_from_get_user = (
+            getattr(current_user_response, "user", None)
+            or getattr(getattr(current_user_response, "data", None), "user", None)
+        )
+        if user_from_get_user and getattr(user_from_get_user, "id", None):
+            return user_from_get_user
+    except Exception as exc:
+        log_exception("signup get_user fallback failed", exc, email=fallback_email)
+
+    return None
+
+
+def create_supabase_signup_user(name, email, phone, address, password, role, email_confirm=False):
+    normalized_role = normalize_profile_role(role)
+    metadata = {
+        "full_name": name,
+        "phone": phone,
+        "address": address,
+        "role": normalized_role,
+    }
+
+    if not is_supabase_service_role_enabled():
+        raise RuntimeError(
+            "SUPABASE_SERVICE_ROLE_KEY is required for OTP-only signup. "
+            "Add it to .env so FreshWash can create users with OTP-code verification."
+        )
+
+    client = get_service_client()
+    # Regular users rely on Supabase OTP verification; avoid auto link email.
+    created = client.auth.admin.create_user({
+        "email": email,
+        "password": password,
+        "email_confirm": bool(email_confirm or normalized_role == "admin"),
+        "user_metadata": metadata,
+    })
+    created_user = getattr(created, "user", None) or getattr(getattr(created, "data", None), "user", None)
+    if not created_user or not getattr(created_user, "id", None):
+        raise RuntimeError("Supabase signup failed. Please try again.")
+    log_auth_debug(
+        "auth signup result",
+        email=email,
+        has_user=True,
+        has_session=False,
+        provider="service_role_admin_create_user",
+        role=normalized_role,
+    )
+    return created_user
+
+
+def list_supabase_auth_users():
+    if not is_supabase_service_role_enabled():
+        return []
+    client = get_service_client()
+    try:
+        response = client.auth.admin.list_users()
+    except Exception as exc:
+        log_exception("register auth users list failed", exc)
+        return []
+
+    if isinstance(response, dict):
+        users = response.get("users") or (response.get("data") or {}).get("users") or []
+        return users if isinstance(users, list) else []
+
+    direct_users = getattr(response, "users", None)
+    if isinstance(direct_users, list):
+        return direct_users
+
+    data = getattr(response, "data", None)
+    nested_users = getattr(data, "users", None) if data is not None else None
+    if isinstance(nested_users, list):
+        return nested_users
+    if isinstance(data, dict):
+        users = data.get("users") or []
+        return users if isinstance(users, list) else []
+    return []
+
+
+def find_supabase_auth_user_by_email(email):
+    target = normalize_email(email)
+    for auth_user in list_supabase_auth_users():
+        if isinstance(auth_user, dict):
+            auth_email = normalize_email(auth_user.get("email", ""))
+        else:
+            auth_email = safe_auth_user_email(auth_user)
+        if auth_email == target:
+            return auth_user
+    return None
+
+
+def find_profile_by_email(email):
+    client = admin_db_client()
+    if not client:
+        return None
+    try:
+        result = client.table("profiles").select("*").eq("email", normalize_email(email)).limit(1).execute()
+        rows = result.data or []
+        return rows[0] if rows else None
+    except Exception as exc:
+        log_exception("register profile check failed", exc, email=email)
+        return None
+
+
+def recover_missing_profile_for_auth_user(auth_user, defaults):
+    if not auth_user:
+        return None
+    try:
+        profile = ensure_supabase_profile_record(auth_user, defaults)
+        log_auth_debug(
+            "registration recovered missing profile row",
+            email=defaults.get("email", ""),
+            user_id=getattr(auth_user, "id", ""),
+            role=profile.get("role", ""),
+        )
+        return profile
+    except Exception as exc:
+        log_exception(
+            "registration missing profile recovery failed",
+            exc,
+            email=defaults.get("email", ""),
+            user_id=getattr(auth_user, "id", ""),
+        )
+        return None
+
+
 def load_local_users():
     try:
         with local_auth_conn() as conn:
             rows = conn.execute(
                 """
-                SELECT id, email, password_hash, full_name, phone, address, avatar, role, created_at
+                SELECT id, email, password_hash, full_name, phone, address, avatar, role, otp_code, otp_expiry, is_verified, created_at
                 FROM users
                 ORDER BY datetime(created_at) DESC, email ASC
                 """
@@ -436,6 +1146,9 @@ def load_local_users():
                 "address": row["address"],
                 "avatar": row["avatar"] or "",
                 "role": row["role"] or "user",
+                "otp_code": row["otp_code"] or "",
+                "otp_expiry": row["otp_expiry"] or "",
+                "is_verified": bool(row["is_verified"] if row["is_verified"] is not None else 1),
                 "created_at": row["created_at"] or "",
             }
             for row in rows
@@ -477,6 +1190,9 @@ def save_local_users(users):
                 "address": user.get("address", "").strip(),
                 "avatar": user.get("avatar", "") or "",
                 "role": user.get("role", "user") or "user",
+                "otp_code": user.get("otp_code", "") or "",
+                "otp_expiry": user.get("otp_expiry", "") or "",
+                "is_verified": bool(user.get("is_verified", True)),
                 "created_at": user.get("created_at") or datetime.now().isoformat(),
             }
         )
@@ -490,8 +1206,8 @@ def save_local_users(users):
             for user in normalized_users:
                 conn.execute(
                     """
-                    INSERT INTO users (id, email, password_hash, full_name, phone, address, avatar, role, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO users (id, email, password_hash, full_name, phone, address, avatar, role, otp_code, otp_expiry, is_verified, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         user["id"],
@@ -502,6 +1218,9 @@ def save_local_users(users):
                         user["address"],
                         user["avatar"],
                         user["role"],
+                        user["otp_code"],
+                        user["otp_expiry"],
+                        1 if user["is_verified"] else 0,
                         user["created_at"],
                     ),
                 )
@@ -518,7 +1237,7 @@ def find_local_user(email):
     return None, users
 
 
-def create_local_user(name, email, phone, address, password, role_override=None):
+def create_local_user(name, email, phone, address, password, role_override=None, is_verified=True):
     email = normalize_email(email)
     role = normalize_profile_role(role_override) if role_override else user_role_for_email(email)
     existing, users = find_local_user(email)
@@ -535,6 +1254,9 @@ def create_local_user(name, email, phone, address, password, role_override=None)
         "address": address,
         "avatar": "",
         "role": role,
+        "otp_code": "",
+        "otp_expiry": "",
+        "is_verified": bool(is_verified),
         "created_at": datetime.now().isoformat(),
     })
     save_local_users(users)
@@ -547,6 +1269,7 @@ def create_local_user(name, email, phone, address, password, role_override=None)
         "address": address,
         "avatar": "",
         "role": role,
+        "is_verified": bool(is_verified),
         "is_admin": role == "admin"
     }
 
@@ -556,7 +1279,7 @@ def local_user_exists(email):
     return bool(existing)
 
 
-def upsert_local_user(name, email, phone, address, password, role_override=None):
+def upsert_local_user(name, email, phone, address, password, role_override=None, is_verified=True):
     email = normalize_email(email)
     role = normalize_profile_role(role_override) if role_override else user_role_for_email(email)
     password_hash = generate_password_hash(password)
@@ -567,6 +1290,7 @@ def upsert_local_user(name, email, phone, address, password, role_override=None)
         existing["phone"] = phone
         existing["address"] = address
         existing["role"] = role
+        existing["is_verified"] = bool(existing.get("is_verified", is_verified))
         user_id = existing["id"]
         avatar = existing.get("avatar", "")
     else:
@@ -581,6 +1305,9 @@ def upsert_local_user(name, email, phone, address, password, role_override=None)
             "address": address,
             "avatar": avatar,
             "role": role,
+            "otp_code": "",
+            "otp_expiry": "",
+            "is_verified": bool(is_verified),
             "created_at": datetime.now().isoformat(),
         })
     save_local_users(users)
@@ -593,6 +1320,7 @@ def upsert_local_user(name, email, phone, address, password, role_override=None)
         "address": address,
         "avatar": avatar,
         "role": role,
+        "is_verified": bool(is_verified),
         "is_admin": role == "admin"
     }
 
@@ -612,6 +1340,7 @@ def authenticate_local_user(email, password):
         "address": user.get("address", ""),
         "avatar": user.get("avatar", "") or "",
         "role": user_role_for_email(user["email"], user.get("role", "user") or "user"),
+        "is_verified": bool(user.get("is_verified", True)),
         "is_admin": user_role_for_email(user["email"], user.get("role", "user") or "user") == "admin"
     }
 
@@ -652,7 +1381,7 @@ def admin_delete_local_user(user_id):
     save_local_users(users)
 
 
-def admin_create_supabase_user(name, email, phone, address, password, role):
+def admin_create_supabase_user(name, email, phone, address, password, role, is_verified=True):
     client = get_service_client()
     auth_user = client.auth.admin.create_user({
         "email": email,
@@ -676,6 +1405,9 @@ def admin_create_supabase_user(name, email, phone, address, password, role):
             "phone": phone,
             "address": address,
             "role": role,
+            "is_verified": bool(is_verified),
+            "otp_code": "",
+            "otp_expiry": None,
         }),
         conflict_target="id",
         clients=[("service role", client)],
@@ -731,6 +1463,7 @@ def admin_delete_supabase_user(user_id):
 
 
 init_local_auth_db()
+validate_otp_email_configuration()
 
 
 def validate_registration_form(name, email, phone, address, password, confirm_password):
@@ -743,12 +1476,16 @@ def validate_registration_form(name, email, phone, address, password, confirm_pa
         errors.append("Enter a valid email address.")
     if not phone:
         errors.append("Phone number is required.")
+    elif not is_valid_phone(phone):
+        errors.append("Enter a valid mobile number (e.g. +639171234567).")
     if not address:
         errors.append("Address is required.")
     if not password:
         errors.append("Password is required.")
     elif len(password) < 6:
         errors.append("Password must be at least 6 characters.")
+    elif not any(char.isalpha() for char in password) or not any(char.isdigit() for char in password):
+        errors.append("Password must include at least one letter and one number.")
     if not confirm_password:
         errors.append("Please confirm your password.")
     elif password != confirm_password:
@@ -878,7 +1615,7 @@ def execute_update_with_fallback(table_name, payload_variants, match_column, mat
 
 
 def profile_payload_variants(payload):
-    preferred_order = ["id", "email", "full_name", "phone", "address", "avatar", "role", "created_at"]
+    preferred_order = ["id", "email", "full_name", "phone", "address", "avatar", "role", "is_verified", "otp_code", "otp_expiry", "created_at"]
     present_keys = [key for key in preferred_order if key in payload]
     variants = []
     seen = set()
@@ -1054,6 +1791,9 @@ def ensure_profile_record(authed_client, auth_user, defaults=None):
         "address": defaults.get("address", ""),
         "avatar": defaults.get("avatar", metadata.get("avatar", "")),
         "role": role,
+        "is_verified": bool(defaults.get("is_verified", True)),
+        "otp_code": defaults.get("otp_code", ""),
+        "otp_expiry": defaults.get("otp_expiry"),
     }
 
     try:
@@ -1095,7 +1835,7 @@ def ensure_supabase_profile_record(auth_user, defaults=None):
     if not clients:
         raise RuntimeError(
             "Supabase signup succeeded, but FreshWash could not save the profile row. "
-            "Add SUPABASE_SERVICE_ROLE_KEY to the environment or disable email confirmation so signup returns a session."
+            "Add SUPABASE_SERVICE_ROLE_KEY to the environment to support OTP-code signup verification."
         )
 
     errors = []
@@ -1105,9 +1845,16 @@ def ensure_supabase_profile_record(auth_user, defaults=None):
         except Exception as exc:
             errors.append(f"{label}: {exc}")
 
+    combined_errors = " / ".join(errors)
+    lowered_errors = combined_errors.lower()
+    if "profiles_id_fkey" in lowered_errors or ("public.users" in lowered_errors and "foreign key" in lowered_errors):
+        raise RuntimeError(
+            "Supabase signup succeeded, but FreshWash could not save the profile row because profiles.id is linked to the wrong table. "
+            "Update the profiles foreign key to reference auth.users(id), then retry signup."
+        )
     raise RuntimeError(
         "Supabase signup succeeded, but FreshWash could not save the profile row. "
-        + " / ".join(errors)
+        + combined_errors
     )
 
 
@@ -1173,6 +1920,9 @@ def fetch_supabase_profile_or_error(auth_user, client=None):
             "address": profile.get("address", ""),
             "avatar": profile.get("avatar", ""),
             "role": profile_role,
+            "is_verified": bool(profile.get("is_verified")) if profile.get("is_verified") is not None else True,
+            "otp_code": profile.get("otp_code", ""),
+            "otp_expiry": profile.get("otp_expiry"),
         }
         repair_clients = []
         if is_supabase_service_role_enabled():
@@ -1202,7 +1952,11 @@ def fetch_supabase_profile_or_error(auth_user, client=None):
 
 def build_session_user(auth_user, profile):
     metadata = auth_user.user_metadata or {}
-    role = normalize_profile_role(profile.get("role"))
+    role = user_role_for_email(
+        auth_user.email,
+        profile.get("role", "user"),
+        metadata,
+    )
     return {
         "id": auth_user.id,
         "email": profile.get("email") or auth_user.email,
@@ -1407,7 +2161,7 @@ def admin_dashboard_machines():
                                     "status": row.get("status", "Available"),
                                     "load_type": row.get("load_type", "Medium"),
                                     "enabled": bool(row.get("enabled", True)) and row.get("status", "Available") != "Disabled",
-                                    "updated_at": datetime.utcnow().isoformat(),
+                                    "updated_at": datetime.now(timezone.utc).isoformat(),
                                 }
                                 for row in seed_rows
                             ],
@@ -1555,7 +2309,7 @@ def update_machine(machine_number, name=None, status=None, enabled=None, load_ty
             "status": machine_status,
             "load_type": machine_load_type,
             "enabled": machine_enabled,
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
         try:
             client.table("machines").upsert(payload, on_conflict="machine_number").execute()
@@ -2043,6 +2797,7 @@ def render_admin_dashboard_view(section="dashboard"):
 # ── Auth ──────────────────────────────────────────────────────────────────────
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    print('DEBUG: register route called, method=', request.method)
     if "user" in session:
         return redirect(url_for("admin_dashboard" if session["user"].get("is_admin") else "home"))
 
@@ -2069,54 +2824,189 @@ def register():
                 flash(error, "error")
             return redirect_to_auth_modal("register", form_data)
 
+        # Prevent rapid duplicate signup submits for the same email in one browser session.
+        signup_submit_cache = session.get("signup_submit_cache") or {}
+        recent_submit_iso = signup_submit_cache.get(email)
+        recent_submit_at = parse_iso_datetime(recent_submit_iso)
+        if recent_submit_at:
+            if recent_submit_at.tzinfo is None:
+                recent_submit_at = recent_submit_at.replace(tzinfo=timezone.utc)
+            if (datetime.now(timezone.utc) - recent_submit_at).total_seconds() < 8:
+                flash(resend_wait_message(8), "error")
+                return redirect_to_auth_modal("register", form_data)
+        signup_submit_cache[email] = datetime.now(timezone.utc).isoformat()
+        session["signup_submit_cache"] = signup_submit_cache
+        session.modified = True
+
+        role = resolve_registration_role(email)
+
         try:
             if local_auth_enabled():
-                create_local_user(name, email, phone, address, password, role_override=resolve_registration_role(email))
-                flash("Account created successfully. Please log in.", "success")
+                create_local_user(
+                    name,
+                    email,
+                    phone,
+                    address,
+                    password,
+                    role_override=role,
+                    is_verified=(role == "admin"),
+                )
             else:
-                role = resolve_registration_role(email)
+                existing_profile = find_profile_by_email(email)
+                existing_auth_user = find_supabase_auth_user_by_email(email) if is_supabase_service_role_enabled() else None
+                auth_metadata = safe_auth_user_metadata(existing_auth_user) if existing_auth_user else {}
+                existing_role = user_role_for_email(
+                    email,
+                    (existing_profile or {}).get("role", "user"),
+                    auth_metadata,
+                ) if existing_auth_user else ""
+                log_auth_debug(
+                    "registration profile check result",
+                    email=email,
+                    has_profile=bool(existing_profile),
+                    has_auth_user=bool(existing_auth_user),
+                    profile_role=(existing_profile or {}).get("role", ""),
+                    detected_role=existing_role,
+                )
 
-                res = supabase.auth.sign_up({
-                    "email": email,
-                    "password": password,
-                    "options": {
-                        "data": {
+                if existing_auth_user:
+                    if existing_role == "admin":
+                        flash("This email is reserved for admin.", "error")
+                        return redirect_to_auth_modal("register", form_data)
+
+                    if not existing_profile:
+                        recover_missing_profile_for_auth_user(
+                            existing_auth_user,
+                            {
+                                "email": email,
+                                "full_name": name or (email.split("@")[0] if email else "FreshWash User"),
+                                "phone": phone,
+                                "address": address,
+                                "role": "user",
+                                "is_verified": False,
+                            },
+                        )
+                    flash("Account already exists, please login.", "error")
+                    return redirect_to_auth_modal("login", {"email": email})
+
+                # User signup in OTP flow is completed after OTP verification.
+                if role == "admin":
+                    signup_auth_user = create_supabase_signup_user(
+                        name=name,
+                        email=email,
+                        phone=phone,
+                        address=address,
+                        password=password,
+                        role=role,
+                    )
+                    ensure_supabase_profile_record(
+                        signup_auth_user,
+                        {
                             "full_name": name,
+                            "email": email,
                             "phone": phone,
                             "address": address,
                             "role": role,
-                        }
-                    }
-                })
+                            "is_verified": True,
+                            "otp_code": "",
+                            "otp_expiry": None,
+                        },
+                    )
+                    upsert_local_user(
+                        name,
+                        email,
+                        phone,
+                        address,
+                        password,
+                        role_override=role,
+                        is_verified=True,
+                    )
 
-                if not res.user:
-                    raise RuntimeError("Supabase signup failed. Please try again.")
+            if role == "admin":
+                log_auth_debug("otp skipped for admin", email=email, role=role, flow="register")
+                flash("Admin account created successfully. Please log in.", "success")
+                return redirect_to_auth_modal("login", {"email": email})
 
-                ensure_supabase_profile_record(
-                    res.user,
-                    {
+            log_auth_debug("register issuing otp challenge", email=email, flow="register")
+            otp_sent = False
+            try:
+                # Send OTP immediately after signup submit.
+                issue_otp_challenge(
+                    email,
+                    "signup",
+                    trigger_send=True,
+                    pending_signup={
                         "full_name": name,
                         "email": email,
                         "phone": phone,
                         "address": address,
-                        "role": role,
+                        "role": "user",
+                        "password": password,
                     },
                 )
-
-                upsert_local_user(name, email, phone, address, password)
-                flash("Account created successfully. Please log in.", "success")
-            return redirect_to_auth_modal("login", {"email": email})
+                otp_sent = True
+                flash("Verification code sent. Check your email or spam folder.", "success")
+            except Exception as otp_error:
+                log_exception("register verification resend failed", otp_error, email=email)
+                issue_otp_challenge(
+                    email,
+                    "signup",
+                    trigger_send=False,
+                    pending_signup={
+                        "full_name": name,
+                        "email": email,
+                        "phone": phone,
+                        "address": address,
+                        "role": "user",
+                        "password": password,
+                    },
+                )
+                lowered = str(otp_error).lower()
+                if "resend code in" in lowered:
+                    flash(str(otp_error), "error")
+                elif "email rate limit exceeded" in lowered:
+                    flash("Please wait before requesting another code.", "error")
+                elif "smtp" in lowered or "credential" in lowered:
+                    flash(str(otp_error), "error")
+                else:
+                    smtp_message = extract_supabase_error_message(otp_error)
+                    flash(f"Failed to send verification. SMTP error: {smtp_message}", "error")
+                    flash(otp_send_failure_message(), "error")
+                    flash(otp_send_delivery_note(), "error")
+            if otp_sent:
+                flash("Account created! Please verify your email.", "success")
+            else:
+                flash("Account created, but verification code was not sent. Please try resending.", "error")
+            if not otp_sent:
+                flash("If no code arrives, check spam or wait before resending.", "error")
+            return redirect_to_auth_modal(
+                "verify",
+                {**otp_modal_form_data(), "show_signup_success": bool(otp_sent)},
+            )
 
         except ValueError as e:
             flash(str(e), "error")
         except Exception as e:
             message = str(e)
+            log_exception("register route failed", e, email=email)
+            log_auth_debug("register exact supabase error", email=email, error=message)
             if is_supabase_enabled() and is_supabase_connection_error(e):
                 try:
-                    create_local_user(name, email, phone, address, password)
-                    flash("Account created successfully. Please log in.", "success")
-                    flash("Supabase is currently unavailable, so FreshWash saved your account locally for now.", "success")
-                    return redirect_to_auth_modal("login", {"email": email})
+                    create_local_user(
+                        name,
+                        email,
+                        phone,
+                        address,
+                        password,
+                        role_override=role,
+                        is_verified=(role == "admin"),
+                    )
+                    if role == "admin":
+                        log_auth_debug("otp skipped for admin", email=email, role=role, flow="register-fallback")
+                        flash("Admin account created locally because Supabase is unavailable. Please log in.", "success")
+                        return redirect_to_auth_modal("login", {"email": email})
+                    flash("Supabase is currently unavailable. Please try registration again in a moment.", "error")
+                    return redirect_to_auth_modal("register", form_data)
                 except ValueError as local_error:
                     flash(str(local_error), "error")
             elif any(phrase in message.lower() for phrase in (
@@ -2125,9 +3015,41 @@ def register():
                 "user already registered",
                 "duplicate",
             )):
-                flash("Account already exists, please login.", "error")
+                existing_auth_user = find_supabase_auth_user_by_email(email) if is_supabase_service_role_enabled() else None
+                existing_profile = find_profile_by_email(email)
+                auth_metadata = safe_auth_user_metadata(existing_auth_user) if existing_auth_user else {}
+                detected_role = user_role_for_email(
+                    email,
+                    (existing_profile or {}).get("role", "user"),
+                    auth_metadata,
+                ) if existing_auth_user else "user"
+                if existing_auth_user and detected_role == "admin":
+                    flash("This email is reserved for admin.", "error")
+                elif existing_auth_user:
+                    if not existing_profile:
+                        recover_missing_profile_for_auth_user(
+                            existing_auth_user,
+                            {
+                                "email": email,
+                                "full_name": name or (email.split("@")[0] if email else "FreshWash User"),
+                                "phone": phone,
+                                "address": address,
+                                "role": "user",
+                                "is_verified": False,
+                            },
+                        )
+                    flash("Account already exists, please login.", "error")
+                else:
+                    if normalize_email(email) in configured_admin_emails():
+                        flash("This email is reserved for admin.", "error")
+                    else:
+                        flash("Account already exists, please login.", "error")
             elif "could not save the profile row" in message.lower():
                 flash(message, "error")
+            elif "email rate limit exceeded" in message.lower():
+                flash("Please wait before requesting another code.", "error")
+            elif "password should contain at least one character" in message.lower():
+                flash("Password must include at least one letter and one number.", "error")
             else:
                 flash(f"Registration error: {message}", "error")
 
@@ -2159,7 +3081,6 @@ def login():
             if local_auth_enabled():
                 user = authenticate_local_user(email, password)
                 log_auth_debug("local login success", email=email, role=user.get("role", ""), is_admin=user.get("is_admin", False))
-                persist_session_user(user)
             else:
                 try:
                     log_auth_debug("supabase login attempt", email=email)
@@ -2195,7 +3116,30 @@ def login():
                         email=getattr(auth_user, "email", ""),
                     )
                     profile = fetch_supabase_profile_or_error(auth_user)
+                    if normalize_email(getattr(auth_user, "email", "")) in configured_admin_emails() and profile.get("role") != "admin":
+                        try:
+                            execute_update_with_fallback(
+                                "profiles",
+                                profile_payload_variants({
+                                    "id": auth_user.id,
+                                    "email": auth_user.email,
+                                    "full_name": profile.get("full_name") or auth_user.email.split("@")[0],
+                                    "role": "admin",
+                                }),
+                                "id",
+                                auth_user.id,
+                                clients=[("service role", get_service_client())] if is_supabase_service_role_enabled() else [("authenticated session", db())],
+                            )
+                            profile["role"] = "admin"
+                            log_auth_debug("profile admin role repaired on login", email=auth_user.email, user_id=auth_user.id)
+                        except Exception as role_fix_error:
+                            log_exception("profile admin role repair failed on login", role_fix_error, email=auth_user.email, user_id=auth_user.id)
                     user = build_session_user(auth_user, profile)
+                    email_confirmed = bool(getattr(auth_user, "email_confirmed_at", None))
+                    if email_confirmed and not bool(profile.get("is_verified", True)):
+                        set_verification_state(user.get("email", email), True)
+                        user["is_verified"] = True
+                        log_auth_debug("profile verification synced from supabase auth", email=user.get("email", email))
                     log_auth_debug(
                         "login role detected",
                         email=user.get("email", ""),
@@ -2205,7 +3149,6 @@ def login():
                         is_admin=user.get("is_admin", False),
                         has_session=bool(auth_session),
                     )
-                    persist_session_user(user)
 
                     upsert_local_user(
                         user["name"],
@@ -2236,15 +3179,66 @@ def login():
                     if not is_supabase_connection_error(auth_error):
                         raise
                     user = authenticate_local_user(email, password)
-                    persist_session_user(user)
                     flash("Signed in using locally saved account data because Supabase is currently unavailable.", "success")
 
-            if session["user"].get("is_admin"):
-                log_auth_debug("redirect destination", email=session["user"].get("email", ""), target=url_for("admin_dashboard"))
-            else:
-                log_auth_debug("redirect destination", email=session["user"].get("email", ""), target=url_for("home"))
-            flash(f"Welcome back, {session['user']['name']}!", "success")
-            return redirect(url_for("admin_dashboard" if session["user"].get("is_admin") else "home"))
+            resolved_role = user_role_for_email(
+                user.get("email", email),
+                user.get("role", "user"),
+            )
+            user["role"] = resolved_role
+            user["is_admin"] = resolved_role == "admin"
+            log_auth_debug(
+                "role detected",
+                email=user.get("email", email),
+                role=user.get("role", ""),
+                is_admin=user.get("is_admin", False),
+            )
+
+            if user.get("is_admin"):
+                log_auth_debug("otp skipped for admin", email=user.get("email", ""), role=user.get("role", ""))
+                persist_session_user(user)
+                log_auth_debug("redirect destination", email=user.get("email", ""), target=url_for("admin_dashboard"))
+                flash(f"Welcome back, {user['name']}!", "success")
+                return redirect(url_for("admin_dashboard"))
+
+            account_security = get_account_security_state(user.get("email", email))
+            if account_security and not account_security.get("is_verified", True):
+                try:
+                    issue_otp_challenge(user.get("email", email), "signup", trigger_send=True)
+                except Exception as resend_error:
+                    log_exception("login verification resend failed", resend_error, email=user.get("email", email))
+                    lowered = str(resend_error).lower()
+                    if "email rate limit exceeded" in lowered:
+                        flash("Please wait before requesting another code.", "error")
+                    elif "resend code in" in lowered:
+                        flash(str(resend_error), "error")
+                flash("Please verify your email before logging in.", "error")
+                return redirect_to_auth_modal("verify", otp_modal_form_data())
+
+            try:
+                issue_otp_challenge(user.get("email", email), "login", pending_user=user, trigger_send=True)
+                flash("Verification code sent. Check your email or spam folder.", "success")
+            except Exception as otp_error:
+                log_exception("login otp send failed", otp_error, email=user.get("email", email))
+                lowered = str(otp_error).lower()
+                if "email rate limit exceeded" in lowered:
+                    flash("Please wait before requesting another code.", "error")
+                elif "resend code in" in lowered:
+                    flash(str(otp_error), "error")
+                elif "smtp" in lowered or "credential" in lowered:
+                    flash(str(otp_error), "error")
+                else:
+                    smtp_message = extract_supabase_error_message(otp_error)
+                    flash(f"Failed to send verification. SMTP error: {smtp_message}", "error")
+                    flash(otp_send_failure_message(), "error")
+                    flash(otp_send_delivery_note(), "error")
+                issue_otp_challenge(user.get("email", email), "login", pending_user=user, trigger_send=False)
+            return redirect_to_auth_modal("verify", otp_modal_form_data())
+
+            persist_session_user(user)
+            log_auth_debug("redirect destination", email=user.get("email", ""), target=url_for("home"))
+            flash(f"Welcome back, {user['name']}!", "success")
+            return redirect(url_for("home"))
 
         except ValueError as e:
             flash(str(e), "error")
@@ -2263,6 +3257,250 @@ def logout():
 
 
 # ── Pages ─────────────────────────────────────────────────────────────────────
+
+@app.route("/auth/verify-otp", methods=["POST"])
+def auth_verify_otp():
+    challenge = get_pending_otp_challenge()
+    if not challenge:
+        flash("Verification session expired. Please login or register again.", "error")
+        return redirect_to_auth_modal("login")
+
+    submitted_code = (request.form.get("otp_code", "") or "").strip()
+    email = challenge.get("email", "")
+
+    if not submitted_code.isdigit() or len(submitted_code) != OTP_LENGTH:
+        flash(f"Enter a valid {OTP_LENGTH}-digit verification code.", "error")
+        return redirect_to_auth_modal("verify", otp_modal_form_data(challenge))
+
+    purpose = (challenge.get("purpose") or "signup").strip().lower()
+    try:
+        otp_record = get_email_otp(email, purpose)
+        if not otp_record:
+            flash("Verification code expired. Request a new one.", "error")
+            return redirect_to_auth_modal("verify", otp_modal_form_data(challenge))
+
+        now_utc = datetime.now(timezone.utc)
+        expires_at = otp_record.get("expires_at")
+        if isinstance(expires_at, datetime):
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at <= now_utc:
+                mark_email_otp_used(otp_record.get("id"))
+                try:
+                    clear_otp_for_account(email)
+                except Exception:
+                    pass
+                flash("Verification code expired. Request a new one.", "error")
+                return redirect_to_auth_modal("verify", otp_modal_form_data(challenge))
+
+        if otp_record.get("otp_code") != submitted_code:
+            remaining = max(0, int(challenge.get("attempts_remaining", OTP_MAX_ATTEMPTS) or OTP_MAX_ATTEMPTS) - 1)
+            challenge["attempts_remaining"] = remaining
+            session["pending_otp"] = challenge
+            session.modified = True
+            if remaining <= 0:
+                mark_email_otp_used(otp_record.get("id"))
+                try:
+                    clear_otp_for_account(email)
+                except Exception:
+                    pass
+                flash("Maximum attempts reached. Please request a new verification code.", "error")
+            else:
+                flash("Invalid verification code.", "error")
+            return redirect_to_auth_modal("verify", otp_modal_form_data(challenge))
+
+        mark_email_otp_used(otp_record.get("id"))
+        try:
+            clear_otp_for_account(email)
+        except Exception:
+            pass
+
+        if purpose == "signup":
+            pending_signup = challenge.get("pending_signup") or {}
+            signup_role = normalize_profile_role(pending_signup.get("role", "user"))
+            full_name = pending_signup.get("full_name") or (email.split("@")[0] if email else "FreshWash User")
+            phone = pending_signup.get("phone", "")
+            address = pending_signup.get("address", "")
+            password = pending_signup.get("password", "")
+            if not password:
+                try:
+                    set_verification_state(email, True)
+                except Exception as verify_state_error:
+                    log_exception("set verification state skipped", verify_state_error, email=safe_email_for_log(email))
+                profile = find_profile_by_email(email) or {}
+                if not profile and local_auth_enabled():
+                    local_user, _ = find_local_user(email)
+                    if local_user:
+                        profile = {
+                            "id": local_user.get("id", ""),
+                            "full_name": local_user.get("full_name", ""),
+                            "phone": local_user.get("phone", ""),
+                            "address": local_user.get("address", ""),
+                            "avatar": local_user.get("avatar", ""),
+                            "role": local_user.get("role", "user"),
+                        }
+                resolved_role = user_role_for_email(email, profile.get("role", "user"))
+                verified_session_user = {
+                    "id": profile.get("id", ""),
+                    "email": email,
+                    "name": profile.get("full_name") or (email.split("@")[0] if email else "FreshWash User"),
+                    "phone": profile.get("phone", ""),
+                    "address": profile.get("address", ""),
+                    "avatar": profile.get("avatar", ""),
+                    "role": resolved_role,
+                    "is_admin": resolved_role == "admin",
+                }
+                clear_pending_otp_challenge()
+                persist_session_user(verified_session_user)
+                flash("Account verified! Welcome to FreshWash.", "success")
+                return redirect(url_for("admin_dashboard" if verified_session_user.get("is_admin") else "home"))
+
+            if not local_auth_enabled() and not is_supabase_service_role_enabled():
+                raise ValueError(
+                    "SUPABASE_SERVICE_ROLE_KEY is required to complete signup after OTP verification."
+                )
+
+            verified_user = None
+            if is_supabase_service_role_enabled():
+                existing_auth_user = find_supabase_auth_user_by_email(email)
+                if existing_auth_user:
+                    verified_user = existing_auth_user
+                else:
+                    verified_user = create_supabase_signup_user(
+                        name=full_name,
+                        email=email,
+                        phone=phone,
+                        address=address,
+                        password=password,
+                        role=signup_role,
+                        email_confirm=True,
+                    )
+
+            profile_defaults = {
+                "full_name": full_name,
+                "email": email,
+                "phone": phone,
+                "address": address,
+                "role": signup_role,
+                "is_verified": True,
+                "otp_code": "",
+                "otp_expiry": None,
+            }
+            if verified_user:
+                ensure_supabase_profile_record(verified_user, profile_defaults)
+            try:
+                set_verification_state(email, True)
+            except Exception as verify_state_error:
+                log_exception("set verification state skipped", verify_state_error, email=safe_email_for_log(email))
+            upsert_local_user(
+                profile_defaults["full_name"],
+                email,
+                profile_defaults["phone"],
+                profile_defaults["address"],
+                password,
+                role_override=signup_role,
+                is_verified=True,
+            )
+            clear_pending_otp_challenge()
+            profile = find_profile_by_email(email) or profile_defaults
+            resolved_role = user_role_for_email(email, profile.get("role", "user"))
+            verified_session_user = {
+                "id": profile.get("id", "") or (getattr(verified_user, "id", "") if verified_user else ""),
+                "email": email,
+                "name": profile.get("full_name") or (email.split("@")[0] if email else "FreshWash User"),
+                "phone": profile.get("phone", ""),
+                "address": profile.get("address", ""),
+                "avatar": profile.get("avatar", ""),
+                "role": resolved_role,
+                "is_admin": resolved_role == "admin",
+            }
+            persist_session_user(verified_session_user)
+            flash("Account verified! Welcome to FreshWash.", "success")
+            return redirect(url_for("home"))
+
+        pending_user = challenge.get("pending_user") or {}
+        if not pending_user:
+            profile = find_profile_by_email(email) or {}
+            if not profile and local_auth_enabled():
+                local_user, _ = find_local_user(email)
+                if local_user:
+                    profile = {
+                        "id": local_user.get("id", ""),
+                        "full_name": local_user.get("full_name", ""),
+                        "phone": local_user.get("phone", ""),
+                        "address": local_user.get("address", ""),
+                        "avatar": local_user.get("avatar", ""),
+                        "role": local_user.get("role", "user"),
+                    }
+            resolved_role = user_role_for_email(email, profile.get("role", "user"))
+            pending_user = {
+                "id": profile.get("id", ""),
+                "email": email,
+                "name": profile.get("full_name") or (email.split("@")[0] if email else "FreshWash User"),
+                "phone": profile.get("phone", ""),
+                "address": profile.get("address", ""),
+                "avatar": profile.get("avatar", ""),
+                "role": resolved_role,
+                "is_admin": resolved_role == "admin",
+            }
+
+        clear_pending_otp_challenge()
+        persist_session_user(pending_user)
+        flash(f"Welcome back, {pending_user.get('name', 'FreshWash User')}!", "success")
+        return redirect(url_for("home"))
+    except Exception as verify_error:
+        log_exception("verify otp failed", verify_error, email=email, purpose=purpose, token=submitted_code)
+        raw_message = extract_supabase_error_message(verify_error)
+        lowered = raw_message.lower()
+        if "expired" in lowered:
+            flash("Verification code expired. Request a new one.", "error")
+        elif "rate limit" in lowered:
+            flash("Please wait before requesting another code.", "error")
+        elif raw_message:
+            flash(raw_message, "error")
+        else:
+            flash("Invalid verification code.", "error")
+        return redirect_to_auth_modal("verify", otp_modal_form_data(challenge))
+
+
+@app.route("/auth/resend-otp", methods=["POST"])
+def auth_resend_otp():
+    challenge = get_pending_otp_challenge()
+    if not challenge:
+        flash("Verification session expired. Please login or register again.", "error")
+        return redirect_to_auth_modal("login")
+
+    resend_at = parse_iso_datetime(challenge.get("resend_available_at"))
+    if resend_at and datetime.now(timezone.utc) < resend_at:
+        wait_seconds = int((resend_at - datetime.now(timezone.utc)).total_seconds())
+        flash(resend_wait_message(wait_seconds), "error")
+        return redirect_to_auth_modal("verify", otp_modal_form_data(challenge))
+
+    try:
+        issue_otp_challenge(
+            challenge.get("email", ""),
+            challenge.get("purpose", "signup"),
+            pending_user=challenge.get("pending_user"),
+            trigger_send=True,
+            pending_signup=challenge.get("pending_signup"),
+        )
+        flash("Verification code sent. Check your email or spam folder.", "success")
+    except Exception as otp_error:
+        log_exception("resend verification failed", otp_error, email=challenge.get("email", ""))
+        lowered = str(otp_error).lower()
+        if "email rate limit exceeded" in lowered:
+            flash("Please wait before requesting another code.", "error")
+        elif "resend code in" in lowered:
+            flash(str(otp_error), "error")
+        elif "smtp" in lowered or "credential" in lowered:
+            flash(str(otp_error), "error")
+        else:
+            smtp_message = extract_supabase_error_message(otp_error)
+            flash(f"Failed to send verification. SMTP error: {smtp_message}", "error")
+            flash(otp_send_failure_message(), "error")
+            flash(otp_send_delivery_note(), "error")
+    return redirect_to_auth_modal("verify", otp_modal_form_data())
+
 
 @app.route("/dashboard")
 @login_required
@@ -2624,6 +3862,43 @@ def admin_settings_action():
         return jsonify({"ok": False, "error": f"Settings update failed: {exc}"}), 500
 
 
+@app.route("/admin/api/test-otp-email", methods=["POST"])
+@admin_required
+def admin_test_otp_email():
+    data = request.get_json(silent=True) or {}
+    recipient = normalize_email((data.get("email") or session.get("user", {}).get("email", "")).strip())
+    if not recipient:
+        return jsonify({"ok": False, "error": "Recipient email is required."}), 400
+    if not is_valid_email(recipient):
+        return jsonify({"ok": False, "error": "Enter a valid recipient email address."}), 400
+    try:
+        otp_code = generate_otp_code()
+        send_otp_email(recipient, otp_code)
+        return jsonify({"ok": True, "message": f"OTP email sent to {recipient}."})
+    except Exception as exc:
+        log_exception("admin test otp email failed", exc, recipient=recipient)
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@app.route("/test-email", methods=["GET", "POST"])
+@admin_required
+def test_email():
+    payload = request.get_json(silent=True) or {}
+    source_email = payload.get("email") if request.method == "POST" else request.args.get("email")
+    recipient = normalize_email((source_email or session.get("user", {}).get("email", "")).strip())
+    if not recipient:
+        return jsonify({"ok": False, "error": "Recipient email is required."}), 400
+    if not is_valid_email(recipient):
+        return jsonify({"ok": False, "error": "Enter a valid recipient email address."}), 400
+    try:
+        otp_code = generate_otp_code()
+        send_otp_email(recipient, otp_code)
+        return jsonify({"ok": True, "message": f"OTP email sent to {recipient}."})
+    except Exception as exc:
+        log_exception("test-email failed", exc, recipient=recipient)
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
 @app.route("/admin/api/profile-photo", methods=["POST"])
 @admin_required
 def admin_profile_photo_upload():
@@ -2749,6 +4024,8 @@ def booking():
             errors.append("This machine is currently disabled and cannot accept bookings.")
         elif selected_machine and selected_machine.get("status") != "Available":
             errors.append("This machine is currently in use. Please select an available machine.")
+        elif selected_machine and load_type and normalize_booking_load_type(selected_machine.get("load_type", "")) != load_type:
+            errors.append("Selected machine does not match the chosen load type. Please choose another machine.")
         elif selected_machine_status and selected_machine_status not in {"Available", "Disabled", "In Use"}:
             errors.append("Invalid machine status supplied.")
 
@@ -2983,3 +4260,5 @@ def profile():
 if __name__ == "__main__":
     init_local_auth_db()
     app.run(debug=True)
+
+

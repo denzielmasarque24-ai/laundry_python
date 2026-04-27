@@ -17,15 +17,15 @@
     "Premium Wash": "fa-star"
   } %}
 
-  <div class="service-showcase-grid">
+  <div class="service-showcase-grid services-page-grid">
     {% for name, info in services.items() %}
-    <article class="service-showcase-card">
+    <article class="service-showcase-card services-page-card">
       <span class="service-showcase-icon"><i class="fa-solid {{ icons.get(name, 'fa-shirt') }}"></i></span>
       <h3>{{ name }}</h3>
       <p>{{ info.desc }}</p>
-      <div class="service-showcase-foot">
+      <div class="service-showcase-foot services-page-foot">
         <span class="service-showcase-price">₱{{ info.price }}<small>/kg</small></span>
-        <a href="{{ url_for('booking') }}?service={{ name | urlencode }}" class="btn-primary btn-small">Book Now</a>
+        <a href="{{ url_for('booking') }}?service={{ name | urlencode }}" class="btn-primary btn-small services-page-book-btn">Book Now</a>
       </div>
     </article>
     {% endfor %}

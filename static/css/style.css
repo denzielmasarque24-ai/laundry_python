@@ -9782,14 +9782,26 @@ body.landing-body .freshwash-home-page .service-inline-chip {
 
 body.landing-body .freshwash-home-page .homepage-service-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: stretch;
 }
 
 body.landing-body .freshwash-home-page .homepage-service-card {
+  display: flex;
+  flex-direction: column;
   min-height: 286px;
+  height: 100%;
 }
 
 body.landing-body .freshwash-home-page .homepage-service-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-top: auto;
+}
+
+body.landing-body .freshwash-home-page .homepage-service-foot .btn-small {
+  margin-left: auto;
 }
 
 body.landing-body .freshwash-home-page .machine-home-grid {
@@ -9819,6 +9831,21 @@ body.landing-body .freshwash-home-page .machine-home-card:hover {
 
 body.landing-body .freshwash-home-page .machine-home-card h3 {
   margin: 0;
+}
+
+body.landing-body .freshwash-home-page .load-option-card.is-selected {
+  border-color: rgba(16, 185, 129, 0.85);
+  box-shadow: 0 20px 44px rgba(16, 185, 129, 0.22);
+}
+
+body.landing-body .freshwash-home-page .machine-home-card.is-hidden-by-filter {
+  display: none;
+}
+
+body.landing-body .freshwash-home-page .machine-filter-empty {
+  margin-top: 1rem;
+  color: #4f5b75;
+  font-weight: 600;
 }
 
 body.landing-body .freshwash-home-page .machine-home-card p {
@@ -9999,6 +10026,17 @@ body .auth-form-copy {
   color: #9b6a84;
 }
 
+body .auth-success-note {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(250, 132, 186, 0.45);
+  background: linear-gradient(135deg, rgba(255, 231, 240, 0.92), rgba(232, 252, 240, 0.92));
+  color: #5f2f45;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
 body .auth-form {
   gap: 12px;
   margin-top: 0;
@@ -10071,6 +10109,69 @@ body .auth-modal-shell .btn-primary.w-full {
   font-size: 0.95rem;
 }
 
+body #registerAuthModal {
+  width: min(460px, calc(100% - 32px));
+  max-height: min(88vh, 760px);
+  padding: 22px 22px 18px;
+  overflow-y: auto;
+}
+
+body #registerAuthModal .auth-close {
+  top: 10px;
+  left: 10px;
+}
+
+body #registerAuthModal .auth-brand {
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+body #registerAuthModal h2 {
+  margin-bottom: 4px;
+  font-size: clamp(1.28rem, 2.1vw, 1.58rem);
+}
+
+body #registerAuthModal .auth-form-copy {
+  margin-bottom: 10px;
+  font-size: 0.78rem;
+  line-height: 1.38;
+}
+
+body #registerAuthModal .auth-form {
+  gap: 8px;
+}
+
+body #registerAuthModal .rv-field {
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 16px;
+}
+
+body #registerAuthModal .rv-fi,
+body #registerAuthModal .password-toggle {
+  width: 26px;
+  height: 26px;
+}
+
+body #registerAuthModal .rv-fi {
+  border-radius: 9px;
+}
+
+body #registerAuthModal .rv-input {
+  font-size: 0.88rem;
+}
+
+body #registerAuthModal .btn-primary.w-full {
+  min-height: 42px;
+  margin-top: 0;
+  font-size: 0.9rem;
+}
+
+body #registerAuthModal .auth-foot {
+  margin-top: 8px;
+  font-size: 0.84rem;
+}
+
 body .auth-foot {
   margin: 12px 0 0;
   text-align: center;
@@ -10103,11 +10204,101 @@ body .auth-modal-shell input:-webkit-autofill:active {
     border-radius: 24px;
   }
 
+  body #registerAuthModal {
+    width: calc(100% - 16px);
+    max-height: 90vh;
+    padding: 20px 18px 16px;
+  }
+
+  body #registerAuthModal h2 {
+    font-size: 1.28rem;
+  }
+
   body .forgot-link {
     font-size: 0.79rem;
   }
 
   body .auth-modal-shell h2 {
     font-size: 1.6rem;
+  }
+}
+
+/* Services page button alignment */
+body .fw-standalone-page .services-page-grid {
+  align-items: stretch;
+}
+
+body .fw-standalone-page .services-page-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  height: 100%;
+}
+
+body .fw-standalone-page .services-page-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: auto;
+  margin-bottom: 6px;
+}
+
+body .fw-standalone-page .services-page-book-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 170px;
+  min-height: 44px;
+  padding: 0 20px;
+}
+
+body .auth-verify-resend {
+  margin-top: 8px;
+}
+
+body #otpResendHint {
+  display: block;
+  min-height: 18px;
+  text-align: center;
+  color: #7f5167;
+}
+
+body .otp-boxes {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+body .otp-digit {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 248, 251, 0.92);
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #3f1830;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+body .otp-digit:focus {
+  border-color: rgba(233, 102, 161, 0.42);
+  box-shadow: 0 0 0 4px rgba(242, 122, 178, 0.12);
+}
+
+@media (max-width: 640px) {
+  body .otp-boxes {
+    gap: 6px;
+  }
+
+  body .otp-digit {
+    min-height: 46px;
+    font-size: 1.05rem;
+    border-radius: 12px;
   }
 }
