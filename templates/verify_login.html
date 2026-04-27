@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Login Verification{% endblock %}
+
+{% block content %}
+<section class="auth-center">
+  <div class="auth-shell auth-shell-compact">
+    <div class="auth-card auth-form-card auth-form-card-compact">
+
+      <div class="auth-brand">
+        <div class="auth-brand-icon"><i class="fa-solid fa-lock"></i></div>
+        <span>FreshWash Security</span>
+      </div>
+
+      <h2 class="auth-form-title">Login Verification</h2>
+
+      <p class="auth-form-copy">
+        Enter the code sent to your email to continue as
+        <strong>{{ (form_data or {}).get('email', 'your account') }}</strong>
+      </p>
+
+      <form method="POST" action="{{ url_for('auth_verify_otp') }}" class="auth-form" id="verifyLoginForm" novalidate>
+        <div class="otp-boxes" id="otpBoxesLogin" aria-label="Login verification code input">
+          <input type="text" class="otp-digit" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="1" aria-label="Digit 1" />
+          <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 2" />
+          <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 3" />
+          <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 4" />
+          <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 5" />
+          <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 6" />
+        </div>
+        <input type="hidden" name="otp_code" id="otpCodeHiddenLogin" required />
+        <p class="rv-error hidden" id="otpLoginInlineError" role="alert">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          Please enter all 6 digits.
+        </p>
+        <button type="submit" class="btn-primary w-full" id="verifyLoginSubmitBtn">Verify &amp; Sign In</button>
+      </form>
+
+      <form method="POST" action="{{ url_for('auth_resend_otp') }}" class="auth-form auth-verify-resend" id="resendLoginForm" novalidate>
+        <button
+          type="submit"
+          class="btn-ghost w-full"
+          id="otpResendLoginButton"
+          data-resend-cooldown="{{ (form_data or {}).get('resend_cooldown', 0) }}"
+          data-resend-default-cooldown="60"
+        >
+          Resend Code
+        </button>
+        <small id="otpResendLoginHint" class="otp-resend-hint" aria-live="polite"></small>
+      </form>
+
+      <p class="auth-foot">
+        Not you? <a href="{{ url_for('logout') }}" class="text-link">Sign out</a>
+      </p>
+
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const container = document.getElementById("otpBoxesLogin");
+    const hidden    = document.getElementById("otpCodeHiddenLogin");
+    const form      = document.getElementById("verifyLoginForm");
+    const inlineErr = document.getElementById("otpLoginInlineError");
+    const submitBtn = document.getElementById("verifyLoginSubmitBtn");
+
+    if (!container || !hidden || !form) return;
+
+    const digits = Array.from(container.querySelectorAll(".otp-digit"));
+
+    const syncHidden = () => {
+      hidden.value = digits.map(d => (d.value || "").replace(/\D/g, "").slice(0, 1)).join("");
+    };
+
+    digits.forEach((input, i) => {
+      input.addEventListener("input", () => {
+        input.value = (input.value || "").replace(/\D/g, "").slice(-1);
+        syncHidden();
+        if (input.value && i < digits.length - 1) digits[i + 1].focus();
+        if (inlineErr) inlineErr.classList.add("hidden");
+      });
+
+      input.addEventListener("keydown", e => {
+        if (e.key === "Backspace" && !input.value && i > 0) digits[i - 1].focus();
+        if (e.key === "ArrowLeft"  && i > 0)               { e.preventDefault(); digits[i - 1].focus(); }
+        if (e.key === "ArrowRight" && i < digits.length - 1) { e.preventDefault(); digits[i + 1].focus(); }
+      });
+
+      input.addEventListener("paste", e => {
+        const pasted = (e.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, digits.length);
+        if (!pasted) return;
+        e.preventDefault();
+        digits.forEach((d, idx) => { d.value = pasted[idx] || ""; });
+        syncHidden();
+        digits[Math.min(pasted.length, digits.length - 1)].focus();
+      });
+    });
+
+    form.addEventListener("submit", e => {
+      syncHidden();
+      if (!/^\d{6}$/.test(hidden.value)) {
+        e.preventDefault();
+        if (inlineErr) inlineErr.classList.remove("hidden");
+        (digits.find(d => !d.value) || digits[0]).focus();
+        return;
+      }
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Verifying…";
+        setTimeout(() => { submitBtn.disabled = false; submitBtn.textContent = "Verify & Sign In"; }, 12000);
+      }
+    });
+
+    // Resend cooldown
+    const resendBtn  = document.getElementById("otpResendLoginButton");
+    const resendHint = document.getElementById("otpResendLoginHint");
+    const resendForm = document.getElementById("resendLoginForm");
+
+    if (resendBtn && resendHint) {
+      const startCountdown = seconds => {
+        let remaining = Math.max(0, Math.floor(Number(seconds) || 0));
+        resendBtn.disabled = remaining > 0;
+        const render = () => {
+          resendHint.textContent = remaining > 0 ? `Resend code in ${remaining}s` : "";
+          if (remaining <= 0) resendBtn.disabled = false;
+        };
+        render();
+        if (remaining <= 0) return;
+        const timer = setInterval(() => { remaining -= 1; render(); if (remaining <= 0) clearInterval(timer); }, 1000);
+      };
+
+      const initial = Number(resendBtn.dataset.resendCooldown || "0");
+      startCountdown(initial > 0 ? initial : 0);
+
+      if (resendForm) {
+        resendForm.addEventListener("submit", e => {
+          if (resendBtn.disabled) { e.preventDefault(); return; }
+          startCountdown(Number(resendBtn.dataset.resendDefaultCooldown || "60"));
+        });
+      }
+    }
+
+    digits[0].focus();
+  })();
+</script>
+{% endblock %}
