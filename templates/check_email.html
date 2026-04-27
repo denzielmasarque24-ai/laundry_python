@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Check Your Email{% endblock %}
+
+{% block content %}
+<section class="auth-center">
+  <div class="auth-shell auth-shell-compact">
+    <div class="auth-card auth-form-card auth-form-card-compact" style="text-align:center;">
+
+      <div class="auth-brand">
+        <div class="auth-brand-icon" style="background:linear-gradient(135deg,#f9a8d4,#ec4899);">
+          <i class="fa-solid fa-envelope-circle-check"></i>
+        </div>
+        <span>FreshWash</span>
+      </div>
+
+      <h2 class="auth-form-title">Check Your Email</h2>
+
+      <div class="rv-check-email-icon" aria-hidden="true">
+        <i class="fa-solid fa-paper-plane"></i>
+      </div>
+
+      <p class="auth-form-copy" style="margin-bottom:.5rem;">
+        <strong>Verification code sent to your email.</strong>
+      </p>
+      <p class="auth-form-copy" style="color:#9ca3af;font-size:.85rem;margin-bottom:1.5rem;">
+        Please check your inbox or spam folder.<br>
+        The code expires in <strong>5 minutes</strong>.
+      </p>
+
+      {% if (form_data or {}).get('email') %}
+      <p class="auth-form-copy" style="font-size:.82rem;color:#6b7280;margin-bottom:1.25rem;">
+        Sent to: <strong>{{ form_data.get('email') }}</strong>
+      </p>
+      {% endif %}
+
+      <a href="{{ url_for('home') }}" class="btn-primary w-full" style="display:block;text-align:center;text-decoration:none;margin-bottom:.75rem;">
+        Go to Verify Page
+      </a>
+
+      <p class="auth-foot" style="margin-top:.5rem;">
+        Didn't receive it?
+        <a href="{{ url_for('auth_resend_otp') }}" class="text-link"
+           onclick="this.textContent='Sending…'; setTimeout(()=>this.textContent='Resend code',3000);">
+          Resend code
+        </a>
+      </p>
+
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .rv-check-email-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+    font-size: 1.75rem;
+    color: #ec4899;
+    box-shadow: 0 4px 16px rgba(236,72,153,.15);
+  }
+</style>
+{% endblock %}
