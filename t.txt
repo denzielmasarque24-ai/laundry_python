@@ -3243,8 +3243,6 @@ def login():
                 return redirect_to_auth_modal("verify", otp_modal_form_data())
 
             persist_session_user(user)
-            session["just_registered"] = False
-            session.modified = True
             log_auth_debug("redirect destination", email=user.get("email", ""), target=url_for("home"))
             flash(f"Welcome back, {user['name']}!", "success")
             return redirect(url_for("home"))
@@ -3717,8 +3715,6 @@ def api_otp_verify():
                 except Exception: pass
             clear_pending_otp_challenge()
             # Do NOT auto-login after signup OTP — send user to login modal
-            session["just_registered"] = True
-            session.modified = True
             return jsonify({
                 "ok": True,
                 "action": "login",

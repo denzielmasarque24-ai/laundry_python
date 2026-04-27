@@ -1,5 +1,33 @@
 [
   {
+    "id": "bfbef2a2-fe12-407b-a4f9-e0f88b3fbe93",
+    "email": "denzielmasarque24@gmail.com",
+    "password_hash": "scrypt:32768:8:1$lxhx2raksfJaKA0s$637757c75908ea113f49eab0b62ef0c89a4a5d1c54540e9f843c7b8d86a5f6b22089e90629e46b6b9e44044fe50b036be2298748c692aabbb0932e77150933b0",
+    "full_name": "Denziel Masarque",
+    "phone": "09914405837",
+    "address": "talisay",
+    "avatar": "",
+    "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": true,
+    "created_at": "2026-04-27T22:28:21.793120"
+  },
+  {
+    "id": "863a90a0-d4f7-4f81-abd2-47c233ecc4b6",
+    "email": "johnclaidetan143@gmail.com",
+    "password_hash": "scrypt:32768:8:1$P5tYIVmGGbtkf8ZG$03ea858dddc32bb6ecd2714edb4891b3f816d61507af478e9e4bc601671e6050720104d4150159080c7e62c22c37e8c34ee55423720a7418fc27a48ca55c6812",
+    "full_name": "johnclaidetan",
+    "phone": "09914405837",
+    "address": "duljo fatima",
+    "avatar": "",
+    "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": true,
+    "created_at": "2026-04-27T22:09:04.797350"
+  },
+  {
     "id": "71dfb3be-469c-4910-b716-809aee3b8e52",
     "email": "franco02medina@gmail.com",
     "password_hash": "scrypt:32768:8:1$cgUupZHIuNstIgpM$cdc2b1a9e286cf0d212b4f44b0b7ae28388dccf5de408ca0910e06d3dce5fceacf8e181be6b39c940693a0ff2dc212224268800b24d49a532f0227991e275e76",
@@ -40,20 +68,6 @@
     "otp_expiry": "",
     "is_verified": false,
     "created_at": "2026-04-26T14:51:36.495557"
-  },
-  {
-    "id": "ebe5bdbb-8718-4b6c-a150-6e55012aff40",
-    "email": "denzielmasarque24@gmail.com",
-    "password_hash": "scrypt:32768:8:1$uxYQ1w7R65xcydNH$4c79a51359eb17724c9d2cf152ab522a396c57bb8a246341df40d9cc97fc60e8d8d2269d7fcb0ecec73b787e9745eca2942ef36f4f6e2ea11d7f3bda53c9489d",
-    "full_name": "Denziel Masarque",
-    "phone": "09914405837",
-    "address": "talisay",
-    "avatar": "",
-    "role": "user",
-    "otp_code": "",
-    "otp_expiry": "",
-    "is_verified": false,
-    "created_at": "2026-04-26T09:06:14.605387"
   },
   {
     "id": "733efb99-4f2f-4157-9f16-2e04747db78d",

@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FreshWash - {% block title %}{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet" />
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+{% set current_user = session.get('user') %}
+{% set current_endpoint = request.endpoint or '' %}
+{% set current_name = (current_user.get('name') if current_user else '') or 'Guest' %}
+{% set current_email = (current_user.get('email') if current_user else '') or 'hello@freshwash.app' %}
+{% set current_phone = (current_user.get('phone') if current_user else '') or '' %}
+{% set current_address = (current_user.get('address') if current_user else '') or '' %}
+{% set current_avatar = (current_user.get('avatar') if current_user else '') or '' %}
+{% set home_href = url_for('home') %}
+{% set about_href = url_for('home', _anchor='about') %}
+{% set book_href = url_for('booking') if current_user else '#' %}
+{% set my_booking_href = url_for('my_bookings') if current_user else '#' %}
+{% set services_href = url_for('services') if current_user else '#' %}
+{% set profile_href = url_for('profile') if current_user else '#' %}
+{% set active_nav = 'book' if current_endpoint == 'booking' else ('my-booking' if current_endpoint == 'my_bookings' else 'home') %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-stack" aria-live="polite" aria-atomic="true">
+    {% for category, message in messages %}
+    <div class="flash flash-{{ category }}">
+      <i class="fa-solid fa-{{ 'circle-check' if category != 'error' else 'circle-exclamation' }}"></i>
+      <span>{{ message }}</span>
+      <button type="button" onclick="this.parentElement.remove()" aria-label="Dismiss message">&times;</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+
+<div class="fw-app-bg" aria-hidden="true">
+  <span class="fw-bubble fw-bubble-a"></span>
+  <span class="fw-bubble fw-bubble-b"></span>
+  <span class="fw-bubble fw-bubble-c"></span>
+  <span class="fw-bubble fw-bubble-d"></span>
+</div>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href="{{ home_href }}" class="brand-mark" aria-label="FreshWash home">
+      <span class="brand-icon"><i class="fa-solid fa-shirt"></i></span>
+      <span class="brand-copy">
+        <strong>FreshWash</strong>
+        <small>Fast and reliable laundry service</small>
+      </span>
+    </a>
+
+    <button class="nav-toggle" type="button" onclick="toggleNav()" aria-label="Toggle navigation">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <nav class="header-nav" id="headerNav">
+      <a href="{{ home_href }}" class="{% if active_nav == 'home' %}active{% endif %}" data-nav-item="home" {% if active_nav == 'home' %}aria-current="page"{% endif %}>Home</a>
+      <a href="{{ about_href }}" data-nav-item="about">About</a>
+      {% if current_user %}
+      <a href="{{ book_href }}" class="{% if active_nav == 'book' %}active{% endif %}" data-nav-item="book" {% if active_nav == 'book' %}aria-current="page"{% endif %}>Book Now</a>
+      <a href="{{ my_booking_href }}" class="{% if active_nav == 'my-booking' %}active{% endif %}" data-nav-item="my-booking" {% if active_nav == 'my-booking' %}aria-current="page"{% endif %}>My Booking</a>
+      {% else %}
+      <a href="#" data-auth-link="register" data-nav-item="book">Book Now</a>
+      <a href="#" data-auth-link="login" data-nav-item="my-booking">My Booking</a>
+      {% endif %}
+    </nav>
+
+    <div class="header-actions">
+      {% if current_user %}
+      <button class="profile-trigger" type="button" onclick="openProfilePanel()" aria-label="Open profile">
+        {% if current_avatar %}
+        <img src="{{ current_avatar }}" alt="Profile picture" id="navAvatarImg" />
+        {% else %}
+        <i class="fa-solid fa-user" id="navAvatarIcon"></i>
+        <img src="" alt="Profile picture" id="navAvatarImg" style="display:none" />
+        {% endif %}
+      </button>
+      {% else %}
+      <a href="#" class="btn-ghost btn-small" data-auth-link="login">Login</a>
+      <a href="#" class="btn-primary btn-small" data-auth-link="register">Register</a>
+      {% endif %}
+    </div>
+  </div>
+</header>
+
+<div class="site-shell">
+  <main class="page-shell">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+{% if current_user %}
+<div class="panel-backdrop" id="panelBackdrop" onclick="closeProfilePanel()"></div>
+<aside class="profile-panel" id="profilePanel" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="profilePanelTitle">
+  <div class="panel-head">
+    <div>
+      <p class="panel-kicker">Profile</p>
+      <h3 id="profilePanelTitle">Your FreshWash details</h3>
+    </div>
+    <button class="panel-close" type="button" onclick="closeProfilePanel()" aria-label="Close profile panel">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+
+  <div class="panel-profile-card">
+    <div class="panel-avatar">
+      {% if current_avatar %}
+      <img src="{{ current_avatar }}" id="avatarImg" alt="Avatar preview" />
+      {% else %}
+      <i class="fa-solid fa-user" id="avatarIcon"></i>
+      <img src="" id="avatarImg" alt="Avatar preview" style="display:none" />
+      {% endif %}
+    </div>
+    <div>
+      <strong id="profileCardName">{{ current_name }}</strong>
+      <span id="profileCardMeta">{{ current_email }}</span>
+    </div>
+  </div>
+
+  <form class="panel-form" id="profileForm" onsubmit="saveProfile(event)">
+    <div class="panel-upload-block">
+      <label class="upload-pill" for="avatarInput">
+        <i class="fa-solid fa-camera"></i>
+        <span>Change profile picture</span>
+      </label>
+      <input type="file" id="avatarInput" accept="image/*" onchange="previewAvatar(event)" hidden />
+    </div>
+
+    <div class="panel-fields">
+      <div class="fw-field">
+        <span class="fw-field-icon"><i class="fa-solid fa-user"></i></span>
+        <input type="text" id="pName" class="fw-input" value="{{ current_name }}" placeholder="Full name" required />
+      </div>
+      <div class="fw-field">
+        <span class="fw-field-icon"><i class="fa-solid fa-envelope"></i></span>
+        <input type="text" class="fw-input" value="{{ current_email }}" disabled />
+      </div>
+      <div class="fw-field">
+        <span class="fw-field-icon"><i class="fa-solid fa-phone"></i></span>
+        <input type="tel" id="pPhone" class="fw-input" value="{{ current_phone }}" placeholder="Phone number" />
+      </div>
+      <div class="fw-field">
+        <span class="fw-field-icon"><i class="fa-solid fa-location-dot"></i></span>
+        <input type="text" id="pAddress" class="fw-input" value="{{ current_address }}" placeholder="Address" />
+      </div>
+    </div>
+
+    <div class="panel-actions">
+      <button type="submit" class="btn-primary">Save Changes</button>
+      <a href="{{ url_for('logout') }}" class="btn-ghost" onclick="logoutUser(event, '{{ url_for('logout') }}')">Logout</a>
+    </div>
+  </form>
+</aside>
+{% else %}
+<div class="auth-modal-backdrop" id="authBackdrop" aria-hidden="true">
+  <aside class="auth-modal-shell" id="loginAuthModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="loginAuthTitle">
+    <button class="auth-close" type="button" onclick="closeAuthModal()" aria-label="Close">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <div class="auth-brand">
+      <div class="auth-brand-icon"><i class="fa-solid fa-shirt"></i></div>
+      <span>FreshWash</span>
+    </div>
+    <h2 id="loginAuthTitle">Welcome back</h2>
+    <p class="auth-form-copy">FreshWash offers fast, reliable laundry care with easy booking, flexible load options, and a clean shop experience.</p>
+    <form method="POST" action="{{ url_for('login') }}" class="auth-form" novalidate>
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
+        <input type="email" name="email" class="rv-input" placeholder="Email address" value="{{ (auth_form_data or {}).get('email', '') }}" required />
+      </div>
+      <div class="rv-field password-field">
+        <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+        <input type="password" name="password" id="loginPagePassword" class="rv-input" placeholder="Password" required />
+        <button type="button" class="password-toggle" data-password-toggle="loginPagePassword" aria-label="Show password">
+          <i class="fa-regular fa-eye-slash"></i>
+        </button>
+      </div>
+      <div class="auth-inline-action">
+        <a href="#" class="forgot-link" data-auth-switch="forgot">Forgot Password?</a>
+      </div>
+      <button type="submit" class="btn-primary w-full">Login</button>
+    </form>
+    <p class="auth-foot">New here? <a href="#" class="text-link" data-auth-switch="register">Create an account</a></p>
+  </aside>
+
+  <aside class="auth-modal-shell" id="registerAuthModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="registerAuthTitle">
+    <button class="auth-close" type="button" onclick="closeAuthModal()" aria-label="Close">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <div class="auth-brand">
+      <div class="auth-brand-icon"><i class="fa-solid fa-shirt"></i></div>
+      <span>FreshWash</span>
+    </div>
+    <h2 id="registerAuthTitle">Create your account</h2>
+    <p class="auth-form-copy">Create your account to explore FreshWash services, check load options, and book laundry with ease.</p>
+    <form method="POST" action="{{ url_for('api_register') }}" class="auth-form" id="registerAjaxForm" novalidate>
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-user"></i></span>
+        <input type="text" name="name" class="rv-input" placeholder="Full name" value="{{ (auth_form_data or {}).get('name', '') }}" required />
+      </div>
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
+        <input type="email" name="email" class="rv-input" placeholder="Email address" value="{{ (auth_form_data or {}).get('email', '') }}" required />
+      </div>
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-phone"></i></span>
+        <input type="tel" name="phone" class="rv-input" placeholder="Phone number" value="{{ (auth_form_data or {}).get('phone', '') }}" required />
+      </div>
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-location-dot"></i></span>
+        <input type="text" name="address" class="rv-input" placeholder="Address" value="{{ (auth_form_data or {}).get('address', '') }}" required />
+      </div>
+      <div class="rv-field password-field">
+        <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+        <input type="password" name="password" id="registerPagePassword" class="rv-input" placeholder="Password (min. 6)" required minlength="6" />
+        <button type="button" class="password-toggle" data-password-toggle="registerPagePassword" aria-label="Show password">
+          <i class="fa-regular fa-eye-slash"></i>
+        </button>
+      </div>
+      <div class="rv-field password-field">
+        <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
+        <input type="password" name="confirm_password" id="registerPageConfirmPassword" class="rv-input" placeholder="Confirm password" required minlength="6" />
+        <button type="button" class="password-toggle" data-password-toggle="registerPageConfirmPassword" aria-label="Show password">
+          <i class="fa-regular fa-eye-slash"></i>
+        </button>
+      </div>
+      <p id="registerPagePassError" class="rv-error hidden">Passwords do not match.</p>
+      <button type="submit" class="btn-primary w-full">Register</button>
+    </form>
+    <p class="auth-foot">Already have an account? <a href="#" class="text-link" data-auth-switch="login">Login</a></p>
+  </aside>
+
+  <aside class="auth-modal-shell" id="forgotAuthModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="forgotAuthTitle">
+    <button class="auth-close" type="button" onclick="closeAuthModal()" aria-label="Close">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <div class="auth-brand">
+      <div class="auth-brand-icon"><i class="fa-solid fa-shirt"></i></div>
+      <span>FreshWash</span>
+    </div>
+    <h2 id="forgotAuthTitle">Reset your password</h2>
+    <p class="auth-form-copy">Enter your email and we'll send you a reset link so you can get back to FreshWash quickly.</p>
+    <form class="auth-form" id="forgotPasswordForm" novalidate>
+      <div class="rv-field">
+        <span class="rv-fi"><i class="fa-solid fa-envelope"></i></span>
+        <input type="email" id="forgotPasswordEmail" class="rv-input" placeholder="Email address" required />
+      </div>
+      <button type="submit" class="btn-primary w-full">Send Reset Link</button>
+    </form>
+    <p class="auth-foot">Remembered it? <a href="#" class="text-link" data-auth-switch="login">Back to login</a></p>
+  </aside>
+
+
+
+</div>
+{% endif %}
+
+{% if not current_user %}
+<div class="fw-otp-overlay" id="fwOtpOverlay" aria-hidden="true">
+  <div class="fw-otp-card" id="fwOtpCard" role="dialog" aria-modal="true" aria-labelledby="fwOtpTitle">
+    <button class="fw-otp-close" id="fwOtpClose" type="button" aria-label="Close">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <div class="auth-brand">
+      <div class="auth-brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+      <span>FreshWash Security</span>
+    </div>
+    <h2 id="fwOtpTitle">Verify your email</h2>
+    <div class="fw-otp-signup-note" id="fwOtpSignupNote" style="display:none">
+      <i class="fa-solid fa-circle-check"></i> Account created! Please verify your email.
+    </div>
+    <p class="auth-form-copy">Verification code sent to <strong id="fwOtpEmail"></strong></p>
+    <div class="fw-otp-boxes" id="fwOtpBoxes">
+      <input type="text" class="fw-otp-digit" inputmode="numeric" autocomplete="one-time-code" maxlength="1" aria-label="Digit 1" />
+      <input type="text" class="fw-otp-digit" inputmode="numeric" maxlength="1" aria-label="Digit 2" />
+      <input type="text" class="fw-otp-digit" inputmode="numeric" maxlength="1" aria-label="Digit 3" />
+      <input type="text" class="fw-otp-digit" inputmode="numeric" maxlength="1" aria-label="Digit 4" />
+      <input type="text" class="fw-otp-digit" inputmode="numeric" maxlength="1" aria-label="Digit 5" />
+      <input type="text" class="fw-otp-digit" inputmode="numeric" maxlength="1" aria-label="Digit 6" />
+    </div>
+    <p class="rv-error" id="fwOtpError" style="display:none">
+      <i class="fa-solid fa-circle-exclamation"></i> <span id="fwOtpErrorText"></span>
+    </p>
+    <button type="button" class="btn-primary w-full" id="fwOtpVerifyBtn">Verify</button>
+    <button type="button" class="btn-ghost w-full" id="fwOtpResendBtn" style="margin-top:10px">Resend Code</button>
+    <small class="fw-otp-hint" id="fwOtpHint" aria-live="polite"></small>
+    <p class="auth-foot">Wrong account? <a href="/" class="text-link">Back to Sign In</a></p>
+  </div>
+</div>
+{% endif %}
+
+<footer class="fw-premium-footer">
+  <div class="fw-premium-footer__wave" aria-hidden="true"></div>
+  <div class="fw-premium-footer__bubbles" aria-hidden="true">
+    <span class="fw-premium-footer__bubble bubble-one"></span>
+    <span class="fw-premium-footer__bubble bubble-two"></span>
+    <span class="fw-premium-footer__bubble bubble-three"></span>
+  </div>
+
+  <div class="fw-premium-footer__inner">
+    <section class="fw-premium-footer__brand">
+      <div class="fw-premium-footer__brand-mark">
+        <span class="fw-premium-footer__brand-icon"><i class="fa-solid fa-soap"></i></span>
+        <div>
+          <strong>FreshWash</strong>
+          <p>Clean laundry, fresh life</p>
+        </div>
+      </div>
+
+      <p class="fw-premium-footer__description">
+        FreshWash makes laundry easy, fast, and hassle-free. Clean clothes, happy life!
+      </p>
+    </section>
+
+    <section class="fw-premium-footer__info">
+      <h3>Contact Us</h3>
+      <div class="fw-premium-footer__contact-list">
+        <a href="mailto:hello@freshwash.app">
+          <i class="fa-solid fa-envelope"></i>
+          <span>hello@freshwash.app</span>
+        </a>
+        <a href="tel:+639171234567">
+          <i class="fa-solid fa-phone"></i>
+          <span>+63 917 123 4567</span>
+        </a>
+        <a href="https://maps.google.com/?q=Cebu+City+Philippines" target="_blank" rel="noreferrer">
+          <i class="fa-solid fa-location-dot"></i>
+          <span>Cebu City, Philippines</span>
+        </a>
+      </div>
+    </section>
+
+    <nav class="fw-premium-footer__info fw-premium-footer__links" aria-label="Quick links">
+      <h3>Quick Links</h3>
+      <a href="{{ home_href }}">Home</a>
+      <a href="{{ services_href }}" {% if not current_user %}data-auth-link="login"{% endif %}>Services</a>
+      <a href="{{ book_href }}" {% if not current_user %}data-auth-link="register"{% endif %}>Book Now</a>
+      <a href="{{ profile_href }}" {% if not current_user %}data-auth-link="login"{% endif %}>Profile</a>
+    </nav>
+  </div>
+
+  <div class="fw-premium-footer__bottom">
+    <p>&copy; 2026 FreshWash. All rights reserved.</p>
+    <div class="fw-premium-footer__bottom-copy">
+      <span>Fresh. Clean. You.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const CURRENT_USER = {% if current_user %}{{ current_user | tojson }}{% else %}null{% endif %};
+  const ACTIVE_AUTH_MODAL = {{ active_auth_modal | default(None, true) | tojson }};
+  const AUTH_FORM_DATA = {{ auth_form_data | default({}, true) | tojson }};
+  const PROFILE_STORAGE_KEY = "freshwashProfile";
+
+  function toggleNav() {
+    const nav = document.getElementById("headerNav");
+    if (nav) nav.classList.toggle("open");
+  }
+
+  function initPasswordToggles() {
+    document.querySelectorAll("[data-password-toggle]").forEach(button => {
+      if (button.dataset.bound === "true") return;
+      button.dataset.bound = "true";
+      button.addEventListener("click", () => {
+        const target = document.getElementById(button.dataset.passwordToggle);
+        if (!target) return;
+        const isHidden = target.type === "password";
+        target.type = isHidden ? "text" : "password";
+        button.innerHTML = isHidden
+          ? '<i class="fa-regular fa-eye"></i>'
+          : '<i class="fa-regular fa-eye-slash"></i>';
+      });
+    });
+  }
+
+  function openAuthModal(modal = "login") {
+    const backdrop = document.getElementById("authBackdrop");
+    const loginModal = document.getElementById("loginAuthModal");
+    const registerModal = document.getElementById("registerAuthModal");
+    const forgotModal = document.getElementById("forgotAuthModal");
+    if (!backdrop || !loginModal || !registerModal || !forgotModal) return;
+    backdrop.classList.add("show");
+    backdrop.setAttribute("aria-hidden", "false");
+    loginModal.classList.toggle("open", modal === "login");
+    registerModal.classList.toggle("open", modal === "register");
+    forgotModal.classList.toggle("open", modal === "forgot");
+    loginModal.setAttribute("aria-hidden", String(modal !== "login"));
+    registerModal.setAttribute("aria-hidden", String(modal !== "register"));
+    forgotModal.setAttribute("aria-hidden", String(modal !== "forgot"));
+    document.body.classList.add("auth-modal-open");
+    initPasswordToggles();
+    syncForgotPasswordEmail();
+  }
+
+  function closeAuthModal() {
+    const backdrop = document.getElementById("authBackdrop");
+    const loginModal = document.getElementById("loginAuthModal");
+    const registerModal = document.getElementById("registerAuthModal");
+    const forgotModal = document.getElementById("forgotAuthModal");
+    if (!backdrop || !loginModal || !registerModal || !forgotModal) return;
+    backdrop.classList.remove("show");
+    loginModal.classList.remove("open");
+    registerModal.classList.remove("open");
+    forgotModal.classList.remove("open");
+    backdrop.setAttribute("aria-hidden", "true");
+    loginModal.setAttribute("aria-hidden", "true");
+    registerModal.setAttribute("aria-hidden", "true");
+    forgotModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("auth-modal-open");
+  }
+
+
+
+  function syncForgotPasswordEmail() {
+    const loginEmail = document.querySelector('#loginAuthModal input[name="email"]');
+    const forgotEmail = document.getElementById("forgotPasswordEmail");
+    if (!forgotEmail || !loginEmail) return;
+    if (forgotEmail.value.trim()) return;
+    forgotEmail.value = loginEmail.value.trim();
+  }
+
+  function initForgotPasswordForm() {
+    const form = document.getElementById("forgotPasswordForm");
+    const emailInput = document.getElementById("forgotPasswordEmail");
+    if (!form || !emailInput || form.dataset.bound === "true") return;
+    form.dataset.bound = "true";
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      const email = emailInput.value.trim();
+      if (!email) {
+        showToast("Please enter your email address.", true);
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast("Please enter a valid email address.", true);
+        return;
+      }
+      showToast(`Password reset link sent to ${email}.`);
+      form.reset();
+      closeAuthModal();
+    });
+  }
+
+  function initAuthModalLinks() {
+    document.querySelectorAll("[data-auth-link]").forEach(link => {
+      if (link.dataset.bound === "true") return;
+      link.dataset.bound = "true";
+      link.addEventListener("click", event => {
+        event.preventDefault();
+        openAuthModal(link.dataset.authLink || "login");
+      });
+    });
+
+    document.querySelectorAll("[data-auth-switch]").forEach(link => {
+      if (link.dataset.bound === "true") return;
+      link.dataset.bound = "true";
+      link.addEventListener("click", event => {
+        event.preventDefault();
+        openAuthModal(link.dataset.authSwitch || "login");
+      });
+    });
+
+    const backdrop = document.getElementById("authBackdrop");
+    if (backdrop && backdrop.dataset.bound !== "true") {
+      backdrop.dataset.bound = "true";
+      backdrop.addEventListener("click", event => {
+        if (event.target === backdrop) closeAuthModal();
+      });
+    }
+  }
+
+  function logFlashErrorsForDebug() {
+    document.querySelectorAll(".flash.flash-error span").forEach(node => {
+      const message = (node.textContent || "").trim();
+      if (message) {
+        const error = {
+          message,
+          error_description: "",
+          details: "",
+        };
+        const errorMessage =
+          error?.message ||
+          error?.error_description ||
+          error?.details ||
+          JSON.stringify(error) ||
+          "Unknown Supabase error. Check Authentication Logs.";
+        console.error("Full Supabase OTP error:", error);
+        console.error("Error JSON:", JSON.stringify(error, null, 2));
+        console.error(`Failed to send verification. Supabase error: ${errorMessage}`);
+      }
+    });
+  }
+
+  function validateRegisterPagePasswords() {
+    const pass1 = document.getElementById("registerPagePassword");
+    const pass2 = document.getElementById("registerPageConfirmPassword");
+    const err = document.getElementById("registerPagePassError");
+    if (!pass1 || !pass2 || !err) return true;
+    const isMatch = pass1.value === pass2.value;
+    err.classList.toggle("hidden", isMatch);
+    return isMatch;
+  }
+
+  function initRegisterSubmitGuard() {
+    const registerForm = document.querySelector("#registerAjaxForm");
+    if (!registerForm || registerForm.dataset.submitBound === "true") return;
+    registerForm.dataset.submitBound = "true";
+
+    registerForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (!validateRegisterPagePasswords()) return;
+
+      const submitBtn = registerForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn ? submitBtn.textContent : "Register";
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Please wait..."; }
+
+      // Remove any previous inline error
+      const prevErr = registerForm.querySelector(".register-ajax-error");
+      if (prevErr) prevErr.remove();
+
+      try {
+        const res  = await fetch(registerForm.action, {
+          method: "POST",
+          body: new FormData(registerForm),
+        });
+        const data = await res.json();
+
+        if (!data.ok) {
+          // If server says to redirect to login (already registered)
+          if (data.action === "login") {
+            closeAuthModal();
+            setTimeout(() => {
+              if (typeof openAuthModal === "function") openAuthModal("login");
+              showToast((data.errors || ["This email is already registered."])[0], true);
+            }, 200);
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText; }
+            return;
+          }
+          const msg = (data.errors || ["Registration failed. Please try again."]).join(" ");
+          showRegisterError(registerForm, msg);
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText; }
+          return;
+        }
+
+        if (data.otp) {
+          // Close register modal first, then open OTP modal
+          closeAuthModal();
+          setTimeout(() => {
+            if (typeof window.fwOpenOtpModal === "function") {
+              window.fwOpenOtpModal({ email: data.email || "", showSignupNote: true, cooldown: data.cooldown || 60 });
+            }
+          }, 180);
+        } else {
+          // Admin or no-OTP path — redirect
+          window.location.href = data.redirect || "/";
+        }
+      } catch (err) {
+        showRegisterError(registerForm, "Network error. Please check your connection.");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText; }
+      }
+    });
+  }
+
+  function showRegisterError(form, message) {
+    let errEl = form.querySelector(".register-ajax-error");
+    if (!errEl) {
+      errEl = document.createElement("p");
+      errEl.className = "register-ajax-error rv-error";
+      errEl.style.cssText = "margin:6px 0 0;padding:10px 12px;border-radius:12px;background:rgba(254,226,226,0.9);border:1px solid rgba(252,165,165,0.6);color:#b91c1c;font-size:0.88rem;font-weight:600;";
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) form.insertBefore(errEl, submitBtn);
+      else form.appendChild(errEl);
+    }
+    errEl.textContent = message;
+  }
+
+  function bindFormSubmitLoading(form, buttonText = "Please wait...") {
+    if (!form || form.dataset.loadingBound === "true") return;
+    form.dataset.loadingBound = "true";
+    form.addEventListener("submit", event => {
+      const submitButton = form.querySelector('button[type="submit"]');
+      if (!submitButton) return;
+      if (submitButton.disabled) {
+        event.preventDefault();
+        return;
+      }
+      submitButton.disabled = true;
+      submitButton.dataset.originalText = submitButton.textContent || "Submit";
+      submitButton.textContent = buttonText;
+      window.setTimeout(() => {
+        submitButton.disabled = false;
+        submitButton.textContent = submitButton.dataset.originalText || "Submit";
+      }, 12000);
+    });
+  }
+
+  function initLoginSubmitGuard() {
+    const loginForm = document.querySelector('#loginAuthModal form[action="{{ url_for("login") }}"]');
+    bindFormSubmitLoading(loginForm, "Please wait...");
+  }
+
+
+
+  function getStoredProfile() {
+    try {
+      return JSON.parse(localStorage.getItem(PROFILE_STORAGE_KEY) || "null");
+    } catch {
+      return null;
+    }
+  }
+
+  function persistProfile(profile) {
+    if (!profile) return;
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+  }
+
+  function syncProfileStorageFromSession() {
+    if (!CURRENT_USER) return;
+    const stored = getStoredProfile();
+    if (stored && stored.email === CURRENT_USER.email) {
+      updateProfileUi({ ...CURRENT_USER, ...stored });
+      return;
+    }
+    persistProfile(CURRENT_USER);
+  }
+
+  function openProfilePanel() {
+    const panel = document.getElementById("profilePanel");
+    const backdrop = document.getElementById("panelBackdrop");
+    if (!panel || !backdrop) return;
+    panel.classList.add("open");
+    backdrop.classList.add("show");
+    panel.setAttribute("aria-hidden", "false");
+  }
+
+  function closeProfilePanel() {
+    const panel = document.getElementById("profilePanel");
+    const backdrop = document.getElementById("panelBackdrop");
+    if (!panel || !backdrop) return;
+    panel.classList.remove("open");
+    backdrop.classList.remove("show");
+    panel.setAttribute("aria-hidden", "true");
+  }
+
+  function previewAvatar(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById("avatarImg");
+      const icon = document.getElementById("avatarIcon");
+      if (img) {
+        img.src = e.target.result;
+        img.style.display = "block";
+      }
+      if (icon) icon.style.display = "none";
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function updateProfileUi(profile) {
+    if (!profile) return;
+    const cardName = document.getElementById("profileCardName");
+    const cardMeta = document.getElementById("profileCardMeta");
+    const navImg = document.getElementById("navAvatarImg");
+    const navIcon = document.getElementById("navAvatarIcon");
+    const avatarImg = document.getElementById("avatarImg");
+    const avatarIcon = document.getElementById("avatarIcon");
+    const profileNameInput = document.getElementById("pName");
+    const profilePhoneInput = document.getElementById("pPhone");
+    const profileAddressInput = document.getElementById("pAddress");
+    const homeName = document.getElementById("heroUserName");
+    const homeEmail = document.getElementById("dashboardUserEmail");
+
+    if (cardName) cardName.textContent = profile.name || "";
+    if (cardMeta) cardMeta.textContent = profile.email || "";
+    if (profileNameInput) profileNameInput.value = profile.name || "";
+    if (profilePhoneInput) profilePhoneInput.value = profile.phone || "";
+    if (profileAddressInput) profileAddressInput.value = profile.address || "";
+    if (homeName) homeName.textContent = profile.name || "Guest";
+    if (homeEmail) homeEmail.textContent = profile.email || "";
+
+    if (profile.avatar && profile.avatar !== window.location.href) {
+      [navImg, avatarImg].forEach(img => {
+        if (img) {
+          img.src = profile.avatar;
+          img.style.display = "block";
+        }
+      });
+      [navIcon, avatarIcon].forEach(icon => {
+        if (icon) icon.style.display = "none";
+      });
+    }
+  }
+
+  function saveProfile(event) {
+    event.preventDefault();
+    const name = document.getElementById("pName")?.value.trim() || "";
+    const phone = document.getElementById("pPhone")?.value.trim() || "";
+    const address = document.getElementById("pAddress")?.value.trim() || "";
+    const avatar = document.getElementById("avatarImg")?.src || "";
+    if (!name) {
+      showToast("Name is required", true);
+      return;
+    }
+
+    fetch("/profile/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, phone, address, avatar })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.ok) throw new Error(data.error || "Update failed");
+        const profile = { ...CURRENT_USER, name, phone, address, avatar };
+        persistProfile(profile);
+        updateProfileUi(profile);
+        closeProfilePanel();
+        showToast("Profile updated successfully");
+      })
+      .catch(error => showToast(error.message || "Unable to update profile right now", true));
+  }
+
+  function logoutUser(event, url) {
+    if (event) event.preventDefault();
+    localStorage.removeItem(PROFILE_STORAGE_KEY);
+    window.location.href = url;
+  }
+
+  function showToast(message, isError = false) {
+    let stack = document.querySelector(".flash-stack");
+    if (!stack) {
+      stack = document.createElement("div");
+      stack.className = "flash-stack";
+      document.body.prepend(stack);
+    }
+    const toast = document.createElement("div");
+    toast.className = `flash flash-${isError ? "error" : "success"}`;
+    toast.innerHTML = `<i class="fa-solid ${isError ? "fa-circle-exclamation" : "fa-circle-check"}"></i><span>${message}</span><button type="button" aria-label="Dismiss message">&times;</button>`;
+    toast.querySelector("button").addEventListener("click", () => toast.remove());
+    stack.prepend(toast);
+    window.setTimeout(() => toast.remove(), 3500);
+  }
+
+  function initAboutSectionVisibility() {
+    const aboutSection = document.querySelector("[data-about-section]");
+    if (!aboutSection) return;
+
+    const defaultSections = Array.from(document.querySelectorAll("[data-home-default-section]"));
+    const aboutLinks = Array.from(document.querySelectorAll('a[href$="#about"]'));
+    const homeLinks = Array.from(document.querySelectorAll(`a[href="${window.location.pathname}"], a[href="/"], a[href="{{ url_for('home') }}"]`));
+    let isAboutVisible = false;
+
+    const revealAbout = ({ scroll = true, updateHash = true } = {}) => {
+      defaultSections.forEach(section => {
+        section.classList.add("is-hidden-for-about");
+        section.setAttribute("aria-hidden", "true");
+      });
+      if (!isAboutVisible) {
+        aboutSection.classList.add("is-visible");
+        aboutSection.setAttribute("aria-hidden", "false");
+        isAboutVisible = true;
+      }
+      if (updateHash) {
+        window.history.replaceState({}, "", "#about");
+      }
+      if (scroll) {
+        window.requestAnimationFrame(() => {
+          aboutSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    };
+
+    const hideAbout = ({ scroll = false, updateHash = true } = {}) => {
+      defaultSections.forEach(section => {
+        section.classList.remove("is-hidden-for-about");
+        section.setAttribute("aria-hidden", "false");
+      });
+      aboutSection.classList.remove("is-visible");
+      aboutSection.setAttribute("aria-hidden", "true");
+      isAboutVisible = false;
+      if (updateHash) {
+        const cleanUrl = window.location.pathname + window.location.search;
+        window.history.replaceState({}, "", cleanUrl);
+      }
+      if (scroll) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    };
+
+    aboutLinks.forEach(link => {
+      link.addEventListener("click", event => {
+        const href = link.getAttribute("href") || "";
+        if (!href.endsWith("#about")) return;
+        event.preventDefault();
+        revealAbout();
+        const nav = document.getElementById("headerNav");
+        if (nav) nav.classList.remove("open");
+      });
+    });
+
+    homeLinks.forEach(link => {
+      link.addEventListener("click", event => {
+        const href = link.getAttribute("href") || "";
+        const isHomeLink = href === "/" || href === window.location.pathname || href === "{{ url_for('home') }}";
+        if (!isHomeLink || !aboutSection.classList.contains("is-visible")) return;
+        event.preventDefault();
+        hideAbout({ scroll: true });
+        const nav = document.getElementById("headerNav");
+        if (nav) nav.classList.remove("open");
+      });
+    });
+
+    if (window.location.hash === "#about") {
+      revealAbout({ scroll: false, updateHash: false });
+    } else {
+      hideAbout({ scroll: false, updateHash: false });
+    }
+  }
+
+  function setActiveNavItem(activeItem) {
+    document.querySelectorAll("[data-nav-item]").forEach(link => {
+      const isActive = link.dataset.navItem === activeItem;
+      link.classList.toggle("active", isActive);
+      if (isActive) {
+        link.setAttribute("aria-current", "page");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+  }
+
+  function initActiveNavigation() {
+    const currentPath = () => window.location.pathname.replace(/\/+$/, "") || "/";
+    const syncFromUrl = () => {
+      const path = currentPath();
+      if (window.location.hash === "#about") {
+        setActiveNavItem("about");
+      } else if (path === "{{ url_for('booking') }}") {
+        setActiveNavItem("book");
+      } else if (path === "{{ url_for('my_bookings') }}") {
+        setActiveNavItem("my-booking");
+      } else {
+        setActiveNavItem("home");
+      }
+    };
+
+    syncFromUrl();
+
+    document.querySelectorAll("[data-nav-item]").forEach(link => {
+      if (link.dataset.navBound === "true") return;
+      link.dataset.navBound = "true";
+      link.addEventListener("click", () => {
+        if (link.hasAttribute("data-auth-link")) return;
+        setActiveNavItem(link.dataset.navItem);
+      });
+    });
+
+    window.addEventListener("hashchange", syncFromUrl);
+  }
+
+  document.querySelectorAll(".flash button").forEach(button => {
+    button.addEventListener("click", () => button.parentElement.remove());
+  });
+
+  syncProfileStorageFromSession();
+  initAuthModalLinks();
+  initPasswordToggles();
+  initForgotPasswordForm();
+  initRegisterSubmitGuard();
+  initLoginSubmitGuard();
+  logFlashErrorsForDebug();
+  initAboutSectionVisibility();
+  initActiveNavigation();
+  if (ACTIVE_AUTH_MODAL) openAuthModal(ACTIVE_AUTH_MODAL);
+
+  // ── OTP Modal ──────────────────────────────────────────────────────────────
+  (function () {
+    const overlay   = document.getElementById("fwOtpOverlay");
+    const closeBtn  = document.getElementById("fwOtpClose");
+    const emailEl   = document.getElementById("fwOtpEmail");
+    const noteEl    = document.getElementById("fwOtpSignupNote");
+    const errorEl   = document.getElementById("fwOtpError");
+    const errorText = document.getElementById("fwOtpErrorText");
+    const verifyBtn = document.getElementById("fwOtpVerifyBtn");
+    const resendBtn = document.getElementById("fwOtpResendBtn");
+    const hintEl    = document.getElementById("fwOtpHint");
+    const boxesEl   = document.getElementById("fwOtpBoxes");
+    if (!overlay || !boxesEl) return;
+
+    const digits = Array.from(boxesEl.querySelectorAll(".fw-otp-digit"));
+    const getCode  = () => digits.map(d => d.value.replace(/\D/g, "").slice(0,1)).join("");
+    const clearCode = () => digits.forEach(d => d.value = "");
+    const showErr  = msg => { errorText.textContent = msg; errorEl.style.display = "flex"; };
+    const hideErr  = () => { errorEl.style.display = "none"; };
+
+    window.fwOpenOtpModal = function ({ email = "", showSignupNote = false, cooldown = 0 } = {}) {
+      if (emailEl) emailEl.textContent = email;
+      if (noteEl)  noteEl.style.display = showSignupNote ? "flex" : "none";
+      hideErr(); clearCode();
+      overlay.classList.add("is-open");
+      overlay.setAttribute("aria-hidden", "false");
+      document.body.classList.add("auth-modal-open");
+      startCountdown(cooldown > 0 ? cooldown : 0);
+      setTimeout(() => digits[0] && digits[0].focus(), 80);
+    };
+
+    window.fwCloseOtpModal = function () {
+      overlay.classList.remove("is-open");
+      overlay.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("auth-modal-open");
+    };
+
+    if (closeBtn) closeBtn.addEventListener("click", window.fwCloseOtpModal);
+    overlay.addEventListener("click", e => { if (e.target === overlay) window.fwCloseOtpModal(); });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && overlay.classList.contains("is-open")) window.fwCloseOtpModal();
+    });
+
+    digits.forEach((input, i) => {
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/\D/g, "").slice(-1);
+        hideErr();
+        if (input.value && i < digits.length - 1) digits[i + 1].focus();
+      });
+      input.addEventListener("keydown", e => {
+        if (e.key === "Backspace" && !input.value && i > 0) digits[i - 1].focus();
+        if (e.key === "ArrowLeft"  && i > 0)                { e.preventDefault(); digits[i - 1].focus(); }
+        if (e.key === "ArrowRight" && i < digits.length - 1) { e.preventDefault(); digits[i + 1].focus(); }
+      });
+      input.addEventListener("paste", e => {
+        const pasted = (e.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, digits.length);
+        if (!pasted) return;
+        e.preventDefault();
+        digits.forEach((d, idx) => d.value = pasted[idx] || "");
+        digits[Math.min(pasted.length, digits.length - 1)].focus();
+      });
+    });
+
+    if (verifyBtn) verifyBtn.addEventListener("click", async () => {
+      const code = getCode();
+      if (!/^\d{6}$/.test(code)) { showErr("Please enter all 6 digits."); return; }
+      verifyBtn.disabled = true; verifyBtn.textContent = "Verifying\u2026"; hideErr();
+      try {
+        const res  = await fetch("/api/otp/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ otp_code: code }) });
+        const data = await res.json();
+        if (data.ok) {
+          if (data.action === "login") {
+            window.fwCloseOtpModal();
+            setTimeout(() => {
+              if (typeof openAuthModal === "function") openAuthModal("login");
+              showToast(data.message || "Email verified! Please log in.");
+            }, 200);
+          } else {
+            window.location.href = data.redirect || "/";
+          }
+        }
+        else { showErr(data.error || "Invalid code. Please try again."); clearCode(); digits[0].focus(); verifyBtn.disabled = false; verifyBtn.textContent = "Verify"; }
+      } catch { showErr("Network error. Please try again."); verifyBtn.disabled = false; verifyBtn.textContent = "Verify"; }
+    });
+
+    let countdownTimer = null;
+    function startCountdown(seconds) {
+      clearInterval(countdownTimer);
+      let remaining = Math.max(0, Math.floor(seconds));
+      resendBtn.disabled = remaining > 0;
+      const render = () => { hintEl.textContent = remaining > 0 ? `Resend code in ${remaining}s` : ""; if (remaining <= 0) resendBtn.disabled = false; };
+      render();
+      if (remaining <= 0) return;
+      countdownTimer = setInterval(() => { remaining -= 1; render(); if (remaining <= 0) clearInterval(countdownTimer); }, 1000);
+    }
+
+    if (resendBtn) resendBtn.addEventListener("click", async () => {
+      resendBtn.disabled = true; resendBtn.textContent = "Sending\u2026"; hideErr();
+      try {
+        const res  = await fetch("/api/otp/resend", { method: "POST" });
+        const data = await res.json();
+        if (data.ok) { clearCode(); digits[0].focus(); startCountdown(60); resendBtn.textContent = "Resend Code"; }
+        else { showErr(data.error || "Could not resend. Please try again."); resendBtn.disabled = false; resendBtn.textContent = "Resend Code"; }
+      } catch { showErr("Network error. Please try again."); resendBtn.disabled = false; resendBtn.textContent = "Resend Code"; }
+    });
+
+    if (ACTIVE_AUTH_MODAL === "otp") {
+      const fd = typeof AUTH_FORM_DATA !== "undefined" ? AUTH_FORM_DATA : {};
+      window.fwOpenOtpModal({ email: fd.email || "", showSignupNote: fd.show_signup_success || false, cooldown: fd.resend_cooldown || 0 });
+    }
+  })();
+  // ── End OTP Modal ──────────────────────────────────────────────────────────
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
+
+
