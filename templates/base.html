@@ -259,47 +259,7 @@
     <p class="auth-foot">Remembered it? <a href="#" class="text-link" data-auth-switch="login">Back to login</a></p>
   </aside>
 
-  <aside class="auth-modal-shell" id="verifyAuthModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="verifyAuthTitle">
-    <button class="auth-close" type="button" onclick="closeAuthModal()" aria-label="Close">
-      <i class="fa-solid fa-xmark"></i>
-    </button>
-    <div class="auth-brand">
-      <div class="auth-brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
-      <span>FreshWash Security</span>
-    </div>
-    <h2 id="verifyAuthTitle">Enter Verification Code</h2>
-    {% if (auth_form_data or {}).get('show_signup_success') %}
-    <div class="auth-success-note" role="status" aria-live="polite">
-      Account created! Please verify your email.
-    </div>
-    {% endif %}
-    <p class="auth-form-copy">Verification code sent to your email: <strong>{{ (auth_form_data or {}).get('email', '') }}</strong></p>
-    <form method="POST" action="{{ url_for('auth_verify_otp') }}" class="auth-form" novalidate>
-      <div class="otp-boxes" id="otpBoxes" aria-label="Verification code input">
-        <input type="text" class="otp-digit" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="1" aria-label="Digit 1" />
-        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 2" />
-        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 3" />
-        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 4" />
-        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 5" />
-        <input type="text" class="otp-digit" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 6" />
-      </div>
-      <input type="hidden" name="otp_code" id="otpCodeHidden" required />
-      <button type="submit" class="btn-primary w-full">Verify</button>
-    </form>
-    <form method="POST" action="{{ url_for('auth_resend_otp') }}" class="auth-form auth-verify-resend" novalidate>
-      <button
-        type="submit"
-        class="btn-ghost w-full"
-        id="otpResendButton"
-        data-resend-cooldown="{{ (auth_form_data or {}).get('resend_cooldown', 0) }}"
-        data-resend-default-cooldown="60"
-      >
-        Resend Code
-      </button>
-      <small id="otpResendHint"></small>
-    </form>
-    <p class="auth-foot">Need to change account? <a href="#" class="text-link" data-auth-switch="login">Back to Sign In</a></p>
-  </aside>
+
 </div>
 {% endif %}
 
@@ -392,23 +352,18 @@
     const loginModal = document.getElementById("loginAuthModal");
     const registerModal = document.getElementById("registerAuthModal");
     const forgotModal = document.getElementById("forgotAuthModal");
-    const verifyModal = document.getElementById("verifyAuthModal");
-    if (!backdrop || !loginModal || !registerModal || !forgotModal || !verifyModal) return;
+    if (!backdrop || !loginModal || !registerModal || !forgotModal) return;
     backdrop.classList.add("show");
     backdrop.setAttribute("aria-hidden", "false");
     loginModal.classList.toggle("open", modal === "login");
     registerModal.classList.toggle("open", modal === "register");
     forgotModal.classList.toggle("open", modal === "forgot");
-    verifyModal.classList.toggle("open", modal === "verify");
     loginModal.setAttribute("aria-hidden", String(modal !== "login"));
     registerModal.setAttribute("aria-hidden", String(modal !== "register"));
     forgotModal.setAttribute("aria-hidden", String(modal !== "forgot"));
-    verifyModal.setAttribute("aria-hidden", String(modal !== "verify"));
     document.body.classList.add("auth-modal-open");
     initPasswordToggles();
     syncForgotPasswordEmail();
-    initOtpResendCooldown();
-    initOtpCodeInputs();
   }
 
   function closeAuthModal() {
@@ -416,135 +371,19 @@
     const loginModal = document.getElementById("loginAuthModal");
     const registerModal = document.getElementById("registerAuthModal");
     const forgotModal = document.getElementById("forgotAuthModal");
-    const verifyModal = document.getElementById("verifyAuthModal");
-    if (!backdrop || !loginModal || !registerModal || !forgotModal || !verifyModal) return;
+    if (!backdrop || !loginModal || !registerModal || !forgotModal) return;
     backdrop.classList.remove("show");
     loginModal.classList.remove("open");
     registerModal.classList.remove("open");
     forgotModal.classList.remove("open");
-    verifyModal.classList.remove("open");
     backdrop.setAttribute("aria-hidden", "true");
     loginModal.setAttribute("aria-hidden", "true");
     registerModal.setAttribute("aria-hidden", "true");
     forgotModal.setAttribute("aria-hidden", "true");
-    verifyModal.setAttribute("aria-hidden", "true");
     document.body.classList.remove("auth-modal-open");
   }
 
-  function initOtpResendCooldown() {
-    const resendButton = document.getElementById("otpResendButton");
-    const resendHint = document.getElementById("otpResendHint");
-    if (!resendButton || !resendHint) return;
 
-    const startCountdown = (seconds) => {
-      let remaining = Math.max(0, Math.floor(Number(seconds) || 0));
-      resendButton.disabled = remaining > 0;
-      const render = () => {
-        resendHint.textContent = remaining > 0 ? `Resend code in ${remaining}s` : "";
-        if (remaining <= 0) {
-          resendButton.disabled = false;
-        }
-      };
-      render();
-      if (remaining <= 0) return;
-      const timer = window.setInterval(() => {
-        remaining -= 1;
-        render();
-        if (remaining <= 0) window.clearInterval(timer);
-      }, 1000);
-    };
-
-    const initial = Number(resendButton.dataset.resendCooldown || "0");
-    if (!Number.isFinite(initial) || initial <= 0) {
-      resendButton.disabled = false;
-      resendHint.textContent = "";
-    } else {
-      startCountdown(initial);
-    }
-
-    const resendForm = document.querySelector("#verifyAuthModal .auth-verify-resend");
-    if (!resendForm || resendForm.dataset.bound === "true") return;
-    resendForm.dataset.bound = "true";
-    resendForm.addEventListener("submit", event => {
-      if (resendButton.disabled) {
-        event.preventDefault();
-        return;
-      }
-      const optimistic = Number(resendButton.dataset.resendDefaultCooldown || "60");
-      startCountdown(Number.isFinite(optimistic) && optimistic > 0 ? optimistic : 60);
-    });
-  }
-
-  function initOtpCodeInputs() {
-    const container = document.getElementById("otpBoxes");
-    const hidden = document.getElementById("otpCodeHidden");
-    if (!container || !hidden) return;
-    const digits = Array.from(container.querySelectorAll(".otp-digit"));
-    if (!digits.length) return;
-
-    const syncHidden = () => {
-      hidden.value = digits.map(input => (input.value || "").replace(/\D/g, "").slice(0, 1)).join("");
-    };
-
-    const focusNext = index => {
-      if (index < digits.length - 1) digits[index + 1].focus();
-    };
-
-    digits.forEach((input, index) => {
-      if (input.dataset.bound === "true") return;
-      input.dataset.bound = "true";
-
-      input.addEventListener("input", () => {
-        const sanitized = (input.value || "").replace(/\D/g, "");
-        input.value = sanitized ? sanitized.slice(-1) : "";
-        syncHidden();
-        if (input.value) focusNext(index);
-      });
-
-      input.addEventListener("keydown", event => {
-        if (event.key === "Backspace" && !input.value && index > 0) {
-          digits[index - 1].focus();
-        }
-        if (event.key === "ArrowLeft" && index > 0) {
-          event.preventDefault();
-          digits[index - 1].focus();
-        }
-        if (event.key === "ArrowRight" && index < digits.length - 1) {
-          event.preventDefault();
-          digits[index + 1].focus();
-        }
-      });
-
-      input.addEventListener("paste", event => {
-        const pasted = (event.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, digits.length);
-        if (!pasted) return;
-        event.preventDefault();
-        digits.forEach((digitInput, i) => {
-          digitInput.value = pasted[i] || "";
-        });
-        syncHidden();
-        const targetIndex = Math.min(pasted.length, digits.length - 1);
-        digits[targetIndex].focus();
-      });
-    });
-
-    const verifyForm = container.closest("form");
-    if (verifyForm && verifyForm.dataset.otpBound !== "true") {
-      verifyForm.dataset.otpBound = "true";
-      verifyForm.addEventListener("submit", event => {
-        syncHidden();
-        if (!/^\d{6}$/.test(hidden.value)) {
-          event.preventDefault();
-          const firstEmpty = digits.find(input => !input.value);
-          (firstEmpty || digits[0]).focus();
-        }
-      });
-    }
-
-    if (digits.every(input => !input.value)) {
-      digits[0].focus();
-    }
-  }
 
   function syncForgotPasswordEmail() {
     const loginEmail = document.querySelector('#loginAuthModal input[name="email"]');
@@ -684,10 +523,7 @@
     bindFormSubmitLoading(loginForm, "Please wait...");
   }
 
-  function initVerifySubmitGuard() {
-    const verifyForm = document.querySelector('#verifyAuthModal form[action="{{ url_for("auth_verify_otp") }}"]');
-    bindFormSubmitLoading(verifyForm, "Verifying...");
-  }
+
 
   function getStoredProfile() {
     try {
@@ -957,7 +793,6 @@
   initForgotPasswordForm();
   initRegisterSubmitGuard();
   initLoginSubmitGuard();
-  initVerifySubmitGuard();
   logFlashErrorsForDebug();
   initAboutSectionVisibility();
   initActiveNavigation();
