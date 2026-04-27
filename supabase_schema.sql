@@ -20,8 +20,40 @@ alter table public.profiles add column if not exists phone text;
 alter table public.profiles add column if not exists address text;
 alter table public.profiles add column if not exists avatar text;
 alter table public.profiles add column if not exists role text not null default 'user';
+alter table public.profiles add column if not exists otp_code text;
+alter table public.profiles add column if not exists otp_expiry timestamptz;
+alter table public.profiles add column if not exists is_verified boolean not null default false;
 alter table public.profiles add column if not exists created_at timestamptz default now();
 alter table public.profiles alter column email set not null;
+
+-- Repair incorrect legacy FK where profiles.id points to public.users instead of auth.users.
+-- This is idempotent and safe to run multiple times.
+alter table public.profiles drop constraint if exists profiles_id_fkey;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint c
+    join pg_class t on c.conrelid = t.oid
+    join pg_namespace n on t.relnamespace = n.oid
+    where n.nspname = 'public'
+      and t.relname = 'profiles'
+      and c.contype = 'f'
+      and c.conname = 'profiles_id_fkey'
+  ) then
+    alter table public.profiles
+      add constraint profiles_id_fkey
+      foreign key (id)
+      references auth.users(id)
+      on delete cascade
+      not valid;
+  end if;
+end $$;
+
+-- Validate once data is aligned. If legacy rows do not map to auth.users yet,
+-- this statement can fail; keep the FK as NOT VALID and fix rows by email first.
+alter table public.profiles validate constraint profiles_id_fkey;
 
 alter table public.profiles enable row level security;
 

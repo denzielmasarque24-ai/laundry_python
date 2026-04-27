@@ -3,7 +3,6 @@
 {% block body_class %}landing-body{% endblock %}
 {% block content %}
 {% set safe_user = user or {} %}
-{% set display_name = safe_user.get('name', 'Guest') %}
 {% set saved_count = bookings|length %}
 {% set first_email = safe_user.get('email', 'Not signed in yet') %}
 
@@ -11,11 +10,10 @@
 <section id="home" class="fw-dashboard-shell" data-home-default-section>
   <div class="fw-dashboard-grid">
     <article class="glass-card hero-glass-card">
-      <div class="hero-label">WELCOME BACK</div>
-      <h1>Welcome back, <span id="heroUserName">{{ display_name }}</span>.</h1>
+      <div class="hero-label">WELCOME TO THE LAUNDRY SHOP</div>
+      <h1>Welcome to FreshWash Laundry Shop.</h1>
       <p class="hero-description">
-        FreshWash keeps booking quick and organized, so you can schedule a laundry run,
-        confirm a machine, and check progress without digging through extra screens.
+        Fast, clean, and reliable laundry services at your convenience.
       </p>
 
       <div class="hero-actions">
@@ -54,7 +52,8 @@
     ] %}
     <a
       class="load-option-card {% if user and not card.is_available %}is-unavailable{% endif %}"
-      href="{% if user and card.is_available %}{{ url_for('booking', load=card.load_type ~ ' Load', machine=card.machine_name or '') }}{% else %}#{% endif %}"
+      href="#"
+      data-load-type="{{ card.load_type }}"
       {% if not user %}data-auth-link="register"{% endif %}
     >
       <span class="load-option-icon"><i class="fa-solid {{ card.icon }}"></i></span>
@@ -80,7 +79,6 @@
       <h2>All-in-One Laundry Services for Your Everyday Needs</h2>
       <p>Explore our complete range of laundry services designed for convenience, quality, and care. From everyday washing to premium garment treatment, FreshWash has you covered.</p>
     </div>
-    <span class="service-inline-chip">Browse without clicking</span>
   </div>
 
   {% set service_icons = {
@@ -120,13 +118,17 @@
       <span class="section-kicker">Machines</span>
       <h2>Available laundry machines ready for booking.</h2>
     </div>
-    <span class="service-inline-chip">Visible after login</span>
   </div>
 
   <div class="machine-home-grid">
     {% for machine in machines %}
     {% set is_available = machine.effective_enabled and machine.status == 'Available' %}
-    <article class="machine-home-card">
+    <article
+      class="machine-home-card"
+      data-machine-card
+      data-load-type="{{ machine.load_type }}"
+      data-status="{{ machine.status }}"
+    >
       <span class="service-showcase-icon"><i class="fa-solid fa-drum"></i></span>
       <h3>{{ machine.name }}</h3>
       <p>
@@ -146,6 +148,7 @@
     </article>
     {% endfor %}
   </div>
+  <p class="machine-filter-empty" data-machine-filter-empty hidden>No available machines for this load type.</p>
 </section>
 {% endif %}
 
@@ -177,4 +180,41 @@
   </div>
 </section>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+  function initMachineLoadFilter() {
+    const loadCards = Array.from(document.querySelectorAll(".load-option-card[data-load-type]"));
+    const machineCards = Array.from(document.querySelectorAll("[data-machine-card]"));
+    const emptyState = document.querySelector("[data-machine-filter-empty]");
+
+    if (!loadCards.length || !machineCards.length) return;
+
+    const applyFilter = selectedLoadType => {
+      let visibleCount = 0;
+      machineCards.forEach(card => {
+        const loadType = (card.dataset.loadType || "").trim();
+        const status = (card.dataset.status || "").trim();
+        const shouldShow = loadType === selectedLoadType && status === "Available";
+        card.classList.toggle("is-hidden-by-filter", !shouldShow);
+        if (shouldShow) visibleCount += 1;
+      });
+      if (emptyState) {
+        emptyState.hidden = visibleCount > 0;
+      }
+    };
+
+    loadCards.forEach(card => {
+      card.addEventListener("click", event => {
+        event.preventDefault();
+        const selectedLoadType = card.dataset.loadType;
+        if (!selectedLoadType) return;
+        loadCards.forEach(item => item.classList.toggle("is-selected", item === card));
+        applyFilter(selectedLoadType);
+      });
+    });
+  }
+
+  initMachineLoadFilter();
+</script>
 {% endblock %}

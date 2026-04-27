@@ -1,5 +1,61 @@
 [
   {
+    "id": "71dfb3be-469c-4910-b716-809aee3b8e52",
+    "email": "franco02medina@gmail.com",
+    "password_hash": "scrypt:32768:8:1$cgUupZHIuNstIgpM$cdc2b1a9e286cf0d212b4f44b0b7ae28388dccf5de408ca0910e06d3dce5fceacf8e181be6b39c940693a0ff2dc212224268800b24d49a532f0227991e275e76",
+    "full_name": "Franco",
+    "phone": "09336995665",
+    "address": "Gawi Oslob",
+    "avatar": "",
+    "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": false,
+    "created_at": "2026-04-26T23:17:41.681386"
+  },
+  {
+    "id": "c4e6aeac-c84a-4691-8999-49e45613d1a2",
+    "email": "johnmichaelnadal@gmail.com",
+    "password_hash": "scrypt:32768:8:1$ApgpJiFeL0RzGk4M$d677744e7d26cea42885253b9ede912230dc53cb912afdcbbefe40a2fa6307555b8c54f9fe46808b5463b963770fc2754d5509c010fa1195790e0f809fd60780",
+    "full_name": "John Michael",
+    "phone": "09914405837",
+    "address": "duljo",
+    "avatar": "",
+    "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": false,
+    "created_at": "2026-04-26T18:41:54.419832"
+  },
+  {
+    "id": "9bd3c91b-d32c-44e6-a5dd-7a7a13af9b47",
+    "email": "amaniamaepearl99@gmail.com",
+    "password_hash": "scrypt:32768:8:1$lIdyYKSdP8bhwu8y$6530b56a97aae4a372fc24f7832cdac5e5335fbe2a6f5df0ded10bfea3203d75f10783011d6087eb43f5311323a1c959786727443857615638c6a2ca9318c9d4",
+    "full_name": "Denziel Masarque",
+    "phone": "09914405837",
+    "address": "talisay",
+    "avatar": "",
+    "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": false,
+    "created_at": "2026-04-26T14:51:36.495557"
+  },
+  {
+    "id": "ebe5bdbb-8718-4b6c-a150-6e55012aff40",
+    "email": "denzielmasarque24@gmail.com",
+    "password_hash": "scrypt:32768:8:1$uxYQ1w7R65xcydNH$4c79a51359eb17724c9d2cf152ab522a396c57bb8a246341df40d9cc97fc60e8d8d2269d7fcb0ecec73b787e9745eca2942ef36f4f6e2ea11d7f3bda53c9489d",
+    "full_name": "Denziel Masarque",
+    "phone": "09914405837",
+    "address": "talisay",
+    "avatar": "",
+    "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": false,
+    "created_at": "2026-04-26T09:06:14.605387"
+  },
+  {
     "id": "733efb99-4f2f-4157-9f16-2e04747db78d",
     "email": "dupcheck_f0e638b4@example.com",
     "password_hash": "scrypt:32768:8:1$IKyMLZoQqTAQoU0M$a3430fb4da2a39c0292d35fa2605ab73ba70cd906965365613ce3957e6f0d1be8ce37fc66d61402af86d87156d44731a59f83bd05753e1338a6814043d345ded",
@@ -8,6 +64,9 @@
     "address": "FreshWash Lane",
     "avatar": "",
     "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": true,
     "created_at": "2026-04-18T16:41:02.071193"
   },
   {
@@ -19,6 +78,9 @@
     "address": "FreshWash Lane",
     "avatar": "",
     "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": true,
     "created_at": "2026-04-18T16:40:52.576329"
   },
   {
@@ -30,6 +92,9 @@
     "address": "FreshWash Avenue",
     "avatar": "",
     "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": true,
     "created_at": "2026-04-18T16:39:28.165294"
   },
   {
@@ -41,6 +106,9 @@
     "address": "FreshWash Street",
     "avatar": "",
     "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": true,
     "created_at": "2026-04-18T16:36:02.623107"
   },
   {
@@ -52,17 +120,23 @@
     "address": "Test Address",
     "avatar": "",
     "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": true,
     "created_at": "2026-04-18T16:33:33.497947"
   },
   {
     "id": "b48159c0-9b06-4a74-9452-563da02c1cd9",
     "email": "joy@gmail.com",
-    "password_hash": "scrypt:32768:8:1$PL6l0fXYIBCpB11d$2fa0c633280defabddce9b299dece81c111c05d4ec9accb98a30b21c7eb7a6bba69744c50707eb0abbcc0910e6f382339847130636beb7066c674dc3e1f95936",
+    "password_hash": "scrypt:32768:8:1$X8RzdQhru98NE1LE$6d6cce88b0bab2e2a272842bc6008553b2978e898e26bfe955bcf4df05acca70b2e35a068a77ff47c7c884aed3f6ac658c9defb5a4d91bd6abdff77905d09a21",
     "full_name": "joy gulpan",
     "phone": "09914405837",
     "address": "talisay",
     "avatar": "",
     "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": true,
     "created_at": "2026-04-16T19:02:14.572716"
   },
   {
@@ -74,17 +148,23 @@
     "address": "talisay",
     "avatar": "",
     "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": true,
     "created_at": "2026-04-16T18:50:02.164888"
   },
   {
     "id": "25c84cfb-80ca-4fd6-8330-bdcd20b72b26",
     "email": "admin@gmail.com",
-    "password_hash": "scrypt:32768:8:1$bAryx13TcQUsLkJ3$78f3c5c7232bd2de0b9f69c0cdb665184b5d4edf038f6513eef1cb8f71ff2aeca3cf1985df78c4cc5190674a690c15405d9f3ce15e16a800d5f6615ca76b05ca",
+    "password_hash": "scrypt:32768:8:1$sbRlfgXBSiLpqJXg$9d8fb4f67c347f1c43bac851178a6026f4182d98773105d18c2bc74912702480e6ca1e9fa2c6ff58e5c7689a24be069ccc9c3da35e4b34211e22688558c1b248",
     "full_name": "Denziel Masarque",
     "phone": "09914405837",
     "address": "talisay",
     "avatar": "",
     "role": "admin",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": true,
     "created_at": "2026-04-16T17:47:52.571958"
   },
   {
@@ -96,6 +176,9 @@
     "address": "duljo",
     "avatar": "",
     "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": true,
     "created_at": "2026-04-16T17:34:41.407801"
   },
   {
@@ -107,6 +190,9 @@
     "address": "Manila",
     "avatar": "",
     "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": true,
     "created_at": "2026-04-16T16:37:11.298699"
   }
 ]
