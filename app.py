@@ -2998,11 +2998,10 @@ def register():
                 flash("Account created, but verification code was not sent. Please try resending.", "error")
             if not otp_sent:
                 flash("If no code arrives, check spam or wait before resending.", "error")
-            print("AUTH: Redirecting to verification page")
-            return redirect_to_auth_modal(
-                "verify",
-                {**otp_modal_form_data(), "show_signup_success": bool(otp_sent)},
-            )
+            print("AUTH: Redirecting to verify page")
+            session["auth_form_data"] = {**otp_modal_form_data(), "show_signup_success": bool(otp_sent)}
+            session.modified = True
+            return redirect(url_for("verify_page"))
 
         except ValueError as e:
             flash(str(e), "error")
@@ -3277,6 +3276,13 @@ def logout():
 
 
 # ── Pages ─────────────────────────────────────────────────────────────────────
+
+@app.route("/verify", methods=["GET"])
+def verify_page():
+    print("DEBUG: Redirecting to verify page")
+    form_data = session.get("auth_form_data") or {}
+    return render_template("verify.html", form_data=form_data)
+
 
 @app.route("/auth/verify-otp", methods=["POST"])
 def auth_verify_otp():
