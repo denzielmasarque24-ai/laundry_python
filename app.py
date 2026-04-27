@@ -275,7 +275,7 @@ def otp_smtp_settings():
         or os.environ.get("BREVO_SENDER_NAME")
         or "FreshWash"
     ).strip()
-    host = (os.environ.get("FRESHWASH_OTP_SMTP_HOST") or "smtp-relay.brevo.com").strip()
+    host = (os.environ.get("FRESHWASH_OTP_SMTP_HOST") or "smtp.gmail.com").strip()
     try:
         port = int(os.environ.get("FRESHWASH_OTP_SMTP_PORT", "587") or 587)
     except ValueError:
@@ -711,8 +711,12 @@ def otp_send_delivery_note():
 
 
 def send_otp_email(email, otp_code):
-    if not otp_email_configured():
-        raise RuntimeError(otp_setup_message())
+    cfg = otp_smtp_settings()
+    username = cfg["username"]
+    password = cfg["password"]
+
+    if not username or not password:
+        raise RuntimeError("OTP email is not configured on this server.")
 
     email = normalize_email(email)
     if not email:
@@ -720,7 +724,9 @@ def send_otp_email(email, otp_code):
     if not is_valid_email(email):
         raise ValueError("Enter a valid email address.")
 
-    cfg = otp_smtp_settings()
+    print(f"AUTH: SMTP config loaded | host={cfg['host']} port={cfg['port']} user={username} sender={cfg['sender_email']}")
+    print(f"AUTH: Sending OTP to {safe_email_for_log(email)}")
+
     subject = "FreshWash Verification Code"
     text_body = (
         f"Your FreshWash verification code is: {otp_code}\n"
@@ -745,9 +751,17 @@ def send_otp_email(email, otp_code):
             if cfg["use_tls"]:
                 smtp.starttls()
                 smtp.ehlo()
-            smtp.login(cfg["username"], cfg["password"])
+            try:
+                smtp.login(username, password)
+            except smtplib.SMTPAuthenticationError as auth_exc:
+                print(f"AUTH: SMTP ERROR: {auth_exc}")
+                raise ValueError("Invalid Gmail App Password or Gmail credentials.") from auth_exc
             smtp.send_message(message)
+        print(f"AUTH: Email sent successfully to {safe_email_for_log(email)}")
+    except ValueError:
+        raise
     except Exception as exc:
+        print(f"AUTH: SMTP ERROR: {exc}")
         log_exception("otp email send failed", exc, email=safe_email_for_log(email), smtp_host=cfg["host"])
         normalized_message = extract_supabase_error_message(exc)
         classified = classify_otp_send_error(normalized_message)
@@ -2805,8 +2819,10 @@ def register():
         return redirect_to_auth_modal("register")
 
     if request.method == "POST":
+        print("AUTH: Register route triggered")
         name     = request.form.get("name", "").strip()
         email    = normalize_email(request.form.get("email", ""))
+        print(f"AUTH: Submitted email: {email}")
         phone    = request.form.get("phone", "").strip()
         address  = request.form.get("address", "").strip()
         password = request.form.get("password", "").strip()
@@ -2930,6 +2946,8 @@ def register():
             log_auth_debug("register issuing otp challenge", email=email, flow="register")
             otp_sent = False
             try:
+                print("AUTH: Generating OTP")
+                print("AUTH: Calling send_verification_email")
                 # Send OTP immediately after signup submit.
                 issue_otp_challenge(
                     email,
@@ -2945,6 +2963,7 @@ def register():
                     },
                 )
                 otp_sent = True
+                print("AUTH: OTP email sent")
                 flash("Verification code sent. Check your email or spam folder.", "success")
             except Exception as otp_error:
                 log_exception("register verification resend failed", otp_error, email=email)
@@ -2979,6 +2998,7 @@ def register():
                 flash("Account created, but verification code was not sent. Please try resending.", "error")
             if not otp_sent:
                 flash("If no code arrives, check spam or wait before resending.", "error")
+            print("AUTH: Redirecting to verification page")
             return redirect_to_auth_modal(
                 "verify",
                 {**otp_modal_form_data(), "show_signup_success": bool(otp_sent)},
