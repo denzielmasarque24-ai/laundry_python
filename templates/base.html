@@ -112,7 +112,7 @@
   </div>
 
   <div class="panel-profile-card">
-    <div class="panel-avatar">
+    <div class="panel-avatar profile-avatar">
       {% if current_avatar %}
       <img src="{{ current_avatar }}" id="avatarImg" alt="Avatar preview" />
       {% else %}
@@ -120,9 +120,10 @@
       <img src="" id="avatarImg" alt="Avatar preview" style="display:none" />
       {% endif %}
     </div>
-    <div>
+    <div class="panel-profile-copy">
       <strong id="profileCardName">{{ current_name }}</strong>
-      <span id="profileCardMeta">{{ current_email }}</span>
+      <span id="profileCardMeta"><i class="fa-solid fa-envelope"></i><span>{{ current_email }}</span></span>
+      <small class="panel-profile-badge">Customer</small>
     </div>
   </div>
 
