@@ -29,14 +29,15 @@
         </div>
         <div class="rv-field password-field">
           <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
-          <input type="password" name="password" id="registerPagePassword" class="rv-input" placeholder="Password (min. 6)" autocomplete="new-password" required minlength="6"/>
+          <input type="password" name="password" id="registerPagePassword" class="rv-input" placeholder="Password (min. 8)" autocomplete="new-password" required minlength="8"/>
           <button type="button" class="password-toggle" data-password-toggle="registerPagePassword" aria-label="Show password">
             <i class="fa-regular fa-eye-slash"></i>
           </button>
         </div>
+        <p id="registerPasswordRuleError" style="display:none;margin:-6px 4px 2px;font-size:12px;color:#dc2626;">Invalid password</p>
         <div class="rv-field password-field">
           <span class="rv-fi"><i class="fa-solid fa-lock"></i></span>
-          <input type="password" name="confirm_password" id="registerPageConfirmPassword" class="rv-input" placeholder="Confirm password" autocomplete="new-password" required minlength="6"/>
+          <input type="password" name="confirm_password" id="registerPageConfirmPassword" class="rv-input" placeholder="Confirm password" autocomplete="new-password" required minlength="8"/>
           <button type="button" class="password-toggle" data-password-toggle="registerPageConfirmPassword" aria-label="Show password">
             <i class="fa-regular fa-eye-slash"></i>
           </button>
@@ -55,11 +56,22 @@
   function validateRegisterPagePasswords() {
     const pass1 = document.getElementById('registerPagePassword');
     const pass2 = document.getElementById('registerPageConfirmPassword');
-    const err = document.getElementById('registerPagePassError');
-    if (!pass1 || !pass2 || !err) return true;
+    const mismatchErr = document.getElementById('registerPagePassError');
+    const invalidErr = document.getElementById('registerPasswordRuleError');
+    if (!pass1 || !pass2 || !mismatchErr || !invalidErr) return true;
+    const passwordPattern = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+    const isPasswordValid = passwordPattern.test(pass1.value);
     const isMatch = pass1.value === pass2.value;
-    err.classList.toggle('hidden', isMatch);
-    return isMatch;
+    invalidErr.style.display = isPasswordValid ? 'none' : 'block';
+    pass1.style.borderColor = isPasswordValid ? '' : '#dc2626';
+    pass1.style.boxShadow = isPasswordValid ? '' : '0 0 0 2px rgba(220, 38, 38, 0.14)';
+    mismatchErr.classList.toggle('hidden', isMatch);
+    return isPasswordValid && isMatch;
   }
+
+  document.getElementById('registerPagePassword')?.addEventListener('input', validateRegisterPagePasswords);
+  document.getElementById('registerPagePassword')?.addEventListener('change', validateRegisterPagePasswords);
+  document.getElementById('registerPageConfirmPassword')?.addEventListener('input', validateRegisterPagePasswords);
+  document.getElementById('registerPageConfirmPassword')?.addEventListener('change', validateRegisterPagePasswords);
 </script>
 {% endblock %}
