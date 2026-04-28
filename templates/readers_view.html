@@ -91,9 +91,11 @@
   <div class="service-showcase-grid homepage-service-grid">
     {% for card in homepage_services %}
     <article class="service-showcase-card homepage-service-card">
-      <span class="service-showcase-icon"><i class="fa-solid {{ service_icons.get(card.name, 'fa-shirt') }}"></i></span>
-      <h3>{{ card.name }}</h3>
-      <p>{{ card.description }}</p>
+      <div class="homepage-service-content">
+        <span class="service-showcase-icon"><i class="fa-solid {{ service_icons.get(card.name, 'fa-shirt') }}"></i></span>
+        <h3>{{ card.name }}</h3>
+        <p>{{ card.description }}</p>
+      </div>
       <div class="service-showcase-foot homepage-service-foot">
         <span class="service-meta-label">
           <small>{{ card.price_prefix }}</small>

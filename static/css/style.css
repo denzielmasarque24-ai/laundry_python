@@ -11588,3 +11588,34 @@ body .header-actions .profile-trigger #navAvatarIcon {
   font-size: 0.95rem;
   line-height: 1;
 }
+
+/* Service card button alignment fix */
+body.landing-body .freshwash-home-page .homepage-service-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 286px;
+  height: 100%;
+}
+
+body.landing-body .freshwash-home-page .homepage-service-content {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+body.landing-body .freshwash-home-page .homepage-service-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+body.landing-body .freshwash-home-page .homepage-service-foot .btn-small {
+  margin-left: auto;
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 0.9rem;
+  border-radius: 999px;
+}
