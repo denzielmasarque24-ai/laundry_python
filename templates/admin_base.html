@@ -998,10 +998,10 @@
 
     /* -- Bookings table: compact fixed layout --------------------------- */
     .admin-bookings-table-wrap {
-      border-radius: 20px;
+      border-radius: 16px;
       border: 1px solid rgba(242, 122, 178, 0.16);
       background: linear-gradient(180deg, rgba(255, 253, 254, 0.92), rgba(255, 246, 251, 0.88));
-      box-shadow: 0 18px 34px rgba(142, 37, 88, 0.08);
+      box-shadow: 0 12px 22px rgba(142, 37, 88, 0.07);
       max-width: 100%;
       overflow-x: auto;
       overflow-y: hidden;
@@ -1017,7 +1017,7 @@
 
     .admin-bookings-table th,
     .admin-bookings-table td {
-      padding: 7px 6px;
+      padding: 6px 6px;
       vertical-align: top;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1132,6 +1132,11 @@
       opacity: 0.92;
       pointer-events: none;
       background: rgba(255, 255, 255, 0.55);
+    }
+
+    .admin-bookings-table tr.is-editing .booking-editable {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .admin-bookings-table th.col-action,
@@ -2426,7 +2431,7 @@ const DASHBOARD_CONFIG = {
       if (countPill) countPill.textContent = `${users.length} user${users.length === 1 ? "" : "s"}`;
       if (!users.length) { body.innerHTML = '<tr><td colspan="7" class="admin-empty-cell">No data available</td></tr>'; return; }
       body.innerHTML = users.map(user => `
-        <tr data-booking-id="${escapeHtml(booking.id)}">
+        <tr>
           <td><strong>${escapeHtml(user.name)}</strong></td>
           <td>${escapeHtml(user.email)}</td>
           <td>${escapeHtml(user.phone || "No phone")}</td>
@@ -2470,9 +2475,8 @@ const DASHBOARD_CONFIG = {
       body.innerHTML = filtered.map(booking => {
         const shortId = String(booking.id).slice(-8);
         const deliveryOption = booking.delivery_option === "Delivery" ? "Delivery" : "Pickup";
-        const deliveryBadgeClass = deliveryOption === "Delivery" ? "is-delivery" : "is-pickup";
         return `
-        <tr>
+        <tr data-booking-id="${escapeHtml(booking.id)}">
           <td class="col-id"><span class="cell-id" title="${escapeHtml(booking.id)}">${escapeHtml(shortId)}</span></td>
           <td class="col-user"><strong>${escapeHtml(booking.full_name)}</strong></td>
           <td class="col-service">${escapeHtml(booking.service_type)}</td>

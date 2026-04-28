@@ -4122,17 +4122,43 @@ def admin_booking_action(booking_id):
                 return jsonify({"ok": False, "error": "Invalid status value."}), 400
             client.table("bookings").update({"status": status}).eq("id", booking_id).execute()
         elif action == "edit":
-            payload = {
-                "full_name": data.get("full_name", "").strip(),
-                "service_type": data.get("service_type", "").strip(),
-                "machine": data.get("machine", "").strip(),
-                "pickup_date": data.get("pickup_date", "").strip(),
-                "pickup_time": data.get("pickup_time", "").strip(),
-                "load_type": data.get("load_type", "").strip(),
-                "notes": data.get("notes", "").strip(),
-                "status": data.get("status", "").strip() or "Pending",
-            }
-            if payload["status"] not in {"Pending", "In Progress", "Completed", "Cancelled"}:
+            payload = {}
+            maybe_status = (data.get("status", "") or "").strip()
+            if maybe_status:
+                if maybe_status not in {"Pending", "In Progress", "Completed", "Cancelled"}:
+                    return jsonify({"ok": False, "error": "Invalid status value."}), 400
+                payload["status"] = maybe_status
+
+            maybe_delivery = (data.get("delivery_option", "") or "").strip().title()
+            if maybe_delivery:
+                if maybe_delivery not in {"Pickup", "Delivery"}:
+                    return jsonify({"ok": False, "error": "Invalid delivery option value."}), 400
+                payload["delivery_option"] = maybe_delivery
+                payload["delivery_type"] = maybe_delivery.lower()
+                payload["delivery_fee"] = DEFAULT_DELIVERY_FEE if maybe_delivery == "Delivery" else 0
+
+            if "notes" in data:
+                payload["notes"] = (data.get("notes", "") or "").strip()
+
+            for field in ("full_name", "service_type", "machine", "pickup_date", "pickup_time", "load_type"):
+                if field in data and str(data.get(field, "")).strip():
+                    payload[field] = str(data.get(field, "")).strip()
+
+            if not payload:
+                return jsonify({"ok": False, "error": "No booking fields provided for update."}), 400
+
+            if "delivery_option" in payload:
+                existing_res = client.table("bookings").select("total_price,delivery_fee").eq("id", booking_id).limit(1).execute()
+                existing = (existing_res.data or [{}])[0] if existing_res else {}
+                previous_delivery_fee = float(existing.get("delivery_fee", 0) or 0)
+                current_total = float(existing.get("total_price", 0) or 0)
+                base_amount = max(current_total - previous_delivery_fee, 0)
+                new_delivery_fee = float(payload.get("delivery_fee", 0) or 0)
+                new_total = round(base_amount + new_delivery_fee, 2)
+                payload["total_price"] = new_total
+                payload["total_amount"] = new_total
+
+            if payload.get("status") and payload["status"] not in {"Pending", "In Progress", "Completed", "Cancelled"}:
                 return jsonify({"ok": False, "error": "Invalid status value."}), 400
             client.table("bookings").update(payload).eq("id", booking_id).execute()
         elif action == "cancel":
