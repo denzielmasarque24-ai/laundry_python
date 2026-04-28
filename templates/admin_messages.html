@@ -1,0 +1,180 @@
+{% extends "admin_base.html" %}
+
+{% block content %}
+<section class="admin-panel {% if active_page == 'messages' %}is-active{% endif %}" data-panel="messages" aria-label="Messages">
+  <div class="admin-card">
+    <div class="admin-bookings-head">
+      <div class="admin-bookings-head-copy">
+        <h3>Messages</h3>
+        <p>View customer messages and reply from the admin dashboard.</p>
+      </div>
+      <div class="admin-bookings-controls">
+        <span class="admin-pill" id="adminMessagesCountPill">0 conversations</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:300px minmax(0,1fr);gap:12px;min-height:560px;">
+      <aside id="adminConversationList" style="border:1px solid rgba(242,122,178,0.18);border-radius:14px;padding:8px;overflow:auto;background:rgba(255,247,252,0.7);">
+        <p style="margin:0;color:#7e5d71;font-size:0.86rem;">Loading conversations...</p>
+      </aside>
+      <section style="display:grid;grid-template-rows:1fr auto;min-height:0;">
+        <div id="adminMessagesList" style="border:1px solid rgba(242,122,178,0.18);border-radius:14px;padding:12px;overflow:auto;background:#fff;display:grid;gap:10px;align-content:start;">
+          <p style="margin:0;color:#7e5d71;font-size:0.86rem;">Select a conversation.</p>
+        </div>
+        <form id="adminReplyForm" style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:10px;">
+          <textarea id="adminReplyInput" rows="1" required placeholder="Type reply..." style="width:100%;min-height:42px;border-radius:12px;border:1px solid rgba(242,122,178,0.26);padding:10px 12px;resize:none;"></textarea>
+          <button type="submit" id="adminReplySendBtn" class="admin-btn" style="min-height:42px;border-radius:12px;padding:0 16px;">Send Reply</button>
+        </form>
+      </section>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const listEl = document.getElementById("adminConversationList");
+  const messagesEl = document.getElementById("adminMessagesList");
+  const countPill = document.getElementById("adminMessagesCountPill");
+  const formEl = document.getElementById("adminReplyForm");
+  const inputEl = document.getElementById("adminReplyInput");
+  const sendBtn = document.getElementById("adminReplySendBtn");
+
+  let conversations = [];
+  let activeUserId = "";
+  let activeBookingId = "";
+
+  function esc(v) {
+    return String(v || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function fmt(v) {
+    const dt = new Date(v || "");
+    if (Number.isNaN(dt.getTime())) return "";
+    return dt.toLocaleString([], { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+
+  async function fetchAdminMessages(userId = "", bookingId = "") {
+    const qs = new URLSearchParams();
+    if (userId) qs.set("user_id", userId);
+    if (bookingId) qs.set("booking_id", bookingId);
+    const res = await fetch(`/api/admin/messages?${qs.toString()}`);
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || "Unable to load messages");
+    return data.messages || [];
+  }
+
+  function toConversationMap(messages) {
+    const map = new Map();
+    messages.forEach(m => {
+      const key = `${m.user_id || ""}::${m.booking_id || ""}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(m);
+    });
+    return Array.from(map.entries()).map(([key, msgs]) => {
+      const [userId, bookingId] = key.split("::");
+      return { userId, bookingId, messages: msgs };
+    });
+  }
+
+  function renderConversationList() {
+    countPill.textContent = `${conversations.length} conversation${conversations.length === 1 ? "" : "s"}`;
+    if (!conversations.length) {
+      listEl.innerHTML = '<p style="margin:0;color:#7e5d71;font-size:0.86rem;">No messages yet.</p>';
+      return;
+    }
+    listEl.innerHTML = conversations.map(c => {
+      const last = c.messages[c.messages.length - 1] || {};
+      const active = c.userId === activeUserId && c.bookingId === activeBookingId ? "background:rgba(255,222,240,0.8);border-color:rgba(232,104,174,0.4);" : "";
+      return `<button type="button" data-user-id="${esc(c.userId)}" data-booking-id="${esc(c.bookingId)}" style="width:100%;text-align:left;border:1px solid transparent;border-radius:12px;padding:10px;cursor:pointer;background:transparent;${active}margin-bottom:6px;">
+        <strong style="display:block;color:#4b1f2b;font-size:0.86rem;">User: ${esc(c.userId)}</strong>
+        <span style="display:block;color:#7e5d71;font-size:0.74rem;margin-top:3px;">Booking: ${esc(c.bookingId || "General")}</span>
+        <span style="display:block;color:#7e5d71;font-size:0.74rem;margin-top:3px;">${esc(String(last.message || "").slice(0, 54))}</span>
+      </button>`;
+    }).join("");
+  }
+
+  function renderThread(messages = []) {
+    if (!activeUserId) {
+      messagesEl.innerHTML = '<p style="margin:0;color:#7e5d71;font-size:0.86rem;">Select a conversation.</p>';
+      return;
+    }
+    if (!messages.length) {
+      messagesEl.innerHTML = '<p style="margin:0;color:#7e5d71;font-size:0.86rem;">No messages in this conversation.</p>';
+      return;
+    }
+    messagesEl.innerHTML = messages.map(m => {
+      const isAdmin = String(m.sender || "").toLowerCase() === "admin";
+      const align = isAdmin ? "justify-content:flex-end;" : "justify-content:flex-start;";
+      const bubble = isAdmin
+        ? "background:linear-gradient(135deg,#ff4da6,#ff7ac3);color:#fff;border-bottom-right-radius:6px;"
+        : "background:rgba(255,255,255,0.95);color:#4b1f2b;border:1px solid rgba(255,182,220,0.4);border-bottom-left-radius:6px;";
+      return `<div style="display:flex;${align}">
+        <div style="max-width:82%;padding:10px 12px;border-radius:14px;${bubble}">
+          <div style="font-size:0.86rem;line-height:1.45;">${esc(m.message)}</div>
+          <div style="margin-top:4px;font-size:0.72rem;opacity:0.82;">${esc(fmt(m.created_at))}</div>
+        </div>
+      </div>`;
+    }).join("");
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  async function refreshConversations() {
+    const all = await fetchAdminMessages();
+    conversations = toConversationMap(all);
+    if (!activeUserId && conversations.length) {
+      activeUserId = conversations[0].userId;
+      activeBookingId = conversations[0].bookingId;
+    }
+    renderConversationList();
+    const current = conversations.find(c => c.userId === activeUserId && c.bookingId === activeBookingId);
+    renderThread(current ? current.messages : []);
+  }
+
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-user-id][data-booking-id]");
+    if (!btn || !btn.closest("#adminConversationList")) return;
+    activeUserId = btn.dataset.userId || "";
+    activeBookingId = btn.dataset.bookingId || "";
+    renderConversationList();
+    try {
+      const msgs = await fetchAdminMessages(activeUserId, activeBookingId);
+      const current = conversations.find(c => c.userId === activeUserId && c.bookingId === activeBookingId);
+      if (current) current.messages = msgs;
+      renderThread(msgs);
+    } catch (err) {
+      if (typeof showToast === "function") showToast(String(err.message || "Unable to load conversation"), true);
+    }
+  });
+
+  formEl.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = (inputEl.value || "").trim();
+    if (!activeUserId || !text) return;
+    sendBtn.disabled = true;
+    sendBtn.textContent = "Sending...";
+    try {
+      const res = await fetch("/api/admin/messages/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: activeUserId, booking_id: activeBookingId || null, message: text })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Unable to send reply");
+      inputEl.value = "";
+      await refreshConversations();
+      if (typeof showToast === "function") showToast("Reply sent");
+    } catch (err) {
+      if (typeof showToast === "function") showToast(String(err.message || "Unable to send reply"), true);
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = "Send Reply";
+    }
+  });
+
+  refreshConversations().catch(err => {
+    listEl.innerHTML = `<p style="margin:0;color:#b42318;font-size:0.86rem;">${esc(err.message || "Unable to load messages")}</p>`;
+  });
+})();
+</script>
+{% endblock %}
+

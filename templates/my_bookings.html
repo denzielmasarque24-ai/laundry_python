@@ -377,11 +377,11 @@
         <i class="fa-solid fa-wave-square"></i>
         <span id="compactViewLabel">Compact activity overview</span>
       </button>
-      <button type="button" class="page-chip compact-view-btn messages-header-btn" id="messagesHeaderBtn">
+      <a href="{{ url_for('messages_page') }}" class="page-chip compact-view-btn messages-header-btn">
         <span aria-hidden="true">💬</span>
         <span>Messages</span>
         <span class="messages-unread-badge" id="messagesUnreadBadge">0</span>
-      </button>
+      </a>
       <a href="{{ url_for('booking') }}" class="fw-btn-primary my-bookings-new-button new-booking-btn">
         <i class="fa-solid fa-plus"></i>
         <span>New Booking</span>
