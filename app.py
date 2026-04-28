@@ -4148,8 +4148,17 @@ def admin_booking_action(booking_id):
                 return jsonify({"ok": False, "error": "No booking fields provided for update."}), 400
 
             if "delivery_option" in payload:
-                existing_res = client.table("bookings").select("total_price,delivery_fee").eq("id", booking_id).limit(1).execute()
-                existing = (existing_res.data or [{}])[0] if existing_res else {}
+                try:
+                    existing_res = client.table("bookings").select("total_price,delivery_fee").eq("id", booking_id).limit(1).execute()
+                    existing = (existing_res.data or [{}])[0] if existing_res else {}
+                except Exception as exc:
+                    missing_column = extract_schema_cache_missing_column(exc, "bookings")
+                    if missing_column in {"delivery_fee"}:
+                        existing_res = client.table("bookings").select("total_price").eq("id", booking_id).limit(1).execute()
+                        existing = (existing_res.data or [{}])[0] if existing_res else {}
+                        existing["delivery_fee"] = 0
+                    else:
+                        raise
                 previous_delivery_fee = float(existing.get("delivery_fee", 0) or 0)
                 current_total = float(existing.get("total_price", 0) or 0)
                 base_amount = max(current_total - previous_delivery_fee, 0)
@@ -4160,7 +4169,35 @@ def admin_booking_action(booking_id):
 
             if payload.get("status") and payload["status"] not in {"Pending", "In Progress", "Completed", "Cancelled"}:
                 return jsonify({"ok": False, "error": "Invalid status value."}), 400
-            client.table("bookings").update(payload).eq("id", booking_id).execute()
+            update_variants = [
+                payload,
+                {k: v for k, v in payload.items() if k not in {"delivery_fee", "delivery_type", "total_amount"}},
+                {k: v for k, v in payload.items() if k not in {"delivery_fee", "delivery_type", "total_amount", "delivery_option"}},
+            ]
+            tried = set()
+            last_error = None
+            updated = False
+            for variant in update_variants:
+                if not variant:
+                    continue
+                key = tuple(sorted(variant.keys()))
+                if key in tried:
+                    continue
+                tried.add(key)
+                try:
+                    client.table("bookings").update(variant).eq("id", booking_id).execute()
+                    updated = True
+                    break
+                except Exception as exc:
+                    missing_column = extract_schema_cache_missing_column(exc, "bookings")
+                    if missing_column:
+                        last_error = exc
+                        continue
+                    raise
+            if not updated:
+                if last_error:
+                    raise last_error
+                raise RuntimeError("Booking update failed because no compatible bookings schema variant was found.")
         elif action == "cancel":
             client.table("bookings").update({"status": "Cancelled"}).eq("id", booking_id).execute()
         elif action == "delete":

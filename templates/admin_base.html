@@ -1128,15 +1128,76 @@
       background: rgba(255, 233, 244, 0.96);
     }
 
-    .admin-bookings-table tr:not(.is-editing) .booking-editable {
-      opacity: 0.92;
-      pointer-events: none;
-      background: rgba(255, 255, 255, 0.55);
+    .admin-bookings-table .booking-editable {
+      background: rgba(255, 255, 255, 0.78);
     }
 
-    .admin-bookings-table tr.is-editing .booking-editable {
-      opacity: 1;
-      pointer-events: auto;
+    .admin-booking-view-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 140;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(33, 12, 28, 0.46);
+      backdrop-filter: blur(8px);
+    }
+
+    .admin-booking-view-overlay.is-open {
+      display: flex;
+    }
+
+    .admin-booking-view-card {
+      width: min(560px, 94vw);
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 236, 246, 0.9));
+      box-shadow: 0 24px 52px rgba(120, 28, 76, 0.24);
+      padding: 20px;
+    }
+
+    .admin-booking-view-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .admin-booking-view-head h3 {
+      margin: 0;
+      color: #4c1f39;
+    }
+
+    .admin-booking-view-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .admin-booking-view-row {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(242, 122, 178, 0.18);
+    }
+
+    .admin-booking-view-row span {
+      color: #7b4b66;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .admin-booking-view-row strong {
+      color: #3a1730;
+      font-size: 0.84rem;
+      font-weight: 700;
+      word-break: break-word;
     }
 
     .admin-bookings-table th.col-action,
@@ -1926,6 +1987,18 @@
         </div>
       </aside>
 
+      <div id="adminBookingViewOverlay" class="admin-booking-view-overlay" aria-hidden="true">
+        <div class="admin-booking-view-card" role="dialog" aria-modal="true" aria-labelledby="adminBookingViewTitle">
+          <div class="admin-booking-view-head">
+            <h3 id="adminBookingViewTitle">Booking Details</h3>
+            <button type="button" class="admin-icon-button" id="adminBookingViewClose" aria-label="Close booking details">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div id="adminBookingViewBody" class="admin-booking-view-grid"></div>
+        </div>
+      </div>
+
             {% block content %}{% endblock %}
 
 </main>
@@ -2484,7 +2557,7 @@ const DASHBOARD_CONFIG = {
           <td class="col-date">${escapeHtml(formatDate(booking.pickup_date))}</td>
           <td class="col-time">${escapeHtml(booking.pickup_time || "-")}</td>
           <td class="col-status">
-            <select class="admin-inline-select booking-editable" id="bookingStatus-${escapeHtml(booking.id)}" disabled>
+            <select class="admin-inline-select booking-editable" id="bookingStatus-${escapeHtml(booking.id)}">
               <option value="Pending" ${booking.status === "Pending" ? "selected" : ""}>Pending</option>
               <option value="In Progress" ${booking.status === "In Progress" ? "selected" : ""}>In Progress</option>
               <option value="Completed" ${booking.status === "Completed" ? "selected" : ""}>Completed</option>
@@ -2494,17 +2567,17 @@ const DASHBOARD_CONFIG = {
           <td class="col-price">${escapeHtml(formatCurrency(booking.total_price))}</td>
           <td class="col-load">${escapeHtml(booking.load_type || "-")}</td>
           <td class="col-delivery">
-            <select class="admin-inline-select booking-editable" id="bookingDelivery-${escapeHtml(booking.id)}" disabled>
+            <select class="admin-inline-select booking-editable" id="bookingDelivery-${escapeHtml(booking.id)}">
               <option value="Pickup" ${deliveryOption === "Pickup" ? "selected" : ""}>Pickup</option>
               <option value="Delivery" ${deliveryOption === "Delivery" ? "selected" : ""}>Delivery</option>
             </select>
           </td>
           <td class="col-notes">
-            <textarea class="admin-inline-input booking-editable" id="bookingNotes-${escapeHtml(booking.id)}" rows="2" disabled>${escapeHtml(booking.notes || "")}</textarea>
+            <textarea class="admin-inline-input booking-editable" id="bookingNotes-${escapeHtml(booking.id)}" rows="2">${escapeHtml(booking.notes || "")}</textarea>
           </td>
           <td class="col-action">
             <div class="admin-booking-actions">
-              <button type="button" class="admin-button admin-button-outline-pink" onclick="startEditBookingRow(${JSON.stringify(String(booking.id)).replace(/"/g,'&quot;')})">Edit</button>
+              <button type="button" class="admin-button admin-button-outline-pink" onclick="viewBookingRow(${JSON.stringify(String(booking.id)).replace(/"/g,'&quot;')})">View</button>
               <button type="button" class="admin-button admin-button-primary" onclick="saveBookingRow(${JSON.stringify(String(booking.id)).replace(/"/g,'&quot;')})">Save</button>
             </div>
           </td>
@@ -2889,23 +2962,37 @@ const DASHBOARD_CONFIG = {
       } catch (error) { logSupabaseError("Service delete failed", error); }
     }
 
-    function getBookingRowElement(bookingId) {
-      return document.querySelector(`#bookingsTableBody tr[data-booking-id="${CSS.escape(String(bookingId))}"]`);
+    function viewBookingRow(bookingId) {
+      const booking = dashboardState.bookings.find(b => String(b.id) === String(bookingId));
+      if (!booking) return;
+      const overlay = document.getElementById("adminBookingViewOverlay");
+      const body = document.getElementById("adminBookingViewBody");
+      if (!overlay || !body) return;
+      const rows = [
+        ["User", booking.full_name || "-"],
+        ["Service", booking.service_type || "-"],
+        ["Machine", booking.machine || "-"],
+        ["Date & Time", `${formatDate(booking.pickup_date)} ${booking.pickup_time || "-"}`.trim()],
+        ["Load", booking.load_type || "-"],
+        ["Delivery", booking.delivery_option || "Pickup"],
+        ["Notes", booking.notes || "-"],
+        ["Price", formatCurrency(booking.total_price || 0)],
+      ];
+      body.innerHTML = rows.map(([label, value]) => `
+        <div class="admin-booking-view-row">
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+        </div>
+      `).join("");
+      overlay.classList.add("is-open");
+      overlay.setAttribute("aria-hidden", "false");
     }
 
-    function setBookingRowEditable(bookingId, editable) {
-      const row = getBookingRowElement(bookingId);
-      if (!row) return;
-      row.classList.toggle("is-editing", editable);
-      row.querySelectorAll(".booking-editable").forEach(field => {
-        field.disabled = !editable;
-      });
-    }
-
-    function startEditBookingRow(bookingId) {
-      setBookingRowEditable(bookingId, true);
-      const firstField = document.getElementById(`bookingStatus-${bookingId}`);
-      if (firstField) firstField.focus();
+    function closeBookingViewModal() {
+      const overlay = document.getElementById("adminBookingViewOverlay");
+      if (!overlay) return;
+      overlay.classList.remove("is-open");
+      overlay.setAttribute("aria-hidden", "true");
     }
 
     async function saveBookingRow(bookingId) {
@@ -2922,7 +3009,6 @@ const DASHBOARD_CONFIG = {
         });
         showSuccess("Booking updated successfully.");
         if (typeof showToast === "function") showToast("Booking updated");
-        setBookingRowEditable(bookingId, false);
         await refreshSectionData("bookings");
       } catch (error) {
         if (typeof showToast === "function") showToast("Booking update failed", true);
@@ -3110,6 +3196,17 @@ const DASHBOARD_CONFIG = {
         });
       }
 
+      const bookingViewOverlay = document.getElementById("adminBookingViewOverlay");
+      const bookingViewClose = document.getElementById("adminBookingViewClose");
+      if (bookingViewOverlay) {
+        bookingViewOverlay.addEventListener("click", (event) => {
+          if (event.target === bookingViewOverlay) closeBookingViewModal();
+        });
+      }
+      if (bookingViewClose) {
+        bookingViewClose.addEventListener("click", closeBookingViewModal);
+      }
+
       const editAvatarInput = document.getElementById("editUserAvatarInput");
       if (editAvatarInput) {
         editAvatarInput.addEventListener("change", () => {
@@ -3206,7 +3303,10 @@ const DASHBOARD_CONFIG = {
     });
 
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeUserEditModal();
+      if (event.key === "Escape") {
+        closeUserEditModal();
+        closeBookingViewModal();
+      }
     });
   </script>
 </body>
