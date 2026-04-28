@@ -72,6 +72,7 @@
   </div>
 </section>
 
+{% if not user %}
 <section class="fw-section home-services-section" data-home-default-section>
   <div class="section-heading section-heading-services">
     <div>
@@ -111,6 +112,7 @@
     {% endfor %}
   </div>
 </section>
+{% endif %}
 
 {% if user and machines %}
 <section class="fw-section home-machines-section" data-home-default-section>
