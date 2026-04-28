@@ -1,8 +1,46 @@
 {% extends "base.html" %}
 {% block title %}Verify Email{% endblock %}
+{% block extra_head %}
+<style>
+  body .page-shell {
+    gap: 16px;
+    padding-top: 0;
+  }
+
+  body .auth-center.auth-verify-compact {
+    margin-top: 0;
+    padding-top: 8px;
+    min-height: calc(100vh - 130px);
+    align-items: start;
+  }
+
+  body .auth-center.auth-verify-compact .auth-shell {
+    margin-top: 0;
+  }
+
+  body .auth-center.auth-verify-compact .auth-card {
+    padding: 20px;
+  }
+
+  body .auth-center.auth-verify-compact .auth-form {
+    gap: 16px;
+  }
+
+  @media (max-width: 768px) {
+    body .auth-center.auth-verify-compact {
+      padding-top: 6px;
+      min-height: calc(100vh - 112px);
+    }
+
+    body .auth-center.auth-verify-compact .auth-card {
+      padding: 18px;
+    }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<section class="auth-center">
+<section class="auth-center auth-verify-compact">
   <div class="auth-shell auth-shell-compact">
     <div class="auth-card auth-form-card auth-form-card-compact">
 

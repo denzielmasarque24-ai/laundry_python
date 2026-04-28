@@ -1,5 +1,102 @@
 {% extends "base.html" %}
 {% block title %}My Bookings{% endblock %}
+{% block extra_head %}
+<style>
+  .cancel-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 210;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(45, 16, 34, 0.34);
+    backdrop-filter: blur(7px);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .cancel-confirm-overlay.is-open {
+    display: flex;
+    opacity: 1;
+  }
+
+  .cancel-confirm-modal {
+    width: min(430px, 92vw);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.56);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 236, 246, 0.92));
+    box-shadow: 0 22px 48px rgba(255, 105, 180, 0.24);
+    padding: 22px 20px;
+    transform: scale(0.96);
+    opacity: 0;
+    transition: transform 0.22s ease, opacity 0.22s ease;
+  }
+
+  .cancel-confirm-overlay.is-open .cancel-confirm-modal {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  .cancel-confirm-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    color: #381f34;
+  }
+
+  .cancel-confirm-head i {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    color: #fff;
+    background: linear-gradient(135deg, #ff4da6, #ff7ac3);
+    box-shadow: 0 8px 20px rgba(255, 77, 166, 0.24);
+  }
+
+  .cancel-confirm-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #2f1b2e;
+  }
+
+  .cancel-confirm-copy {
+    margin: 0 0 18px;
+    color: #7e6073;
+    line-height: 1.55;
+  }
+
+  .cancel-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .cancel-confirm-btn {
+    min-height: 42px;
+    padding: 0 16px;
+    border-radius: 12px;
+    border: 0;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .cancel-confirm-btn.cancel {
+    background: #f5f5f5;
+    color: #555;
+  }
+
+  .cancel-confirm-btn.confirm {
+    background: linear-gradient(135deg, #ff4da6, #ff7ac3);
+    color: #fff;
+    box-shadow: 0 12px 24px rgba(255, 77, 166, 0.22);
+  }
+</style>
+{% endblock %}
 {% block content %}
 {% set pending_count = bookings | selectattr('status','equalto','Pending') | list | length %}
 {% set progress_count = bookings | selectattr('status','equalto','In Progress') | list | length %}
@@ -142,6 +239,20 @@
     <div id="bookingDetailBody" style="color:#4b1f2b;"></div>
   </div>
 </div>
+
+<div id="cancelConfirmOverlay" class="cancel-confirm-overlay" aria-hidden="true">
+  <div class="cancel-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cancelConfirmTitle">
+    <div class="cancel-confirm-head">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <h3 id="cancelConfirmTitle" class="cancel-confirm-title">Cancel Booking?</h3>
+    </div>
+    <p class="cancel-confirm-copy">Are you sure you want to cancel this booking?</p>
+    <div class="cancel-confirm-actions">
+      <button type="button" class="cancel-confirm-btn cancel" id="cancelConfirmNoBtn">Cancel</button>
+      <button type="button" class="cancel-confirm-btn confirm" id="cancelConfirmYesBtn">Confirm Cancel</button>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -178,9 +289,50 @@
     document.body.classList.remove('auth-modal-open');
   }
 
+  const cancelConfirmOverlay = document.getElementById('cancelConfirmOverlay');
+  const cancelConfirmYesBtn = document.getElementById('cancelConfirmYesBtn');
+  const cancelConfirmNoBtn = document.getElementById('cancelConfirmNoBtn');
+  let cancelConfirmResolver = null;
+
+  function closeCancelConfirm(result = false) {
+    if (cancelConfirmOverlay) {
+      cancelConfirmOverlay.classList.remove('is-open');
+      cancelConfirmOverlay.setAttribute('aria-hidden', 'true');
+    }
+    if (cancelConfirmResolver) {
+      cancelConfirmResolver(result);
+      cancelConfirmResolver = null;
+    }
+  }
+
+  function openCancelConfirm() {
+    return new Promise(resolve => {
+      cancelConfirmResolver = resolve;
+      if (cancelConfirmOverlay) {
+        cancelConfirmOverlay.classList.add('is-open');
+        cancelConfirmOverlay.setAttribute('aria-hidden', 'false');
+      } else {
+        resolve(false);
+      }
+    });
+  }
+
+  if (cancelConfirmNoBtn) cancelConfirmNoBtn.addEventListener('click', () => closeCancelConfirm(false));
+  if (cancelConfirmYesBtn) cancelConfirmYesBtn.addEventListener('click', () => closeCancelConfirm(true));
+  if (cancelConfirmOverlay) {
+    cancelConfirmOverlay.addEventListener('click', e => {
+      if (e.target === cancelConfirmOverlay) closeCancelConfirm(false);
+    });
+  }
+
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (overlay)  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeModal();
+      closeCancelConfirm(false);
+    }
+  });
 
   function statusBadge(status) {
     const cls = (status || '').toLowerCase().replace(/\s+/g, '-');
@@ -244,7 +396,8 @@
   document.addEventListener('click', async e => {
     const btn = e.target.closest('.cancel-booking-btn');
     if (!btn) return;
-    if (!confirm('Are you sure you want to cancel this booking?')) return;
+    const shouldCancel = await openCancelConfirm();
+    if (!shouldCancel) return;
     const id   = btn.dataset.bookingId;
     const card = btn.closest('[data-booking-id]');
     btn.disabled = true;
