@@ -11537,3 +11537,28 @@ body.landing-body .freshwash-home-page .about-feature-card p {
     font-size: clamp(1.6rem, 6vw, 2rem);
   }
 }
+
+/* Profile avatar distortion fix */
+body .profile-panel .panel-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+body .profile-panel .panel-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+  display: block;
+}
+
+body .profile-panel .panel-avatar #avatarIcon {
+  font-size: 2rem;
+  color: #ffffff;
+}
