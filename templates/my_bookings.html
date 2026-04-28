@@ -122,6 +122,43 @@
     gap: 12px;
     flex-wrap: wrap;
   }
+
+  .delivery-track-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 8px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  .delivery-track-badge.is-pickup {
+    color: #6f5b6a;
+    background: rgba(245, 238, 242, 0.9);
+    border-color: rgba(184, 155, 174, 0.4);
+  }
+
+  .delivery-track-badge.is-preparing {
+    color: #825600;
+    background: rgba(255, 236, 179, 0.95);
+    border-color: rgba(237, 186, 64, 0.55);
+  }
+
+  .delivery-track-badge.is-out {
+    color: #154c90;
+    background: rgba(214, 233, 255, 0.95);
+    border-color: rgba(100, 166, 239, 0.6);
+  }
+
+  .delivery-track-badge.is-delivered {
+    color: #1f6b2e;
+    background: rgba(215, 246, 223, 0.95);
+    border-color: rgba(95, 196, 119, 0.58);
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -221,20 +258,6 @@
           {% if b.notes %}
           <div class="booking-notes my-booking-notes-v2"><i class="fa-solid fa-note-sticky"></i>{{ b.notes }}</div>
           {% endif %}
-          <div class="booking-meta my-booking-meta-v2">
-            <span><i class="fa-solid fa-truck-fast"></i>
-              {% if (b.delivery_type|string|lower == 'delivery') or (b.delivery_option|string|lower == 'delivery') %}
-                <span class="fw-badge status-{{ (b.delivery_status or 'Not Started') | lower | replace(' ','-') }}">{{ b.delivery_status or 'Not Started' }}</span>
-              {% else %}
-                <span class="fw-badge">Pickup selected</span>
-              {% endif %}
-            </span>
-          </div>
-          {% if (b.delivery_type|string|lower == 'delivery') or (b.delivery_option|string|lower == 'delivery') %}
-            {% if (b.delivery_status or '') == 'Out for Delivery' %}
-            <div class="booking-notes my-booking-notes-v2"><i class="fa-solid fa-truck"></i>Your laundry is on the way.</div>
-            {% endif %}
-          {% endif %}
           <div class="my-booking-actions-row">
             <button type="button" class="btn-ghost btn-small view-booking-btn" data-booking-id="{{ b.id }}">View</button>
             {% if b.status == 'Pending' %}
@@ -245,6 +268,20 @@
 
         <div class="my-booking-card-side">
           <div class="booking-price my-booking-price-v2">&#8369;{{ "%.2f"|format(b.total_price) }}</div>
+          {% if (b.delivery_type|string|lower == 'delivery') or (b.delivery_option|string|lower == 'delivery') %}
+            {% set dstatus = (b.delivery_status or 'Not Started') %}
+            {% if dstatus == 'Preparing' %}
+            <span class="delivery-track-badge is-preparing">Preparing</span>
+            {% elif dstatus == 'Out for Delivery' %}
+            <span class="delivery-track-badge is-out">On the way 🚚</span>
+            {% elif dstatus == 'Delivered' %}
+            <span class="delivery-track-badge is-delivered">Delivered</span>
+            {% else %}
+            <span class="delivery-track-badge is-pickup">{{ dstatus }}</span>
+            {% endif %}
+          {% else %}
+          <span class="delivery-track-badge is-pickup">Pickup selected</span>
+          {% endif %}
           <span class="fw-badge status-{{ b.status | lower | replace(' ','-') }}">{{ b.status }}</span>
         </div>
       </div>
