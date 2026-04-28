@@ -115,6 +115,250 @@
     color: #fff;
     box-shadow: 0 12px 24px rgba(255, 77, 166, 0.22);
   }
+
+  .page-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .messages-header-btn {
+    position: relative;
+  }
+
+  .messages-unread-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    border: 2px solid #fff;
+    background: #ff4d6d;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .messages-unread-badge.is-visible {
+    display: inline-flex;
+  }
+
+  .messages-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 230;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(42, 14, 28, 0.38);
+    backdrop-filter: blur(8px);
+  }
+
+  .messages-overlay.is-open {
+    display: flex;
+  }
+
+  .messages-modal {
+    width: min(920px, 96vw);
+    max-height: calc(100vh - 40px);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(255, 234, 245, 0.9));
+    box-shadow: 0 24px 52px rgba(210, 68, 146, 0.24);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+
+  .messages-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255, 176, 218, 0.42);
+    background: rgba(255, 247, 252, 0.86);
+  }
+
+  .messages-modal-head h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: #412033;
+  }
+
+  .messages-modal-close {
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 83, 165, 0.12);
+    color: #cf458f;
+    cursor: pointer;
+  }
+
+  .messages-layout {
+    display: grid;
+    grid-template-columns: 290px minmax(0, 1fr);
+    min-height: min(560px, calc(100vh - 180px));
+  }
+
+  .messages-conversations {
+    border-right: 1px solid rgba(255, 178, 218, 0.42);
+    overflow-y: auto;
+    background: rgba(255, 247, 252, 0.7);
+    padding: 8px;
+  }
+
+  .messages-conversation-btn {
+    width: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    text-align: left;
+    border-radius: 14px;
+    padding: 10px 11px;
+    cursor: pointer;
+    color: #4a2134;
+    margin-bottom: 6px;
+  }
+
+  .messages-conversation-btn:hover {
+    background: rgba(255, 226, 241, 0.68);
+    border-color: rgba(240, 118, 184, 0.35);
+  }
+
+  .messages-conversation-btn.is-active {
+    background: rgba(255, 218, 237, 0.78);
+    border-color: rgba(232, 103, 173, 0.42);
+  }
+
+  .messages-conversation-title {
+    font-size: 0.87rem;
+    font-weight: 700;
+    color: #472034;
+    display: block;
+  }
+
+  .messages-conversation-sub {
+    font-size: 0.75rem;
+    color: #845c74;
+    display: block;
+    margin-top: 3px;
+  }
+
+  .messages-thread {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    min-height: 0;
+  }
+
+  .messages-list {
+    overflow-y: auto;
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+  }
+
+  .messages-empty {
+    color: #936b82;
+    text-align: center;
+    padding: 26px 12px;
+    font-size: 0.88rem;
+  }
+
+  .messages-row {
+    display: flex;
+  }
+
+  .messages-row.user {
+    justify-content: flex-end;
+  }
+
+  .messages-row.admin {
+    justify-content: flex-start;
+  }
+
+  .messages-bubble {
+    max-width: min(84%, 480px);
+    border-radius: 14px;
+    padding: 10px 12px;
+    font-size: 0.87rem;
+    line-height: 1.45;
+    box-shadow: 0 8px 16px rgba(214, 86, 153, 0.12);
+  }
+
+  .messages-row.user .messages-bubble {
+    color: #fff;
+    background: linear-gradient(135deg, #ff4da6, #ff7ac3);
+    border-bottom-right-radius: 6px;
+  }
+
+  .messages-row.admin .messages-bubble {
+    color: #472034;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 181, 219, 0.4);
+    border-bottom-left-radius: 6px;
+  }
+
+  .messages-time {
+    margin-top: 4px;
+    font-size: 0.72rem;
+    opacity: 0.8;
+  }
+
+  .messages-compose {
+    border-top: 1px solid rgba(255, 178, 218, 0.42);
+    background: rgba(255, 247, 252, 0.78);
+    padding: 10px 12px;
+  }
+
+  .messages-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+  }
+
+  .messages-input {
+    width: 100%;
+    min-height: 42px;
+    resize: none;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 167, 210, 0.46);
+    background: #fff;
+    color: #492436;
+    padding: 10px 12px;
+  }
+
+  .messages-send-btn {
+    min-height: 42px;
+    border: 0;
+    border-radius: 12px;
+    color: #fff;
+    font-weight: 700;
+    padding: 0 16px;
+    background: linear-gradient(135deg, #ff4da6, #ff7ac3);
+    cursor: pointer;
+  }
+
+  @media (max-width: 900px) {
+    .messages-layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: 170px minmax(0, 1fr);
+    }
+
+    .messages-conversations {
+      border-right: 0;
+      border-bottom: 1px solid rgba(255, 178, 218, 0.42);
+    }
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -132,6 +376,11 @@
       <button type="button" class="page-chip compact-view-btn" id="compactViewBtn">
         <i class="fa-solid fa-wave-square"></i>
         <span id="compactViewLabel">Compact activity overview</span>
+      </button>
+      <button type="button" class="page-chip compact-view-btn messages-header-btn" id="messagesHeaderBtn">
+        <span aria-hidden="true">💬</span>
+        <span>Messages</span>
+        <span class="messages-unread-badge" id="messagesUnreadBadge">0</span>
       </button>
       <a href="{{ url_for('booking') }}" class="fw-btn-primary my-bookings-new-button new-booking-btn">
         <i class="fa-solid fa-plus"></i>
@@ -274,6 +523,33 @@
   </div>
 </div>
 
+<div id="messagesOverlay" class="messages-overlay" aria-hidden="true">
+  <div class="messages-modal" role="dialog" aria-modal="true" aria-labelledby="messagesModalTitle">
+    <div class="messages-modal-head">
+      <h3 id="messagesModalTitle">Messages</h3>
+      <button type="button" id="messagesModalClose" class="messages-modal-close" aria-label="Close messages">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="messages-layout">
+      <aside id="messagesConversations" class="messages-conversations">
+        <div class="messages-empty">Loading conversations...</div>
+      </aside>
+      <section class="messages-thread">
+        <div id="messagesList" class="messages-list">
+          <div class="messages-empty">Select a conversation.</div>
+        </div>
+        <div class="messages-compose">
+          <form id="messagesForm" class="messages-form">
+            <textarea id="messagesInput" class="messages-input" placeholder="Type your message..." rows="1" required></textarea>
+            <button type="submit" id="messagesSendBtn" class="messages-send-btn">Send</button>
+          </form>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -283,7 +559,18 @@
   const compactLabel = document.getElementById('compactViewLabel');
   const statsRow = document.getElementById('statsRow');
   const activitySec = document.getElementById('activitySection');
+  const messagesHeaderBtn = document.getElementById('messagesHeaderBtn');
+  const messagesUnreadBadge = document.getElementById('messagesUnreadBadge');
+  const messagesOverlay = document.getElementById('messagesOverlay');
+  const messagesModalClose = document.getElementById('messagesModalClose');
+  const messagesConversations = document.getElementById('messagesConversations');
+  const messagesList = document.getElementById('messagesList');
+  const messagesForm = document.getElementById('messagesForm');
+  const messagesInput = document.getElementById('messagesInput');
+  const messagesSendBtn = document.getElementById('messagesSendBtn');
   let compactMode = false;
+  let conversations = [];
+  let activeConversationBookingId = "";
 
   if (compactBtn) {
     compactBtn.addEventListener('click', () => {
@@ -351,8 +638,32 @@
     if (e.key === 'Escape') {
       closeModal();
       closeCancelConfirm(false);
+      closeMessagesModal();
     }
   });
+
+  function openMessagesModal() {
+    if (!messagesOverlay) return;
+    messagesOverlay.classList.add("is-open");
+    messagesOverlay.setAttribute("aria-hidden", "false");
+    document.body.classList.add("auth-modal-open");
+    loadAllConversations();
+  }
+
+  function closeMessagesModal() {
+    if (!messagesOverlay) return;
+    messagesOverlay.classList.remove("is-open");
+    messagesOverlay.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("auth-modal-open");
+  }
+
+  if (messagesHeaderBtn) messagesHeaderBtn.addEventListener("click", openMessagesModal);
+  if (messagesModalClose) messagesModalClose.addEventListener("click", closeMessagesModal);
+  if (messagesOverlay) {
+    messagesOverlay.addEventListener("click", e => {
+      if (e.target === messagesOverlay) closeMessagesModal();
+    });
+  }
 
   function statusBadge(status) {
     const cls = (status || '').toLowerCase().replace(/\s+/g, '-');
@@ -366,6 +677,130 @@
       <span style="color:#8f5b74;font-size:0.82rem;min-width:90px;">${label}</span>
       <span style="font-weight:600;">${value}</span>
     </div>`;
+  }
+
+  function escapeHTML(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function formatTime(value) {
+    if (!value) return "";
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return "";
+    return dt.toLocaleString([], {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
+
+  function scrollMessagesToBottom() {
+    if (!messagesList) return;
+    messagesList.scrollTop = messagesList.scrollHeight;
+  }
+
+  function renderConversationList() {
+    if (!messagesConversations) return;
+    if (!conversations.length) {
+      messagesConversations.innerHTML = '<div class="messages-empty">No booking conversations yet.</div>';
+      activeConversationBookingId = "";
+      renderThread([]);
+      return;
+    }
+
+    messagesConversations.innerHTML = conversations.map(item => {
+      const activeClass = item.bookingId === activeConversationBookingId ? " is-active" : "";
+      const lastText = item.messages.length ? item.messages[item.messages.length - 1].message : "No messages yet";
+      return `
+        <button type="button" class="messages-conversation-btn${activeClass}" data-booking-id="${escapeHTML(item.bookingId)}">
+          <span class="messages-conversation-title">${escapeHTML(item.title)}</span>
+          <span class="messages-conversation-sub">Booking ID: ${escapeHTML(item.bookingId)}</span>
+          <span class="messages-conversation-sub">${escapeHTML(lastText).slice(0, 60)}</span>
+        </button>
+      `;
+    }).join("");
+  }
+
+  function renderThread(messages) {
+    if (!messagesList) return;
+    if (!activeConversationBookingId) {
+      messagesList.innerHTML = '<div class="messages-empty">Select a conversation.</div>';
+      return;
+    }
+    if (!messages.length) {
+      messagesList.innerHTML = '<div class="messages-empty">No messages yet. Start your conversation.</div>';
+      return;
+    }
+
+    messagesList.innerHTML = messages.map(msg => {
+      const sender = String(msg.sender || "").toLowerCase() === "user" ? "user" : "admin";
+      return `
+        <div class="messages-row ${sender}">
+          <div class="messages-bubble">
+            <div>${escapeHTML(msg.message)}</div>
+            <div class="messages-time">${escapeHTML(formatTime(msg.created_at))}</div>
+          </div>
+        </div>
+      `;
+    }).join("");
+    scrollMessagesToBottom();
+  }
+
+  async function loadConversationMessages(bookingId) {
+    const res = await fetch(`/bookings/${bookingId}/messages`);
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || "Failed to load messages");
+    return data.messages || [];
+  }
+
+  async function loadAllConversations() {
+    if (!messagesConversations) return;
+    const cards = Array.from(document.querySelectorAll(".my-booking-card-v2[data-booking-id]"));
+    if (!cards.length) {
+      conversations = [];
+      renderConversationList();
+      return;
+    }
+
+    messagesConversations.innerHTML = '<div class="messages-empty">Loading conversations...</div>';
+    const loaded = await Promise.all(cards.map(async card => {
+      const bookingId = card.getAttribute("data-booking-id") || "";
+      const title = (card.querySelector(".my-booking-service-title")?.textContent || "Booking").trim();
+      if (!bookingId) return null;
+      try {
+        const messages = await loadConversationMessages(bookingId);
+        return { bookingId, title, messages };
+      } catch {
+        return { bookingId, title, messages: [] };
+      }
+    }));
+
+    conversations = loaded.filter(Boolean);
+    if (!activeConversationBookingId && conversations.length) {
+      activeConversationBookingId = conversations[0].bookingId;
+    }
+    renderConversationList();
+    const active = conversations.find(c => c.bookingId === activeConversationBookingId);
+    renderThread(active ? active.messages : []);
+    updateUnreadBadge();
+  }
+
+  function updateUnreadBadge() {
+    if (!messagesUnreadBadge) return;
+    const unread = conversations.reduce((acc, c) => {
+      const hasAdmin = c.messages.some(m => String(m.sender || "").toLowerCase() === "admin");
+      const hasUser = c.messages.some(m => String(m.sender || "").toLowerCase() === "user");
+      return acc + (hasAdmin && !hasUser ? 1 : 0);
+    }, 0);
+    messagesUnreadBadge.textContent = String(unread);
+    messagesUnreadBadge.classList.toggle("is-visible", unread > 0);
   }
 
   function renderDetail(b) {
@@ -444,6 +879,48 @@
       btn.textContent = 'Cancel';
     }
   });
+
+  document.addEventListener("click", e => {
+    const btn = e.target.closest(".messages-conversation-btn");
+    if (!btn) return;
+    activeConversationBookingId = btn.dataset.bookingId || "";
+    renderConversationList();
+    const active = conversations.find(c => c.bookingId === activeConversationBookingId);
+    renderThread(active ? active.messages : []);
+    messagesInput?.focus();
+  });
+
+  if (messagesForm) {
+    messagesForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const message = (messagesInput?.value || "").trim();
+      if (!activeConversationBookingId || !message) return;
+
+      if (messagesSendBtn) {
+        messagesSendBtn.disabled = true;
+        messagesSendBtn.textContent = "Sending...";
+      }
+      try {
+        const res = await fetch(`/bookings/${activeConversationBookingId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || "Unable to send message");
+        if (messagesInput) messagesInput.value = "";
+        await loadAllConversations();
+        if (typeof showToast === "function") showToast("Message sent");
+      } catch (err) {
+        if (typeof showToast === "function") showToast(String(err.message || "Unable to send message"), true);
+      } finally {
+        if (messagesSendBtn) {
+          messagesSendBtn.disabled = false;
+          messagesSendBtn.textContent = "Send";
+        }
+      }
+    });
+  }
 })();
 </script>
 {% endblock %}
