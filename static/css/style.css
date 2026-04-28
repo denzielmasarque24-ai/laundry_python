@@ -11647,3 +11647,26 @@ body.landing-body .freshwash-home-page .homepage-service-card .card-footer .btn-
   margin-left: auto;
   flex: 0 0 auto;
 }
+
+/* Clean profile avatar (no ring/border/shadow) */
+body .profile-panel .panel-avatar {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+body .profile-panel .panel-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
