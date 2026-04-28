@@ -11619,3 +11619,31 @@ body.landing-body .freshwash-home-page .homepage-service-foot .btn-small {
   font-size: 0.9rem;
   border-radius: 999px;
 }
+
+/* Service card price + button row fix */
+body.landing-body .freshwash-home-page .homepage-service-card .card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+}
+
+body.landing-body .freshwash-home-page .homepage-service-card .card-footer-price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+body.landing-body .freshwash-home-page .homepage-service-card .card-footer-price small,
+body.landing-body .freshwash-home-page .homepage-service-card .card-footer-price strong {
+  white-space: nowrap;
+}
+
+body.landing-body .freshwash-home-page .homepage-service-card .card-footer .btn-small {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
