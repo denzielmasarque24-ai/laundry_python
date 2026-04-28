@@ -2051,12 +2051,25 @@ const DASHBOARD_CONFIG = {
       fetchErrors = [];
     }
 
+    async function parseJsonResponse(response, context) {
+      const contentType = response.headers.get("content-type") || "";
+      console.debug("[FreshWash Admin] response", { context, status: response.status, contentType });
+      if (contentType.toLowerCase().includes("application/json")) {
+        return await response.json();
+      }
+      const rawBody = await response.text();
+      throw new Error(
+        `${context} returned non-JSON response (status ${response.status}): ${rawBody.slice(0, 180)}`
+      );
+    }
+
     async function fetchAdminDashboardPayload() {
+      console.debug("[FreshWash Admin] request", { method: "GET", url: "/admin/api/dashboard-data" });
       const response = await fetch("/admin/api/dashboard-data", {
         method: "GET",
         headers: { "Accept": "application/json" }
       });
-      const result = await response.json().catch(() => ({}));
+      const result = await parseJsonResponse(response, "fetchAdminDashboardPayload");
       if (!response.ok || result?.ok === false) {
         throw new Error(result?.error || "Please log in first");
       }
@@ -2064,12 +2077,13 @@ const DASHBOARD_CONFIG = {
     }
 
     async function postAdminJson(url, payload) {
+      console.debug("[FreshWash Admin] request", { method: "POST", url, payload });
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload || {})
       });
-      const result = await response.json().catch(() => ({}));
+      const result = await parseJsonResponse(response, `postAdminJson:${url}`);
       if (!response.ok || result?.ok === false) {
         throw new Error(result?.error || `Request failed with status ${response.status}`);
       }
@@ -2077,12 +2091,13 @@ const DASHBOARD_CONFIG = {
     }
 
     async function patchAdminJson(url, payload) {
+      console.debug("[FreshWash Admin] request", { method: "PATCH", url, payload });
       const response = await fetch(url, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload || {})
       });
-      const result = await response.json().catch(() => ({}));
+      const result = await parseJsonResponse(response, `patchAdminJson:${url}`);
       if (!response.ok || result?.ok === false) {
         throw new Error(result?.error || `Request failed with status ${response.status}`);
       }
@@ -2100,7 +2115,7 @@ const DASHBOARD_CONFIG = {
         method: "POST",
         body: formData
       });
-      const result = await response.json().catch(() => ({}));
+      const result = await parseJsonResponse(response, "uploadAdminProfilePhoto");
       if (!response.ok || result?.ok === false) {
         throw new Error(result?.error || `Request failed with status ${response.status}`);
       }
@@ -2860,8 +2875,9 @@ const DASHBOARD_CONFIG = {
         formData.append("address", address);
         if (avatarInput?.files?.[0]) formData.append("avatar", avatarInput.files[0]);
         console.log("[FreshWash Settings] update-profile request", { name, email, phone, address, hasAvatar: Boolean(avatarInput?.files?.[0]) });
+        console.debug("[FreshWash Settings] request", { method: "POST", url: "/api/update-profile", hasAvatar: Boolean(avatarInput?.files?.[0]) });
         const response = await fetch("/api/update-profile", { method: "POST", body: formData });
-        const result = await response.json();
+        const result = await parseJsonResponse(response, "saveProfileSettings");
         if (!response.ok || !result?.success) {
           throw new Error(result?.error || "Failed to update profile.");
         }

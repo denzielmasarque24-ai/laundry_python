@@ -1534,6 +1534,8 @@ def login_required(f):
     def decorated(*args, **kwargs):
         user = session.get("user")
         if not user:
+            if is_api_request():
+                return jsonify({"ok": False, "error": "Please log in to continue."}), 401
             flash("Please log in to continue.", "error")
             return redirect(url_for("login"))
         return f(*args, **kwargs)
@@ -1546,6 +1548,8 @@ def admin_required(f):
         user = session.get("user")
         if not user:
             log_auth_debug("admin access blocked", reason="no active session", path=request.path)
+            if is_api_request():
+                return jsonify({"ok": False, "error": "Please log in to continue."}), 401
             flash("Please log in to continue.", "error")
             return redirect(url_for("login"))
         detected_role = (user or {}).get("role", "")
@@ -1565,17 +1569,37 @@ def admin_required(f):
                 role=normalized_role,
                 is_admin=is_admin,
             )
+            if is_api_request():
+                return jsonify({"ok": False, "error": "This account is not authorized as admin."}), 403
             flash("This account is not authorized as admin.", "error")
             return redirect(url_for("home"))
         return f(*args, **kwargs)
     return decorated
 
 
+def is_api_request(req=None):
+    req = req or request
+    path = (req.path or "").lower()
+    accept = (req.headers.get("Accept") or "").lower()
+    requested_with = (req.headers.get("X-Requested-With") or "").lower()
+    return (
+        path.startswith("/api/")
+        or path.startswith("/admin/api/")
+        or "application/json" in accept
+        or requested_with == "xmlhttprequest"
+    )
+
+
+@app.errorhandler(HTTPException)
+def handle_http_error(exc):
+    if is_api_request():
+        message = exc.description if getattr(exc, "description", None) else exc.name
+        return jsonify({"ok": False, "error": message}), exc.code
+    return exc
+
+
 @app.errorhandler(Exception)
 def handle_unexpected_error(exc):
-    if isinstance(exc, HTTPException):
-        return exc
-
     log_exception(
         "unhandled route error",
         exc,
@@ -1583,7 +1607,7 @@ def handle_unexpected_error(exc):
         method=request.method,
         user=session.get("user", {}).get("email", "anonymous"),
     )
-    if request.path.startswith("/admin/api") or request.path.startswith("/profile/update"):
+    if is_api_request() or request.path.startswith("/profile/update"):
         return jsonify({"ok": False, "error": str(exc)}), 500
     return f"Internal Server Error: {exc}", 500
 
