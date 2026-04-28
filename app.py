@@ -4136,6 +4136,14 @@ def admin_booking_action(booking_id):
                 payload["delivery_option"] = maybe_delivery
                 payload["delivery_type"] = maybe_delivery.lower()
                 payload["delivery_fee"] = DEFAULT_DELIVERY_FEE if maybe_delivery == "Delivery" else 0
+                if maybe_delivery == "Pickup":
+                    payload["delivery_status"] = "Not Started"
+
+            maybe_delivery_status = (data.get("delivery_status", "") or "").strip()
+            if maybe_delivery_status:
+                if maybe_delivery_status not in {"Not Started", "Preparing", "Out for Delivery", "Delivered"}:
+                    return jsonify({"ok": False, "error": "Invalid delivery status value."}), 400
+                payload["delivery_status"] = maybe_delivery_status
 
             if "notes" in data:
                 payload["notes"] = (data.get("notes", "") or "").strip()
@@ -4636,6 +4644,7 @@ def booking():
         payment_status = "Pending Verification" if payment_method in DIGITAL_PAYMENT_METHODS else "Pending Payment"
         delivery_type = delivery_option.strip().lower()
         delivery_fee = DEFAULT_DELIVERY_FEE if delivery_type == "delivery" else 0.0
+        delivery_status = "Not Started"
         laundry_total = round(float(SERVICES.get(service_type, {}).get("price", 0) or 0) * weight, 2)
         total_amount = round(laundry_total + delivery_fee, 2)
 
@@ -4655,6 +4664,7 @@ def booking():
             "delivery_fee": round(delivery_fee, 2),
             "delivery_type": delivery_type,
             "delivery_option": delivery_option,
+            "delivery_status": delivery_status,
             "notes": notes,
             "status": "Pending",
             "payment_method": payment_method,

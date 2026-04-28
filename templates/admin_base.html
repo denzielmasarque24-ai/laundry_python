@@ -1050,6 +1050,7 @@
     .admin-bookings-table .col-price   { width: 70px; }
     .admin-bookings-table .col-load    { width: 58px; }
     .admin-bookings-table .col-delivery { width: 82px; }
+    .admin-bookings-table .col-delivery-status { width: 132px; }
     .admin-bookings-table .col-notes   { width: 170px; }
     .admin-bookings-table .col-action  { width: 138px; }
 
@@ -2306,6 +2307,7 @@ const DASHBOARD_CONFIG = {
         weight: Number.isFinite(weight) ? weight : 0,
         load_type: booking?.load_type || "",
         delivery_option: deliveryOption === "Delivery" ? "Delivery" : "Pickup",
+        delivery_status: booking?.delivery_status || "Not Started",
         notes: booking?.notes || ""
       };
     }
@@ -2539,7 +2541,7 @@ const DASHBOARD_CONFIG = {
       if (!filtered.length) {
         body.innerHTML = `
           <tr>
-            <td colspan="12" class="admin-empty-cell admin-empty-bookings-cell">
+            <td colspan="13" class="admin-empty-cell admin-empty-bookings-cell">
               <div class="admin-empty-bookings-state">
                 <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
                 <strong>No bookings yet</strong>
@@ -2575,6 +2577,14 @@ const DASHBOARD_CONFIG = {
             <select class="admin-inline-select booking-editable" id="bookingDelivery-${escapeHtml(booking.id)}">
               <option value="Pickup" ${deliveryOption === "Pickup" ? "selected" : ""}>Pickup</option>
               <option value="Delivery" ${deliveryOption === "Delivery" ? "selected" : ""}>Delivery</option>
+            </select>
+          </td>
+          <td class="col-delivery-status">
+            <select class="admin-inline-select booking-editable" id="bookingDeliveryStatus-${escapeHtml(booking.id)}">
+              <option value="Not Started" ${booking.delivery_status === "Not Started" ? "selected" : ""}>Not Started</option>
+              <option value="Preparing" ${booking.delivery_status === "Preparing" ? "selected" : ""}>Preparing</option>
+              <option value="Out for Delivery" ${booking.delivery_status === "Out for Delivery" ? "selected" : ""}>Out for Delivery</option>
+              <option value="Delivered" ${booking.delivery_status === "Delivered" ? "selected" : ""}>Delivered</option>
             </select>
           </td>
           <td class="col-notes">
@@ -2980,6 +2990,7 @@ const DASHBOARD_CONFIG = {
         ["Date & Time", `${formatDate(booking.pickup_date)} ${booking.pickup_time || "-"}`.trim()],
         ["Load", booking.load_type || "-"],
         ["Delivery", booking.delivery_option || "Pickup"],
+        ["Delivery Status", booking.delivery_option === "Delivery" ? (booking.delivery_status || "Not Started") : "Pickup selected"],
         ["Notes", booking.notes || "-"],
         ["Price", formatCurrency(booking.total_price || 0)],
       ];
@@ -3004,12 +3015,16 @@ const DASHBOARD_CONFIG = {
       try {
         const statusField = document.getElementById(`bookingStatus-${bookingId}`);
         const deliveryField = document.getElementById(`bookingDelivery-${bookingId}`);
+        const deliveryStatusField = document.getElementById(`bookingDeliveryStatus-${bookingId}`);
         const notesField = document.getElementById(`bookingNotes-${bookingId}`);
-        if (!statusField || !deliveryField || !notesField) return;
+        if (!statusField || !deliveryField || !deliveryStatusField || !notesField) return;
+        const selectedDelivery = deliveryField.value;
+        const selectedDeliveryStatus = selectedDelivery === "Delivery" ? deliveryStatusField.value : "Not Started";
         await postAdminJson(`/admin/api/bookings/${encodeURIComponent(bookingId)}`, {
           action: "edit",
           status: statusField.value,
-          delivery_option: deliveryField.value,
+          delivery_option: selectedDelivery,
+          delivery_status: selectedDeliveryStatus,
           notes: notesField.value || "",
         });
         showSuccess("Booking updated successfully.");

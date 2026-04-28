@@ -221,6 +221,20 @@
           {% if b.notes %}
           <div class="booking-notes my-booking-notes-v2"><i class="fa-solid fa-note-sticky"></i>{{ b.notes }}</div>
           {% endif %}
+          <div class="booking-meta my-booking-meta-v2">
+            <span><i class="fa-solid fa-truck-fast"></i>
+              {% if (b.delivery_type|string|lower == 'delivery') or (b.delivery_option|string|lower == 'delivery') %}
+                <span class="fw-badge status-{{ (b.delivery_status or 'Not Started') | lower | replace(' ','-') }}">{{ b.delivery_status or 'Not Started' }}</span>
+              {% else %}
+                <span class="fw-badge">Pickup selected</span>
+              {% endif %}
+            </span>
+          </div>
+          {% if (b.delivery_type|string|lower == 'delivery') or (b.delivery_option|string|lower == 'delivery') %}
+            {% if (b.delivery_status or '') == 'Out for Delivery' %}
+            <div class="booking-notes my-booking-notes-v2"><i class="fa-solid fa-truck"></i>Your laundry is on the way.</div>
+            {% endif %}
+          {% endif %}
           <div class="my-booking-actions-row">
             <button type="button" class="btn-ghost btn-small view-booking-btn" data-booking-id="{{ b.id }}">View</button>
             {% if b.status == 'Pending' %}
@@ -397,6 +411,7 @@
       ${row('fa-credit-card',    'Payment',      b.payment_method)}
       ${row('fa-hashtag',        'Reference',    b.reference_number)}
       ${row('fa-truck',          'Delivery',     b.delivery_option)}
+      ${row('fa-truck-fast',     'Delivery Status', (String(b.delivery_option || '').toLowerCase() === 'delivery' || String(b.delivery_type || '').toLowerCase() === 'delivery') ? (b.delivery_status || 'Not Started') : 'Pickup selected')}
       ${row('fa-note-sticky',    'Notes',        b.notes)}
     `;
   }

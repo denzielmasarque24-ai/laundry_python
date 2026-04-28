@@ -32,12 +32,14 @@
 
   .contact-grid {
     display: grid;
-    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
   }
 
   .contact-input,
   .contact-textarea {
     width: 100%;
+    min-height: 52px;
     border-radius: 14px;
     border: 1px solid rgba(255, 168, 211, 0.45);
     background: #fff;
@@ -54,18 +56,51 @@
   }
 
   .contact-textarea {
-    min-height: 130px;
+    min-height: 160px;
     resize: vertical;
+  }
+
+  .contact-col-2 {
+    grid-column: 1 / -1;
   }
 
   .contact-submit {
     border: 0;
-    border-radius: 12px;
+    width: 100%;
+    border-radius: 20px;
     min-height: 44px;
     color: #fff;
     font-weight: 700;
     background: linear-gradient(135deg, #ff4da6, #ff7ac3);
     cursor: pointer;
+    transition: filter 0.2s ease;
+  }
+
+  .contact-submit:hover {
+    filter: brightness(0.92);
+  }
+
+  .contact-input.is-invalid,
+  .contact-textarea.is-invalid {
+    border-color: #e11d48;
+    box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.12);
+  }
+
+  .contact-field-error {
+    margin-top: 6px;
+    font-size: 0.8rem;
+    color: #e11d48;
+    display: none;
+  }
+
+  @media (max-width: 700px) {
+    .contact-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .contact-col-2 {
+      grid-column: auto;
+    }
   }
 </style>
 {% endblock %}
@@ -74,12 +109,24 @@
   <section class="contact-card">
     <h2 class="contact-title">Contact Us</h2>
     <p class="contact-sub">Send us your concern and our team will review it shortly.</p>
-    <form id="contactForm" class="contact-grid">
-      <input class="contact-input" id="contactName" type="text" placeholder="Name" value="{{ (user or {}).get('name', '') }}" required />
-      <input class="contact-input" id="contactEmail" type="email" placeholder="Email" value="{{ (user or {}).get('email', '') }}" required />
-      <input class="contact-input" id="contactSubject" type="text" placeholder="Subject" required />
-      <textarea class="contact-textarea" id="contactMessage" placeholder="Message" required></textarea>
-      <button class="contact-submit" id="contactSubmitBtn" type="submit">Send Message</button>
+    <form id="contactForm" class="contact-grid" novalidate>
+      <div>
+        <input class="contact-input" id="contactName" type="text" placeholder="Name" value="{{ (user or {}).get('name', '') }}" />
+        <p class="contact-field-error" id="contactNameError">Name is required.</p>
+      </div>
+      <div>
+        <input class="contact-input" id="contactEmail" type="email" placeholder="Email" value="{{ (user or {}).get('email', '') }}" />
+        <p class="contact-field-error" id="contactEmailError">Valid email is required.</p>
+      </div>
+      <div class="contact-col-2">
+        <input class="contact-input" id="contactSubject" type="text" placeholder="Subject" />
+        <p class="contact-field-error" id="contactSubjectError">Subject is required.</p>
+      </div>
+      <div class="contact-col-2">
+        <textarea class="contact-textarea" id="contactMessage" placeholder="Message"></textarea>
+        <p class="contact-field-error" id="contactMessageError">Message is required.</p>
+      </div>
+      <button class="contact-submit contact-col-2" id="contactSubmitBtn" type="submit">Send Message</button>
     </form>
   </section>
 </div>
@@ -92,6 +139,16 @@
   const emailEl = document.getElementById("contactEmail");
   const subjectEl = document.getElementById("contactSubject");
   const messageEl = document.getElementById("contactMessage");
+  const nameErr = document.getElementById("contactNameError");
+  const emailErr = document.getElementById("contactEmailError");
+  const subjectErr = document.getElementById("contactSubjectError");
+  const messageErr = document.getElementById("contactMessageError");
+
+  function setFieldState(input, errorEl, ok) {
+    if (!input || !errorEl) return;
+    input.classList.toggle("is-invalid", !ok);
+    errorEl.style.display = ok ? "none" : "block";
+  }
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -101,7 +158,17 @@
       subject: (subjectEl.value || "").trim(),
       message: (messageEl.value || "").trim()
     };
-    if (!payload.name || !payload.email || !payload.subject || !payload.message) return;
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email);
+    const nameOk = payload.name.length > 0;
+    const subjectOk = payload.subject.length > 0;
+    const messageOk = payload.message.length > 0;
+
+    setFieldState(nameEl, nameErr, nameOk);
+    setFieldState(emailEl, emailErr, emailOk);
+    setFieldState(subjectEl, subjectErr, subjectOk);
+    setFieldState(messageEl, messageErr, messageOk);
+
+    if (!nameOk || !emailOk || !subjectOk || !messageOk) return;
 
     submitBtn.disabled = true;
     submitBtn.textContent = "Sending...";
@@ -116,9 +183,9 @@
       messageEl.value = "";
       subjectEl.value = "";
       if (typeof showToast === "function") {
-        showToast(data.confirmation || "Your message has been sent successfully.");
+        showToast("Message sent successfully 💖");
       } else {
-        alert(data.confirmation || "Your message has been sent successfully.");
+        alert("Message sent successfully 💖");
       }
     } catch (err) {
       if (typeof showToast === "function") {
@@ -134,4 +201,3 @@
 })();
 </script>
 {% endblock %}
-
