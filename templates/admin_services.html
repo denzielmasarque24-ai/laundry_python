@@ -1,0 +1,27 @@
+{% extends 'admin_base.html' %}
+
+{% block content %}
+<!-- SERVICES -->
+      <section class="admin-panel {% if active_page == 'services' %}is-active{% endif %}" data-panel="services" aria-label="Services">
+        <div class="admin-panel-tools">
+          <span class="admin-pill" id="servicesCountPill">0 services</span>
+        </div>
+        <div class="admin-card">
+          <div class="admin-service-create">
+            <div class="admin-service-form">
+              <input id="newServiceName" class="admin-inline-input" type="text" placeholder="New service name" />
+              <input id="newServicePrice" class="admin-inline-input" type="number" min="0" step="0.01" placeholder="Price" />
+              <textarea id="newServiceDescription" placeholder="Service description"></textarea>
+              <div class="admin-service-actions">
+                <button type="button" class="admin-button admin-button-primary" id="addServiceButton">Add Service</button>
+              </div>
+            </div>
+          </div>
+          <div id="servicesGrid" class="admin-service-grid admin-service-grid-panel"></div>
+        </div>
+      </section>
+
+      
+{% endblock %}
+
+

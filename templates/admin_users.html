@@ -1,0 +1,33 @@
+{% extends 'admin_base.html' %}
+
+{% block content %}
+<!-- USERS -->
+      <section class="admin-panel {% if active_page == 'users' %}is-active{% endif %}" data-panel="users" aria-label="Users">
+        <div class="admin-panel-tools">
+          <span class="admin-pill" id="usersCountPill">0 users</span>
+          <button type="button" class="admin-button admin-button-primary" id="createUserButton">Add User</button>
+        </div>
+        <div class="admin-card">
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Full Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Address</th>
+                  <th>Role</th>
+                  <th>Created At</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      
+{% endblock %}
+
+

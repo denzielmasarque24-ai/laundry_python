@@ -1,0 +1,176 @@
+{% extends 'admin_base.html' %}
+
+{% block content %}
+<!-- SETTINGS -->
+      <section class="admin-panel {% if active_page == 'settings' %}is-active{% endif %}" data-panel="settings" aria-labelledby="settingsPanelTitle">
+        <div class="admin-settings-shell">
+          <div class="admin-settings-hero admin-section-head-card">
+            <div class="admin-section-head-main">
+              <div class="admin-section-title-icon" aria-hidden="true">
+                <i class="fa-solid fa-gear"></i>
+              </div>
+              <div class="admin-section-title">
+                <h2 id="settingsPanelTitle">Settings</h2>
+                <p class="admin-section-subtitle">Manage your admin account information, theme preferences, and password settings.</p>
+              </div>
+            </div>
+            <label class="admin-theme-toggle" for="settingsDarkModeToggle">
+              <input id="settingsDarkModeToggle" type="checkbox" />
+              <span class="admin-theme-toggle-track" aria-hidden="true">
+                <span class="admin-theme-toggle-thumb"></span>
+              </span>
+              <span>Dark Mode</span>
+            </label>
+          </div>
+
+          <div class="admin-settings-layout-v2">
+            <aside class="admin-settings-profile-card">
+              <div class="admin-profile-photo-panel">
+                <div class="admin-profile-photo-frame">
+                  <img
+                    id="settingsAdminAvatarPreview"
+                    src="{{ safe_user.get('avatar') or url_for('static', filename='img/default-avatar.svg') }}"
+                    alt="Admin profile picture"
+                    onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/default-avatar.svg') }}';"
+                  />
+                  <span id="settingsAdminAvatarFallback" class="admin-profile-photo-fallback" hidden>
+                    <i class="fa-solid fa-user-shield"></i>
+                  </span>
+                </div>
+                <input id="settingsAdminAvatarInput" class="admin-profile-photo-input" type="file" accept="image/*" />
+                <button type="button" class="admin-button admin-button-ghost admin-profile-upload-button" id="uploadAdminAvatarButton">
+                  Upload Photo
+                </button>
+                <small>JPG, PNG, or GIF up to 2MB.</small>
+              </div>
+
+              <div class="admin-profile-summary-copy">
+                <h3 id="settingsProfileName">{{ safe_user.get('name', 'FreshWash Admin') }}</h3>
+                <p id="settingsProfileEmail">{{ safe_user.get('email', 'admin@freshwash.app') }}</p>
+              </div>
+              <div class="admin-profile-summary-badges">
+                <span class="admin-profile-summary-badge">
+                  <i class="fa-solid fa-user-shield"></i>
+                  Admin
+                </span>
+                <span class="admin-profile-summary-badge">
+                  <i class="fa-solid fa-phone"></i>
+                  <span id="settingsProfilePhone">{{ safe_user.get('phone', 'No phone') or 'No phone' }}</span>
+                </span>
+              </div>
+            </aside>
+
+            <div class="admin-settings-form-stack">
+              <article class="admin-settings-form-card">
+                <div class="admin-settings-card-title">
+                  <span><i class="fa-solid fa-user-pen"></i></span>
+                  <div>
+                    <h2>Edit Profile</h2>
+                    <p>Update the account details shown across the admin panel.</p>
+                  </div>
+                </div>
+                <form class="admin-settings-form admin-profile-settings-form" id="profileSettingsForm">
+                <label>
+                  <span>Full name</span>
+                  <input id="settingsAdminName" type="text" />
+                </label>
+                <label>
+                  <span>Email address</span>
+                  <input id="settingsAdminEmail" type="text" />
+                </label>
+                <label class="admin-settings-field-wide">
+                  <span>Phone number</span>
+                  <input id="settingsAdminPhone" type="text" />
+                </label>
+                <label class="admin-settings-field-wide">
+                  <span>Address</span>
+                  <input id="settingsAdminAddress" type="text" />
+                </label>
+                <div class="admin-settings-actions admin-action-buttons admin-settings-field-wide">
+                  <button type="submit" class="admin-button admin-button-primary" id="saveProfileSettingsButton">Save Profile</button>
+                </div>
+              </form>
+              </article>
+
+              <article class="admin-settings-form-card">
+                <div class="admin-settings-card-title">
+                  <span><i class="fa-solid fa-lock"></i></span>
+                  <div>
+                    <h2>Change Password</h2>
+                    <p>Use at least 6 characters. You may need to log in again after changing it.</p>
+                  </div>
+                </div>
+                <form class="admin-settings-form admin-password-settings-form" id="passwordSettingsForm">
+                  <label>
+                    <span>New password</span>
+                    <input id="settingsAdminPassword" type="password" placeholder="Enter new password" />
+                  </label>
+                  <label>
+                    <span>Confirm password</span>
+                    <input id="settingsAdminPasswordConfirm" type="password" placeholder="Confirm new password" />
+                  </label>
+                  <div class="admin-settings-actions admin-action-buttons admin-settings-field-wide">
+                    <button type="button" class="admin-button admin-button-primary" id="savePasswordSettingsButton">Update Password</button>
+                  </div>
+                </form>
+              </article>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-settings-system-hidden" aria-hidden="true">
+          <article class="admin-card admin-settings-card">
+            <div class="admin-card-head">
+              <div class="admin-settings-group-head">
+                <small class="admin-kicker">System</small>
+                <h2>Machine And Theme Settings</h2>
+                <p>Loaded from the current admin settings payload.</p>
+              </div>
+            </div>
+            <form class="admin-settings-form" id="systemSettingsForm">
+              <label class="admin-settings-field-wide">
+                <span>Default Load Types</span>
+                <input id="settingsLoadTypes" type="text" />
+              </label>
+              <label>
+                <span>Shop Name</span>
+                <input id="settingsShopName" type="text" />
+              </label>
+              <label>
+                <span>Contact Number</span>
+                <input id="settingsContactNumber" type="text" />
+              </label>
+              <label class="admin-settings-field-wide">
+                <span>Shop Address</span>
+                <textarea id="settingsShopAddress"></textarea>
+              </label>
+              <label>
+                <span>Theme Mode</span>
+                <select id="settingsThemeMode" class="admin-inline-select">
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </label>
+              <label>
+                <span>Theme Accent</span>
+                <select id="settingsThemeAccent" class="admin-inline-select">
+                  <option value="pink-rose">Pink Rose</option>
+                  <option value="pink-blush">Pink Blush</option>
+                  <option value="pink-berry">Pink Berry</option>
+                </select>
+              </label>
+              <label class="admin-settings-field-wide admin-checkbox-row">
+                <input id="settingsMachinesEnabled" type="checkbox" />
+                <span>Machines are globally enabled</span>
+              </label>
+              <div class="admin-settings-actions admin-action-buttons admin-settings-field-wide">
+                <button type="button" class="admin-button admin-button-primary" id="saveSystemSettingsButton">Save Settings</button>
+              </div>
+            </form>
+          </article>
+        </div>
+      </section>
+    
+{% endblock %}
+
+

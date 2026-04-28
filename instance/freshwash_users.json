@@ -2,8 +2,8 @@
   {
     "id": "bfbef2a2-fe12-407b-a4f9-e0f88b3fbe93",
     "email": "denzielmasarque24@gmail.com",
-    "password_hash": "scrypt:32768:8:1$lxhx2raksfJaKA0s$637757c75908ea113f49eab0b62ef0c89a4a5d1c54540e9f843c7b8d86a5f6b22089e90629e46b6b9e44044fe50b036be2298748c692aabbb0932e77150933b0",
-    "full_name": "Denziel Masarque",
+    "password_hash": "scrypt:32768:8:1$scUD9EELjEuJ0Yix$002af71e198a8a0bb44622abfc739a8e37975a2310a9ebad9ee824ab24020a700a1ae732608c17019e6ffe719baccf32f577e2f7a1337b95538d940148d13931",
+    "full_name": "denz",
     "phone": "09914405837",
     "address": "talisay",
     "avatar": "",
@@ -170,7 +170,7 @@
   {
     "id": "25c84cfb-80ca-4fd6-8330-bdcd20b72b26",
     "email": "admin@gmail.com",
-    "password_hash": "scrypt:32768:8:1$sbRlfgXBSiLpqJXg$9d8fb4f67c347f1c43bac851178a6026f4182d98773105d18c2bc74912702480e6ca1e9fa2c6ff58e5c7689a24be069ccc9c3da35e4b34211e22688558c1b248",
+    "password_hash": "scrypt:32768:8:1$BE4sNq4LKxrDaoGb$af4b2f7716141793d98514543693580e64f00d805f1ac54d68a3d122d0fd63b77afbe6660bb843139908d3d20a76fb49a203a53271026f0d4ec530becc43e605",
     "full_name": "Denziel Masarque",
     "phone": "09914405837",
     "address": "talisay",

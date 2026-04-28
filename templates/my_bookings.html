@@ -12,11 +12,11 @@
       <p class="page-sub">Track all your laundry orders</p>
     </div>
     <div class="page-header-actions">
-      <div class="page-chip">
+      <button type="button" class="page-chip compact-view-btn" id="compactViewBtn">
         <i class="fa-solid fa-wave-square"></i>
-        <span>Compact activity overview</span>
-      </div>
-      <a href="{{ url_for('booking') }}" class="fw-btn-primary my-bookings-new-button">
+        <span id="compactViewLabel">Compact activity overview</span>
+      </button>
+      <a href="{{ url_for('booking') }}" class="fw-btn-primary my-bookings-new-button new-booking-btn">
         <i class="fa-solid fa-plus"></i>
         <span>New Booking</span>
       </a>
@@ -24,7 +24,7 @@
   </div>
 
   {% if bookings %}
-  <section class="fw-section my-bookings-activity-section">
+  <section class="fw-section my-bookings-activity-section" id="activitySection">
     <div class="section-heading">
       <div>
         <span class="section-kicker">Recent Activity</span>
@@ -33,7 +33,7 @@
     </div>
   </section>
 
-  <div class="stats-row my-bookings-stats">
+  <div class="stats-row my-bookings-stats" id="statsRow">
     <div class="stat-glass my-bookings-stat">
       <div class="stat-icon" style="background:linear-gradient(135deg,#ffbfdc,#eb4d98)">
         <i class="fa-solid fa-clock"></i>
@@ -63,9 +63,9 @@
     </div>
   </div>
 
-  <div class="bookings-list my-bookings-list">
+  <div class="bookings-list my-bookings-list" id="bookingsList">
     {% for b in bookings %}
-    <article class="booking-glass-card my-booking-card-v2">
+    <article class="booking-glass-card my-booking-card-v2" data-booking-id="{{ b.id }}">
       <div class="my-booking-card-icon">
         <div class="booking-service-icon">
           {% if 'Fold' in b.service_type %}
@@ -94,9 +94,9 @@
           <div class="booking-notes my-booking-notes-v2"><i class="fa-solid fa-note-sticky"></i>{{ b.notes }}</div>
           {% endif %}
           <div class="my-booking-actions-row">
-            <button type="button" class="btn-ghost btn-small">View</button>
+            <button type="button" class="btn-ghost btn-small view-booking-btn" data-booking-id="{{ b.id }}">View</button>
             {% if b.status == 'Pending' %}
-            <button type="button" class="btn-primary btn-small">Cancel</button>
+            <button type="button" class="btn-primary btn-small cancel-booking-btn" data-booking-id="{{ b.id }}">Cancel</button>
             {% endif %}
           </div>
         </div>
@@ -128,4 +128,149 @@
   </div>
   {% endif %}
 </div>
+
+<!-- Booking Detail Modal -->
+<div id="bookingDetailOverlay" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px;">
+  <div id="bookingDetailCard" style="position:relative;width:min(520px,92vw);max-height:calc(100vh - 40px);overflow-y:auto;padding:32px 28px;border-radius:30px;border:1px solid rgba(255,255,255,0.4);background:linear-gradient(135deg,rgba(255,255,255,0.85),rgba(255,182,193,0.25));backdrop-filter:blur(20px);box-shadow:0 20px 50px rgba(255,105,180,0.25);">
+    <button type="button" id="bookingDetailClose" style="position:absolute;top:16px;right:16px;width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:50%;background:rgba(255,77,166,0.1);color:#d94b91;cursor:pointer;font-size:1rem;">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <div class="auth-brand" style="margin-bottom:12px;">
+      <div class="auth-brand-icon"><i class="fa-solid fa-receipt"></i></div>
+      <span style="font-weight:700;color:#4b1f2b;">Booking Details</span>
+    </div>
+    <div id="bookingDetailBody" style="color:#4b1f2b;"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // ── Compact toggle ──────────────────────────────────────────────────────────
+  const compactBtn   = document.getElementById('compactViewBtn');
+  const compactLabel = document.getElementById('compactViewLabel');
+  const statsRow     = document.getElementById('statsRow');
+  const activitySec  = document.getElementById('activitySection');
+  let compactMode = false;
+
+  if (compactBtn) {
+    compactBtn.addEventListener('click', () => {
+      compactMode = !compactMode;
+      if (statsRow)    statsRow.style.display    = compactMode ? 'none' : '';
+      if (activitySec) activitySec.style.display = compactMode ? 'none' : '';
+      compactLabel.textContent = compactMode ? 'Full activity overview' : 'Compact activity overview';
+      compactBtn.querySelector('i').className = compactMode ? 'fa-solid fa-expand' : 'fa-solid fa-wave-square';
+    });
+  }
+
+  // ── Detail modal helpers ────────────────────────────────────────────────────
+  const overlay    = document.getElementById('bookingDetailOverlay');
+  const closeBtn   = document.getElementById('bookingDetailClose');
+  const detailBody = document.getElementById('bookingDetailBody');
+
+  function openModal() {
+    overlay.style.display = 'flex';
+    document.body.classList.add('auth-modal-open');
+  }
+  function closeModal() {
+    overlay.style.display = 'none';
+    document.body.classList.remove('auth-modal-open');
+  }
+
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (overlay)  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  function statusBadge(status) {
+    const cls = (status || '').toLowerCase().replace(/\s+/g, '-');
+    return `<span class="fw-badge status-${cls}" style="display:inline-flex;">${status || '—'}</span>`;
+  }
+
+  function row(icon, label, value) {
+    if (!value && value !== 0) return '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.6);border:1px solid rgba(255,153,204,0.3);margin-bottom:8px;">
+      <i class="fa-solid ${icon}" style="color:#d94b91;width:18px;text-align:center;"></i>
+      <span style="color:#8f5b74;font-size:0.82rem;min-width:90px;">${label}</span>
+      <span style="font-weight:600;">${value}</span>
+    </div>`;
+  }
+
+  function renderDetail(b) {
+    const price = b.total_price !== undefined ? `₱${parseFloat(b.total_price).toFixed(2)}` : '—';
+    detailBody.innerHTML = `
+      ${row('fa-shirt',          'Service',      b.service_type)}
+      ${row('fa-calendar',       'Date',         b.pickup_date)}
+      ${row('fa-clock',          'Time',         b.pickup_time)}
+      ${row('fa-weight-hanging', 'Weight',       b.weight ? b.weight + ' kg' : null)}
+      ${row('fa-drum',           'Machine',      b.machine)}
+      ${row('fa-peso-sign',      'Total Price',  price)}
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.6);border:1px solid rgba(255,153,204,0.3);margin-bottom:8px;">
+        <i class="fa-solid fa-circle-dot" style="color:#d94b91;width:18px;text-align:center;"></i>
+        <span style="color:#8f5b74;font-size:0.82rem;min-width:90px;">Status</span>
+        ${statusBadge(b.status)}
+      </div>
+      ${row('fa-credit-card',    'Payment',      b.payment_method)}
+      ${row('fa-hashtag',        'Reference',    b.reference_number)}
+      ${row('fa-truck',          'Delivery',     b.delivery_option)}
+      ${row('fa-note-sticky',    'Notes',        b.notes)}
+    `;
+  }
+
+  // ── View button ─────────────────────────────────────────────────────────────
+  document.addEventListener('click', async e => {
+    const btn = e.target.closest('.view-booking-btn');
+    if (!btn) return;
+    const id = btn.dataset.bookingId;
+    detailBody.innerHTML = '<p style="text-align:center;color:#8f5b74;">Loading…</p>';
+    openModal();
+    try {
+      const res  = await fetch(`/bookings/${id}`);
+      const data = await res.json();
+      if (data.ok) {
+        renderDetail(data.booking);
+        if (typeof showToast === 'function') showToast('Booking details loaded');
+      } else {
+        detailBody.innerHTML = `<p style="color:#b42318;">${data.error || 'Unable to load booking details'}</p>`;
+        if (typeof showToast === 'function') showToast('Unable to load booking details', true);
+      }
+    } catch {
+      detailBody.innerHTML = '<p style="color:#b42318;">Network error. Please try again.</p>';
+      if (typeof showToast === 'function') showToast('Unable to load booking details', true);
+    }
+  });
+
+  // ── Cancel button ───────────────────────────────────────────────────────────
+  document.addEventListener('click', async e => {
+    const btn = e.target.closest('.cancel-booking-btn');
+    if (!btn) return;
+    if (!confirm('Are you sure you want to cancel this booking?')) return;
+    const id   = btn.dataset.bookingId;
+    const card = btn.closest('[data-booking-id]');
+    btn.disabled = true;
+    btn.textContent = 'Cancelling…';
+    try {
+      const res  = await fetch(`/bookings/${id}/cancel`, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        if (typeof showToast === 'function') showToast('Booking cancelled successfully');
+        // Update badge and remove cancel button without full reload
+        if (card) {
+          const badge = card.querySelector('.fw-badge');
+          if (badge) { badge.className = 'fw-badge status-cancelled'; badge.textContent = 'Cancelled'; }
+          btn.remove();
+        }
+      } else {
+        if (typeof showToast === 'function') showToast(data.error || 'Unable to cancel booking', true);
+        btn.disabled = false;
+        btn.textContent = 'Cancel';
+      }
+    } catch {
+      if (typeof showToast === 'function') showToast('Unable to cancel booking', true);
+      btn.disabled = false;
+      btn.textContent = 'Cancel';
+    }
+  });
+})();
+</script>
 {% endblock %}

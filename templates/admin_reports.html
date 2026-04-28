@@ -1,0 +1,68 @@
+{% extends 'admin_base.html' %}
+
+{% block content %}
+<!-- REPORTS -->
+      <section class="admin-panel {% if active_page == 'reports' %}is-active{% endif %}" data-panel="reports" aria-label="Reports">
+        <div class="admin-reports-grid">
+          <div id="reportsStatsInline" class="admin-stats-inline"></div>
+
+          <article class="admin-card">
+            <div class="admin-card-head">
+              <div>
+                <small class="admin-kicker">Top Metric</small>
+                <h2>Most Used Service</h2>
+              </div>
+            </div>
+            <div id="mostUsedServiceCard" class="admin-highlight-stat admin-report-empty">
+              <p class="admin-empty">No data available</p>
+            </div>
+          </article>
+
+          <article class="admin-card">
+            <div class="admin-card-head">
+              <div>
+                <small class="admin-kicker">By Day</small>
+                <h2>Bookings Per Day</h2>
+              </div>
+            </div>
+            <div id="bookingsPerDayBars" class="admin-report-bars"></div>
+          </article>
+
+          <article class="admin-card">
+            <div class="admin-card-head">
+              <div>
+                <small class="admin-kicker">Machine Usage</small>
+                <h2>Machine Activity</h2>
+              </div>
+            </div>
+            <div id="machineUsageList" class="admin-usage-list"></div>
+          </article>
+
+          <article class="admin-card">
+            <div class="admin-card-head">
+              <div>
+                <small class="admin-kicker">Payments</small>
+                <h2>Payments</h2>
+              </div>
+              <span class="admin-pill" id="paymentsCountPill">0 payments</span>
+            </div>
+            <div id="paymentsList" class="admin-report-list"></div>
+          </article>
+
+          <article class="admin-card">
+            <div class="admin-card-head">
+              <div>
+                <small class="admin-kicker">Reviews</small>
+                <h2>Reviews</h2>
+              </div>
+              <span class="admin-pill" id="reviewsCountPill">0 reviews</span>
+            </div>
+            <div id="reviewsList" class="admin-report-list"></div>
+          </article>
+        </div>
+      </section>
+
+      
+{% endblock %}
+
+

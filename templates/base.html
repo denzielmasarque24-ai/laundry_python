@@ -298,61 +298,66 @@
 </div>
 {% endif %}
 
-<footer class="fw-premium-footer">
-  <div class="fw-premium-footer__wave" aria-hidden="true"></div>
-  <div class="fw-premium-footer__bubbles" aria-hidden="true">
-    <span class="fw-premium-footer__bubble bubble-one"></span>
-    <span class="fw-premium-footer__bubble bubble-two"></span>
-    <span class="fw-premium-footer__bubble bubble-three"></span>
-  </div>
+<footer class="fwf">
+  <div class="fwf__inner">
 
-  <div class="fw-premium-footer__inner">
-    <section class="fw-premium-footer__brand">
-      <div class="fw-premium-footer__brand-mark">
-        <span class="fw-premium-footer__brand-icon"><i class="fa-solid fa-soap"></i></span>
+    <!-- Brand -->
+    <section class="fwf__col fwf__brand">
+      <div class="fwf__logo">
+        <span class="fwf__logo-icon"><i class="fa-solid fa-soap"></i></span>
         <div>
-          <strong>FreshWash</strong>
-          <p>Clean laundry, fresh life</p>
+          <strong class="fwf__logo-name">FreshWash</strong>
+          <span class="fwf__logo-sub">Clean laundry, fresh life</span>
         </div>
       </div>
-
-      <p class="fw-premium-footer__description">
-        FreshWash makes laundry easy, fast, and hassle-free. Clean clothes, happy life!
-      </p>
+      <p class="fwf__desc">FreshWash makes laundry easy, fast, and hassle-free. We handle the washing so you can focus on what matters most.</p>
     </section>
 
-    <section class="fw-premium-footer__info">
-      <h3>Contact Us</h3>
-      <div class="fw-premium-footer__contact-list">
-        <a href="mailto:hello@freshwash.app">
-          <i class="fa-solid fa-envelope"></i>
-          <span>hello@freshwash.app</span>
-        </a>
-        <a href="tel:+639171234567">
-          <i class="fa-solid fa-phone"></i>
-          <span>+63 917 123 4567</span>
-        </a>
-        <a href="https://maps.google.com/?q=Cebu+City+Philippines" target="_blank" rel="noreferrer">
-          <i class="fa-solid fa-location-dot"></i>
-          <span>Cebu City, Philippines</span>
-        </a>
-      </div>
+    <!-- Contact -->
+    <section class="fwf__col">
+      <h4 class="fwf__heading">Contact Us</h4>
+      <ul class="fwf__contact">
+        <li>
+          <a href="mailto:hello@freshwash.app" class="fwf__contact-link">
+            <span class="fwf__contact-icon"><i class="fa-solid fa-envelope"></i></span>
+            <span>hello@freshwash.app</span>
+          </a>
+        </li>
+        <li>
+          <a href="tel:+639171234567" class="fwf__contact-link">
+            <span class="fwf__contact-icon"><i class="fa-solid fa-phone"></i></span>
+            <span>+63 917 123 4567</span>
+          </a>
+        </li>
+        <li>
+          <a href="https://maps.google.com/?q=Cebu+City+Philippines" target="_blank" rel="noreferrer" class="fwf__contact-link">
+            <span class="fwf__contact-icon"><i class="fa-solid fa-location-dot"></i></span>
+            <span>Cebu City, Philippines</span>
+          </a>
+        </li>
+      </ul>
     </section>
 
-    <nav class="fw-premium-footer__info fw-premium-footer__links" aria-label="Quick links">
-      <h3>Quick Links</h3>
-      <a href="{{ home_href }}">Home</a>
-      <a href="{{ services_href }}" {% if not current_user %}data-auth-link="login"{% endif %}>Services</a>
-      <a href="{{ book_href }}" {% if not current_user %}data-auth-link="register"{% endif %}>Book Now</a>
-      <a href="{{ profile_href }}" {% if not current_user %}data-auth-link="login"{% endif %}>Profile</a>
+    <!-- Quick Links -->
+    <nav class="fwf__col" aria-label="Footer quick links">
+      <h4 class="fwf__heading">Quick Links</h4>
+      <ul class="fwf__links">
+        <li><a href="{{ home_href }}" class="fwf__link">Home</a></li>
+        <li><a href="{{ about_href }}" class="fwf__link">About</a></li>
+        <li><a href="{{ services_href }}" class="fwf__link" {% if not current_user %}data-auth-link="login"{% endif %}>Services</a></li>
+        <li><a href="{{ book_href }}" class="fwf__link" {% if not current_user %}data-auth-link="register"{% endif %}>Book Now</a></li>
+        <li><a href="{{ my_booking_href }}" class="fwf__link" {% if not current_user %}data-auth-link="login"{% endif %}>My Bookings</a></li>
+        <li><a href="{{ profile_href }}" class="fwf__link" {% if not current_user %}data-auth-link="login"{% endif %}>Profile</a></li>
+      </ul>
     </nav>
+
   </div>
 
-  <div class="fw-premium-footer__bottom">
-    <p>&copy; 2026 FreshWash. All rights reserved.</p>
-    <div class="fw-premium-footer__bottom-copy">
-      <span>Fresh. Clean. You.</span>
-    </div>
+  <div class="fwf__divider" aria-hidden="true"></div>
+
+  <div class="fwf__bottom">
+    <p class="fwf__copy">&copy; 2026 FreshWash. All rights reserved.</p>
+    <span class="fwf__tagline">Fresh. Clean. You.</span>
   </div>
 </footer>
 

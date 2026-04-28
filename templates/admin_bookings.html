@@ -1,0 +1,55 @@
+{% extends 'admin_base.html' %}
+
+{% block content %}
+<!-- BOOKINGS -->
+      <section class="admin-panel {% if active_page == 'bookings' %}is-active{% endif %}" data-panel="bookings" aria-label="Bookings">
+        <div class="admin-card">
+          <div class="admin-bookings-head">
+            <div class="admin-bookings-head-copy">
+              <h3>Bookings Overview</h3>
+              <p>Track customer schedules, update statuses, and monitor delivery preferences.</p>
+            </div>
+            <div class="admin-bookings-controls">
+              <span class="admin-pill" id="bookingsCountPill">0 bookings</span>
+              <select id="bookingsStatusFilter" class="admin-inline-select admin-booking-filter">
+                <option value="All">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="In Progress">In Progress</option>
+              </select>
+              <select id="bookingsDeliveryFilter" class="admin-inline-select admin-booking-filter">
+                <option value="All">All Delivery Options</option>
+                <option value="Pickup">Pickup Only</option>
+                <option value="Delivery">Delivery Only</option>
+              </select>
+            </div>
+          </div>
+          <div class="admin-bookings-table-wrap">
+            <table class="admin-table admin-bookings-table">
+              <thead>
+                <tr>
+                  <th class="col-id">ID</th>
+                  <th class="col-user">User</th>
+                  <th class="col-service">Service</th>
+                  <th class="col-machine">Machine</th>
+                  <th class="col-date">Date</th>
+                  <th class="col-time">Time</th>
+                  <th class="col-status">Status</th>
+                  <th class="col-price">Price</th>
+                  <th class="col-load">Load</th>
+                  <th class="col-delivery">Delivery</th>
+                  <th class="col-notes">Notes</th>
+                  <th class="col-action">Save</th>
+                </tr>
+              </thead>
+              <tbody id="bookingsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      
+{% endblock %}
+
+

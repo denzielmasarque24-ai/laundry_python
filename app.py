@@ -4,6 +4,7 @@ from supabase_client import (
     get_service_client,
     is_supabase_enabled,
     is_supabase_service_role_enabled,
+    get_supabase_config_error,
 )
 from dotenv import load_dotenv
 from functools import wraps
@@ -30,7 +31,7 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "freshwash-secret-key-2024")
-ADMIN_AVATAR_BUCKET = os.environ.get("SUPABASE_AVATAR_BUCKET", "avatars")
+ADMIN_AVATAR_BUCKET = "avatars"
 GCASH_ACCOUNT_NAME = os.environ.get("GCASH_ACCOUNT_NAME", "FreshWash Laundry")
 GCASH_NUMBER = os.environ.get("GCASH_NUMBER", "09XX XXX XXXX")
 GCASH_QR_IMAGE = os.environ.get("GCASH_QR_IMAGE", "img/gcash_qr.png")
@@ -178,7 +179,7 @@ ADMIN_SETTINGS_DEFAULTS = {
 DEFAULT_MACHINE_ROWS = [
     {
         "machine_number": number,
-        "label": f"Machine {number}",
+        "name": f"Machine {number}",
         "status": "Available" if number % 3 else "In Use",
         "load_type": "Light" if number in {1, 4, 8} else ("Medium" if number in {2, 5, 7} else "Heavy"),
         "enabled": 1,
@@ -357,7 +358,7 @@ def _init_local_auth_db():
             """
             CREATE TABLE IF NOT EXISTS admin_machines (
                 machine_number INTEGER PRIMARY KEY,
-                label TEXT NOT NULL,
+                name TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'Available',
                 load_type TEXT NOT NULL DEFAULT 'Medium',
                 enabled INTEGER NOT NULL DEFAULT 1,
@@ -366,6 +367,11 @@ def _init_local_auth_db():
             """
         )
         machine_columns = {row[1] for row in conn.execute("PRAGMA table_info(admin_machines)").fetchall()}
+        if "name" not in machine_columns:
+            conn.execute("ALTER TABLE admin_machines ADD COLUMN name TEXT")
+            if "label" in machine_columns:
+                conn.execute("UPDATE admin_machines SET name = COALESCE(name, label, '')")
+            conn.execute("UPDATE admin_machines SET name = COALESCE(NULLIF(name, ''), 'Machine ' || machine_number)")
         if "load_type" not in machine_columns:
             conn.execute("ALTER TABLE admin_machines ADD COLUMN load_type TEXT NOT NULL DEFAULT 'Medium'")
         if "updated_at" not in machine_columns:
@@ -392,10 +398,10 @@ def _init_local_auth_db():
         for machine in DEFAULT_MACHINE_ROWS:
             conn.execute(
                 """
-                INSERT OR IGNORE INTO admin_machines (machine_number, label, status, load_type, enabled)
+                INSERT OR IGNORE INTO admin_machines (machine_number, name, status, load_type, enabled)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (machine["machine_number"], machine["label"], machine["status"], machine["load_type"], machine["enabled"])
+                (machine["machine_number"], machine["name"], machine["status"], machine["load_type"], machine["enabled"])
             )
         for name, data in ADMIN_SERVICE_DEFAULTS.items():
             conn.execute(
@@ -2113,7 +2119,7 @@ def admin_dashboard_machines():
             with local_auth_conn() as conn:
                 rows = conn.execute(
                     """
-                    SELECT machine_number, label, status, load_type, enabled
+                    SELECT machine_number, name, status, load_type, enabled
                     FROM admin_machines
                     ORDER BY machine_number
                     """
@@ -2122,7 +2128,7 @@ def admin_dashboard_machines():
                 return [
                     {
                         "machine_number": row["machine_number"],
-                        "label": row["label"],
+                        "name": row["name"],
                         "status": row["status"],
                         "load_type": row["load_type"],
                         "enabled": row["enabled"],
@@ -2136,7 +2142,7 @@ def admin_dashboard_machines():
     def normalize_machine(row):
         machine_number = row.get("machine_number") or row.get("id")
         machine_id = row.get("id") or machine_number
-        name = row.get("name") or row.get("label") or f"Machine {machine_number}"
+        name = row.get("name") or f"Machine {machine_number}"
         status = row.get("status", "Available")
         if status not in VALID_MACHINE_STATUSES:
             status = "Available"
@@ -2175,12 +2181,12 @@ def admin_dashboard_machines():
                         client.table("machines").upsert(
                             [
                                 {
+                                    "id": row.get("id") or row.get("machine_number"),
                                     "machine_number": row.get("machine_number"),
-                                    "label": row.get("label") or row.get("name") or f"Machine {row.get('machine_number')}",
+                                    "name": row.get("name") or f"Machine {row.get('machine_number')}",
                                     "status": row.get("status", "Available"),
                                     "load_type": row.get("load_type", "Medium"),
                                     "enabled": bool(row.get("enabled", True)) and row.get("status", "Available") != "Disabled",
-                                    "updated_at": datetime.now(timezone.utc).isoformat(),
                                 }
                                 for row in seed_rows
                             ],
@@ -2202,7 +2208,7 @@ def admin_dashboard_machines():
         with local_auth_conn() as conn:
             rows = conn.execute(
                 """
-                SELECT machine_number, label, status, load_type, enabled
+                SELECT machine_number, name, status, load_type, enabled
                 FROM admin_machines
                 ORDER BY machine_number
                 """
@@ -2211,7 +2217,7 @@ def admin_dashboard_machines():
             normalize_machine(
                 {
                     "machine_number": row["machine_number"],
-                    "label": row["label"],
+                    "name": row["name"],
                     "status": row["status"],
                     "load_type": row["load_type"],
                     "enabled": row["enabled"],
@@ -2306,13 +2312,13 @@ def update_machine(machine_number, name=None, status=None, enabled=None, load_ty
         (row for row in DEFAULT_MACHINE_ROWS if row["machine_number"] == machine_number),
         {
             "machine_number": machine_number,
-            "label": f"Machine {machine_number}",
+            "name": f"Machine {machine_number}",
             "status": "Available",
             "load_type": "Medium",
             "enabled": 1,
         },
     )
-    machine_name = (name if name is not None else (current_machine or {}).get("name", base_machine["label"])).strip()
+    machine_name = (name if name is not None else (current_machine or {}).get("name", base_machine["name"])).strip()
     machine_status = status if status is not None else (current_machine or {}).get("status", base_machine["status"])
     if machine_status not in VALID_MACHINE_STATUSES:
         raise ValueError("Invalid machine status.")
@@ -2323,12 +2329,12 @@ def update_machine(machine_number, name=None, status=None, enabled=None, load_ty
     client = admin_db_client()
     if client:
         payload = {
+            "id": (current_machine or {}).get("id") or machine_number,
             "machine_number": machine_number,
-            "label": machine_name,
+            "name": machine_name,
             "status": machine_status,
             "load_type": machine_load_type,
             "enabled": machine_enabled,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
         try:
             client.table("machines").upsert(payload, on_conflict="machine_number").execute()
@@ -2338,7 +2344,7 @@ def update_machine(machine_number, name=None, status=None, enabled=None, load_ty
     fields = []
     values = []
     if name is not None:
-        fields.append("label = ?")
+        fields.append("name = ?")
         values.append(machine_name)
     if status is not None:
         fields.append("status = ?")
@@ -2361,7 +2367,7 @@ def update_machine(machine_number, name=None, status=None, enabled=None, load_ty
         else:
             conn.execute(
                 """
-                INSERT INTO admin_machines (machine_number, label, status, load_type, enabled)
+                INSERT INTO admin_machines (machine_number, name, status, load_type, enabled)
                 VALUES (?, ?, ?, ?, ?)
                 """,
                 (machine_number, machine_name, machine_status, machine_load_type, 1 if machine_enabled else 0),
@@ -2470,6 +2476,7 @@ def get_admin_settings():
             "name": session.get("user", {}).get("name", ""),
             "email": session.get("user", {}).get("email", ""),
             "phone": session.get("user", {}).get("phone", ""),
+            "address": session.get("user", {}).get("address", ""),
             "avatar": session.get("user", {}).get("avatar", ""),
         },
         "system": {
@@ -2518,9 +2525,11 @@ def save_admin_settings(updates):
             )
 
 
-def update_admin_profile_settings(user_id, name, email, phone="", password=""):
+def update_admin_profile_settings(user_id, name, email, phone="", password="", address="", avatar=""):
     normalized_email = normalize_email(email)
     phone = (phone or "").strip()
+    address = (address or "").strip()
+    avatar = (avatar or "").strip()
     if local_auth_enabled():
         users = load_local_users()
         for user in users:
@@ -2531,13 +2540,18 @@ def update_admin_profile_settings(user_id, name, email, phone="", password=""):
                 user["full_name"] = name
                 user["email"] = normalized_email
                 user["phone"] = phone
+                user["address"] = address
+                if avatar:
+                    user["avatar"] = avatar
                 if password:
                     user["password_hash"] = generate_password_hash(password)
                 break
         save_local_users(users)
         return
 
-    profile_update = {"full_name": name, "email": normalized_email, "phone": phone}
+    profile_update = {"full_name": name, "email": normalized_email, "phone": phone, "address": address}
+    if avatar:
+        profile_update["avatar"] = avatar
     try:
         if is_supabase_service_role_enabled():
             client = get_service_client()
@@ -2553,8 +2567,8 @@ def update_admin_profile_settings(user_id, name, email, phone="", password=""):
                 "user_metadata": {
                     "full_name": name,
                     "phone": phone,
-                    "address": session["user"].get("address", ""),
-                    "avatar": session["user"].get("avatar", ""),
+                    "address": address,
+                    "avatar": avatar or session["user"].get("avatar", ""),
                     "role": session["user"].get("role", "admin"),
                 }
             }
@@ -2584,6 +2598,11 @@ def upload_admin_avatar_to_storage(user_id, image_bytes, content_type):
     if extension not in {"jpg", "png", "gif", "webp"}:
         extension = "jpg"
 
+    if ADMIN_AVATAR_BUCKET != "avatars":
+        raise ValueError(
+            f"Invalid storage bucket configuration: expected 'avatars' but got '{ADMIN_AVATAR_BUCKET}'."
+        )
+
     storage_path = f"{user_id}/admin-profile-{uuid.uuid4().hex}.{extension}"
     try:
         client = get_service_client()
@@ -2593,6 +2612,14 @@ def upload_admin_avatar_to_storage(user_id, image_bytes, content_type):
             {"content-type": content_type or "image/jpeg"},
         )
     except Exception as exc:
+        message = str(exc)
+        if "bucket not found" in message.lower() or "not found" in message.lower():
+            raise ValueError("Create a public bucket named 'avatars' in Supabase Storage.")
+        if "row-level security" in message.lower() or "policy" in message.lower():
+            raise ValueError(
+                f"Upload failed for storage bucket '{ADMIN_AVATAR_BUCKET}' because storage policies blocked access: {exc}. "
+                "Add Storage policies for authenticated users on storage.objects: SELECT, INSERT, and UPDATE for bucket_id = 'avatars'."
+            )
         raise ValueError(f"Upload failed for storage bucket '{ADMIN_AVATAR_BUCKET}': {exc}")
 
     try:
@@ -2805,11 +2832,12 @@ def render_admin_dashboard_view(section="dashboard"):
         log_exception("render_admin_dashboard_view.payload", exc)
         admin_data = empty_admin_dashboard_payload()
 
+    template_name = f"admin_{safe_section}.html"
     return render_template(
-        "admin_dashboard.html",
+        template_name,
         user=safe_user,
         admin_data=admin_data,
-        initial_section=safe_section,
+        active_page=safe_section,
     )
 
 
@@ -3097,6 +3125,12 @@ def login():
         email    = normalize_email(request.form.get("email", ""))
         password = request.form.get("password", "").strip()
         form_data = {"email": email}
+        log_auth_debug(
+            "login started",
+            email=email,
+            login_otp_enabled=ENABLE_LOGIN_OTP,
+            flow="password_only" if not ENABLE_LOGIN_OTP else "password_plus_otp",
+        )
 
         errors = validate_login_form(email, password)
         if errors:
@@ -3127,6 +3161,7 @@ def login():
                         has_user=bool(login_user),
                         has_session=bool(login_session),
                     )
+                    log_auth_debug("supabase login success", email=email)
 
                     if not auth_user or not auth_session:
                         flash("Invalid email or password.", "error")
@@ -3187,6 +3222,7 @@ def login():
                     )
                 except Exception as auth_error:
                     log_exception("supabase login failed", auth_error, email=email)
+                    log_auth_debug("supabase login failure", email=email, error=extract_supabase_error_message(auth_error))
                     message = str(auth_error)
                     lowered = message.lower()
                     if any(phrase in lowered for phrase in (
@@ -3230,15 +3266,20 @@ def login():
 
             account_security = get_account_security_state(user.get("email", email))
             if account_security and not account_security.get("is_verified", True):
-                try:
-                    issue_otp_challenge(user.get("email", email), "signup", trigger_send=True)
-                except Exception as resend_error:
-                    log_exception("login verification resend failed", resend_error, email=user.get("email", email))
-                    lowered = str(resend_error).lower()
-                    if "email rate limit exceeded" in lowered:
-                        flash("Please wait before requesting another code.", "error")
-                    elif "resend code in" in lowered:
-                        flash(str(resend_error), "error")
+                if ENABLE_LOGIN_OTP:
+                    try:
+                        issue_otp_challenge(user.get("email", email), "signup", trigger_send=True)
+                    except Exception as resend_error:
+                        log_exception("login verification resend failed", resend_error, email=user.get("email", email))
+                        lowered = str(resend_error).lower()
+                        if "email rate limit exceeded" in lowered:
+                            flash("Please wait before requesting another code.", "error")
+                        elif "resend code in" in lowered:
+                            flash(str(resend_error), "error")
+                else:
+                    # LOGIN OTP disabled: do not send SMTP/OTP from login flow.
+                    log_auth_debug("Skipping login OTP", email=user.get("email", email), login_otp_enabled=ENABLE_LOGIN_OTP)
+                    set_pending_otp_challenge(user.get("email", email), "signup")
                 flash("Please verify your email before logging in.", "error")
                 return redirect_to_auth_modal("verify", otp_modal_form_data())
 
@@ -3797,6 +3838,7 @@ def dashboard():
 
 
 @app.route("/admin")
+@app.route("/admin/dashboard")
 @app.route("/admin-dashboard")
 @app.route("/admin_dashboard")
 @admin_required
@@ -3804,6 +3846,7 @@ def admin_dashboard():
     return render_admin_dashboard_view("dashboard")
 
 
+@app.route("/admin/users")
 @app.route("/admin-users")
 @app.route("/admin_users")
 @admin_required
@@ -3811,6 +3854,7 @@ def admin_users():
     return render_admin_dashboard_view("users")
 
 
+@app.route("/admin/bookings")
 @app.route("/admin-bookings")
 @app.route("/admin_bookings")
 @admin_required
@@ -3818,6 +3862,7 @@ def admin_bookings():
     return render_admin_dashboard_view("bookings")
 
 
+@app.route("/admin/machines")
 @app.route("/admin-machines")
 @app.route("/admin_machines")
 @admin_required
@@ -3825,6 +3870,7 @@ def admin_machines():
     return render_admin_dashboard_view("machines")
 
 
+@app.route("/admin/services")
 @app.route("/admin-services")
 @app.route("/admin_services")
 @admin_required
@@ -3832,6 +3878,7 @@ def admin_services():
     return render_admin_dashboard_view("services")
 
 
+@app.route("/admin/reports")
 @app.route("/admin-reports")
 @app.route("/admin_reports")
 @admin_required
@@ -3839,6 +3886,7 @@ def admin_reports():
     return render_admin_dashboard_view("reports")
 
 
+@app.route("/admin/settings")
 @app.route("/admin-settings")
 @app.route("/admin_settings")
 @admin_required
@@ -4083,6 +4131,7 @@ def admin_settings_action():
             name = data.get("name", "").strip()
             email = normalize_email(data.get("email", ""))
             phone = data.get("phone", "").strip()
+            address = data.get("address", session.get("user", {}).get("address", "")).strip()
             password = data.get("password", "").strip()
             if not name:
                 return jsonify({"ok": False, "error": "Admin name is required."}), 400
@@ -4090,10 +4139,19 @@ def admin_settings_action():
                 return jsonify({"ok": False, "error": "Enter a valid admin email."}), 400
             if password and len(password) < 6:
                 return jsonify({"ok": False, "error": "Password must be at least 6 characters."}), 400
-            update_admin_profile_settings(session["user"]["id"], name, email, phone, password)
+            update_admin_profile_settings(
+                session["user"]["id"],
+                name,
+                email,
+                phone,
+                password,
+                address=address,
+                avatar=session["user"].get("avatar", ""),
+            )
             session["user"]["name"] = name
             session["user"]["email"] = email
             session["user"]["phone"] = phone
+            session["user"]["address"] = address
             persist_session_user(session["user"])
         elif action == "system":
             shop_name = data.get("shop_name", "").strip()
@@ -4151,6 +4209,75 @@ def admin_test_otp_email():
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 
+@app.route("/api/update-profile", methods=["POST"])
+@admin_required
+def api_update_profile():
+    active_user = session.get("user") or {}
+    user_id = active_user.get("id", "")
+    if not user_id:
+        return jsonify({"success": False, "error": "Missing session. Please log in again."}), 401
+
+    name = (request.form.get("name", "") or "").strip()
+    email = normalize_email(request.form.get("email", "") or "")
+    phone = (request.form.get("phone", "") or "").strip()
+    address = (request.form.get("address", "") or "").strip()
+    uploaded = request.files.get("avatar")
+    print(
+        "DEBUG /api/update-profile request:",
+        {
+            "user_id": user_id,
+            "name": name,
+            "email": email,
+            "phone": phone,
+            "address": address,
+            "has_avatar_file": bool(uploaded and uploaded.filename),
+        },
+    )
+
+    if not all([name, email, phone, address]):
+        return jsonify({"success": False, "error": "Name, email, phone, and address are required."}), 400
+    if not is_valid_email(email):
+        return jsonify({"success": False, "error": "Enter a valid email address."}), 400
+
+    avatar_url = active_user.get("avatar", "") or ""
+    if uploaded and uploaded.filename:
+        if not (uploaded.mimetype or "").startswith("image/"):
+            return jsonify({"success": False, "error": "Only image uploads are allowed."}), 400
+        image_bytes = uploaded.read()
+        if not image_bytes:
+            return jsonify({"success": False, "error": "The selected image is empty."}), 400
+        if len(image_bytes) > 2 * 1024 * 1024:
+            return jsonify({"success": False, "error": "Profile photo must be 2MB or smaller."}), 400
+        try:
+            avatar_url = upload_admin_avatar_to_storage(user_id, image_bytes, uploaded.mimetype)
+        except ValueError as exc:
+            log_exception("api update-profile avatar upload failed", exc, user=active_user.get("email", ""))
+            return jsonify({"success": False, "error": str(exc)}), 500
+
+    try:
+        update_admin_profile_settings(
+            user_id,
+            name,
+            email,
+            phone,
+            password="",
+            address=address,
+            avatar=avatar_url,
+        )
+        session["user"]["name"] = name
+        session["user"]["email"] = email
+        session["user"]["phone"] = phone
+        session["user"]["address"] = address
+        session["user"]["avatar"] = avatar_url
+        persist_session_user(session["user"])
+        payload = build_admin_dashboard_payload()
+        print("DEBUG /api/update-profile Supabase/profile update success for:", email)
+        return jsonify({"success": True, "message": "Profile updated successfully", "avatar": avatar_url, "data": payload})
+    except Exception as exc:
+        log_exception("api update-profile failed", exc, user=active_user.get("email", ""))
+        return jsonify({"success": False, "error": f"Profile update failed: {exc}"}), 500
+
+
 @app.route("/test-email", methods=["GET", "POST"])
 @admin_required
 def test_email():
@@ -4178,7 +4305,15 @@ def admin_profile_photo_upload():
     if not user_id:
         return jsonify({"ok": False, "error": "Missing session. Please log in again."}), 401
     if not is_supabase_enabled():
-        return jsonify({"ok": False, "error": "Supabase is not configured for profile photo uploads."}), 500
+        return jsonify(
+            {
+                "ok": False,
+                "error": (
+                    "Supabase is not configured for profile photo uploads. "
+                    f"Check SUPABASE_URL and keys. Details: {get_supabase_config_error()}"
+                ),
+            }
+        ), 500
     if not is_supabase_service_role_enabled():
         return jsonify({"ok": False, "error": "SUPABASE_SERVICE_ROLE_KEY is required to upload admin profile photos."}), 500
 
@@ -4369,6 +4504,51 @@ def my_bookings():
         flash(f"Could not load bookings: {str(exc)}", "error")
         bookings = []
     return render_template("my_bookings.html", bookings=bookings or [], user=user)
+
+
+@app.route("/bookings/<booking_id>")
+@login_required
+def booking_detail(booking_id):
+    user = session["user"]
+    client = db()
+    if not client:
+        return jsonify({"ok": False, "error": "Database unavailable."}), 503
+    try:
+        res = client.table("bookings").select("*").eq("id", booking_id).eq("user_id", user["id"]).limit(1).execute()
+        rows = res.data or []
+        if not rows:
+            return jsonify({"ok": False, "error": "Booking not found."}), 404
+        b = rows[0]
+        price = SERVICES.get(b.get("service_type", ""), {}).get("price", 0)
+        b["total_price"] = round(price * float(b.get("weight", 0) or 0), 2)
+        return jsonify({"ok": True, "booking": b})
+    except Exception as exc:
+        log_exception("booking detail fetch failed", exc, booking_id=booking_id)
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@app.route("/bookings/<booking_id>/cancel", methods=["POST"])
+@login_required
+def booking_cancel(booking_id):
+    user = session["user"]
+    client = db()
+    if not client:
+        return jsonify({"ok": False, "error": "Database unavailable."}), 503
+    try:
+        res = client.table("bookings").select("id,status,user_id").eq("id", booking_id).eq("user_id", user["id"]).limit(1).execute()
+        rows = res.data or []
+        if not rows:
+            return jsonify({"ok": False, "error": "Booking not found."}), 404
+        current_status = rows[0].get("status", "")
+        if current_status == "Cancelled":
+            return jsonify({"ok": False, "error": "Booking is already cancelled."}), 400
+        if current_status == "Completed":
+            return jsonify({"ok": False, "error": "Completed bookings cannot be cancelled."}), 400
+        client.table("bookings").update({"status": "Cancelled"}).eq("id", booking_id).eq("user_id", user["id"]).execute()
+        return jsonify({"ok": True, "message": "Booking cancelled successfully."})
+    except Exception as exc:
+        log_exception("booking cancel failed", exc, booking_id=booking_id)
+        return jsonify({"ok": False, "error": str(exc)}), 500
 
 
 @app.route("/")

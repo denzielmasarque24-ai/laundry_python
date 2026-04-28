@@ -1,0 +1,17 @@
+{% extends 'admin_base.html' %}
+
+{% block content %}
+<!-- MACHINES -->
+      <section class="admin-panel {% if active_page == 'machines' %}is-active{% endif %}" data-panel="machines" aria-label="Machines">
+        <div class="admin-panel-tools">
+          <span class="admin-pill" id="machinesCountPill">0 machines</span>
+        </div>
+        <div class="admin-card">
+          <div id="machinesGrid" class="admin-machine-grid admin-machine-grid-panel"></div>
+        </div>
+      </section>
+
+      
+{% endblock %}
+
+

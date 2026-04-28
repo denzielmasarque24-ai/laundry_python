@@ -10727,3 +10727,631 @@ body.otp-modal-open {
     gap: 7px;
   }
 }
+
+/* ── OTP Modal Glassmorphism Redesign ─────────────────────────────────────── */
+
+.fw-otp-overlay {
+  background: rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(6px) !important;
+}
+
+.fw-otp-card {
+  width: min(480px, 92vw) !important;
+  border-radius: 30px !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(255, 182, 193, 0.25)) !important;
+  backdrop-filter: blur(20px) !important;
+  box-shadow: 0 20px 50px rgba(255, 105, 180, 0.25) !important;
+}
+
+.fw-otp-card .auth-brand-icon {
+  background: linear-gradient(135deg, #ff9dc8, #e65095) !important;
+  box-shadow: 0 14px 30px rgba(230, 80, 149, 0.25) !important;
+}
+
+.fw-otp-card h2 {
+  color: #4b1f2b !important;
+}
+
+.fw-otp-card .auth-form-copy {
+  color: #4b1f2b !important;
+  opacity: 0.78;
+}
+
+.fw-otp-card .auth-form-copy strong {
+  color: #b83280 !important;
+}
+
+.fw-otp-close {
+  background: rgba(255, 77, 166, 0.1) !important;
+  color: #d94b91 !important;
+}
+
+.fw-otp-close:hover {
+  background: rgba(255, 77, 166, 0.2) !important;
+}
+
+.fw-otp-digit {
+  border: 2px solid #ff99cc !important;
+  border-radius: 14px !important;
+  color: #4b1f2b !important;
+}
+
+.fw-otp-digit:focus {
+  border-color: #ff4da6 !important;
+  box-shadow: 0 0 10px rgba(255, 77, 166, 0.3) !important;
+}
+
+.fw-otp-card .btn-primary {
+  background: linear-gradient(135deg, #ff4da6, #ff66b2) !important;
+  box-shadow: 0 14px 28px rgba(255, 77, 166, 0.28) !important;
+}
+
+.fw-otp-card .btn-ghost {
+  background: rgba(255, 240, 247, 0.72) !important;
+  border-color: rgba(255, 153, 204, 0.4) !important;
+  color: #b83280 !important;
+}
+
+.fw-otp-card .btn-ghost:hover {
+  background: rgba(255, 220, 238, 0.88) !important;
+}
+
+.fw-otp-card .auth-foot {
+  color: #4b1f2b;
+  opacity: 0.72;
+}
+
+.fw-otp-hint {
+  color: #8f5b74 !important;
+}
+
+/* ── End OTP Modal Overrides ──────────────────────────────────────────────── */
+
+/* ── FreshWash Footer Redesign (fwf) ─────────────────────────────────────── */
+
+.fwf {
+  position: relative;
+  z-index: 1;
+  margin-top: 2.5rem;
+  background: linear-gradient(135deg, #ffe4ec, #ffd1dc);
+  border-top: 1px solid rgba(235, 77, 152, 0.14);
+}
+
+.fwf__inner {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.9fr;
+  gap: 2.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 24px 36px;
+}
+
+/* Brand column */
+.fwf__logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.fwf__logo-icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #fff;
+  font-size: 1.1rem;
+  background: linear-gradient(135deg, #ff7fb9, #eb4d98);
+  box-shadow: 0 10px 22px rgba(235, 77, 152, 0.28);
+}
+
+.fwf__logo-name {
+  display: block;
+  font-family: "Poppins", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #4a1730;
+  line-height: 1.15;
+}
+
+.fwf__logo-sub {
+  display: block;
+  font-size: 0.76rem;
+  color: #9b5c74;
+  margin-top: 2px;
+}
+
+.fwf__desc {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #7a4b5f;
+  line-height: 1.7;
+  max-width: 300px;
+}
+
+/* Section headings */
+.fwf__heading {
+  margin: 0 0 18px;
+  font-family: "Poppins", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #4a1730;
+  letter-spacing: 0.02em;
+}
+
+/* Contact list */
+.fwf__contact {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.fwf__contact-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #7a4b5f;
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: color 0.22s ease, transform 0.22s ease;
+}
+
+.fwf__contact-link:hover {
+  color: #eb4d98;
+  transform: translateX(3px);
+}
+
+.fwf__contact-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.62);
+  color: #d84d92;
+  font-size: 0.8rem;
+  transition: background 0.22s ease, color 0.22s ease;
+}
+
+.fwf__contact-link:hover .fwf__contact-icon {
+  background: rgba(255, 255, 255, 0.9);
+  color: #eb4d98;
+}
+
+/* Quick links */
+.fwf__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.fwf__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #7a4b5f;
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.22s ease, transform 0.22s ease;
+}
+
+.fwf__link::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(235, 77, 152, 0.35);
+  flex-shrink: 0;
+  transition: background 0.22s ease, transform 0.22s ease;
+}
+
+.fwf__link:hover {
+  color: #eb4d98;
+  transform: translateX(4px);
+}
+
+.fwf__link:hover::before {
+  background: #eb4d98;
+  transform: scale(1.4);
+}
+
+/* Divider */
+.fwf__divider {
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(235, 77, 152, 0.25), transparent);
+}
+
+/* Bottom bar */
+.fwf__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 24px 20px;
+  flex-wrap: wrap;
+}
+
+.fwf__copy {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #9b5c74;
+}
+
+.fwf__tagline {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #d84d92;
+  letter-spacing: 0.04em;
+}
+
+/* Responsive */
+@media (max-width: 860px) {
+  .fwf__inner {
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    padding: 40px 20px 28px;
+  }
+
+  .fwf__brand {
+    grid-column: 1 / -1;
+  }
+
+  .fwf__desc {
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .fwf__inner {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+    padding: 32px 18px 24px;
+    text-align: center;
+  }
+
+  .fwf__logo {
+    justify-content: center;
+  }
+
+  .fwf__desc {
+    margin: 0 auto;
+  }
+
+  .fwf__contact-link {
+    justify-content: center;
+  }
+
+  .fwf__link {
+    justify-content: center;
+  }
+
+  .fwf__link::before {
+    display: none;
+  }
+
+  .fwf__bottom {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 18px 18px;
+    text-align: center;
+  }
+}
+
+/* ── End Footer Redesign ──────────────────────────────────────────────────── */
+
+/* ── Footer Compact Overrides ────────────────────────────────────────────── */
+
+.fwf {
+  margin-top: 1.5rem;
+}
+
+.fwf__inner {
+  gap: 1.5rem;
+  padding: 24px 20px 14px;
+}
+
+.fwf__logo {
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.fwf__logo-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+}
+
+.fwf__logo-name {
+  font-size: 0.98rem;
+}
+
+.fwf__logo-sub {
+  font-size: 0.72rem;
+}
+
+.fwf__desc {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  max-width: 260px;
+}
+
+.fwf__heading {
+  font-size: 0.88rem;
+  margin-bottom: 10px;
+}
+
+.fwf__contact {
+  gap: 8px;
+}
+
+.fwf__contact-link {
+  font-size: 0.82rem;
+  gap: 8px;
+}
+
+.fwf__contact-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+}
+
+.fwf__links {
+  gap: 7px;
+}
+
+.fwf__link {
+  font-size: 0.82rem;
+}
+
+.fwf__divider {
+  margin: 16px auto 10px;
+}
+
+.fwf__bottom {
+  padding: 8px 20px 14px;
+}
+
+.fwf__copy,
+.fwf__tagline {
+  font-size: 0.75rem;
+}
+
+@media (max-width: 860px) {
+  .fwf__inner {
+    gap: 1.25rem;
+    padding: 20px 16px 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  .fwf__inner {
+    gap: 1.1rem;
+    padding: 20px 16px 12px;
+  }
+
+  .fwf__bottom {
+    padding: 8px 16px 12px;
+  }
+}
+
+/* ── End Footer Compact Overrides ────────────────────────────────────────── */
+
+/* ── Footer Quick Links 2-column grid ───────────────────────────────────── */
+
+.fwf__links {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+
+.fwf__link {
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .fwf__links {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── End Quick Links 2-column grid ──────────────────────────────────────── */
+
+/* ── Admin Sidebar Compact Overrides ─────────────────────────────────────── */
+
+.admin-sidebar {
+  padding: 20px 16px !important;
+  gap: 18px !important;
+}
+
+/* Brand / logo area */
+.admin-brand {
+  gap: 10px !important;
+}
+
+.admin-brand-icon {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 12px !important;
+  font-size: 1rem !important;
+  flex-shrink: 0;
+}
+
+.admin-brand strong {
+  font-size: 0.95rem !important;
+  line-height: 1.2 !important;
+}
+
+.admin-brand small {
+  font-size: 0.72rem !important;
+  line-height: 1.3 !important;
+}
+
+/* Nav list gap */
+.admin-nav {
+  gap: 6px !important;
+}
+
+/* Nav items */
+.admin-nav-link {
+  padding: 10px 12px !important;
+  gap: 10px !important;
+  border-radius: 14px !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  min-height: 0 !important;
+}
+
+/* Nav icon box */
+.admin-nav-link i {
+  width: 32px !important;
+  height: 32px !important;
+  flex: 0 0 32px !important;
+  border-radius: 10px !important;
+  font-size: 0.9rem !important;
+}
+
+/* ── End Admin Sidebar Compact Overrides ─────────────────────────────────── */
+
+/* ── Reports Dashboard Compact Overrides ─────────────────────────────────── */
+
+/* Scoped to the reports panel only */
+.admin-panel[data-panel="reports"] {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+/* Reports grid: tighter gap */
+.admin-reports-grid {
+  gap: 16px !important;
+}
+
+/* All cards inside reports: tighter padding + smaller radius */
+.admin-panel[data-panel="reports"] .admin-card {
+  padding: 18px 20px !important;
+  border-radius: 20px !important;
+}
+
+/* Card head: less bottom margin */
+.admin-panel[data-panel="reports"] .admin-card-head {
+  margin-bottom: 12px !important;
+}
+
+/* Metric stat cards (Pending / Completed / Revenue) */
+.admin-stats-inline {
+  gap: 10px !important;
+}
+
+.admin-inline-stat {
+  padding: 14px 12px !important;
+  border-radius: 16px !important;
+}
+
+.admin-inline-stat strong {
+  font-size: 1.5rem !important;
+  margin-bottom: 2px;
+}
+
+.admin-inline-stat span {
+  font-size: 0.8rem !important;
+}
+
+/* Most Used Service — "Premium Wash" headline */
+.admin-highlight-stat {
+  min-height: 120px !important;
+  padding: 8px 0 !important;
+  gap: 6px !important;
+}
+
+.admin-highlight-stat strong {
+  font-size: clamp(1.5rem, 2.8vw, 2rem) !important;
+}
+
+.admin-highlight-stat p,
+.admin-highlight-stat small,
+.admin-highlight-stat span {
+  font-size: 0.82rem !important;
+  line-height: 1.5 !important;
+}
+
+/* Bookings Per Day bars */
+.admin-report-bars {
+  margin-top: 4px !important;
+}
+
+.admin-bar-row {
+  grid-template-columns: 100px 1fr 36px !important;
+  gap: 8px !important;
+}
+
+.admin-bar-row span {
+  font-size: 0.8rem !important;
+}
+
+.admin-bar-track {
+  height: 8px !important;
+}
+
+/* Machine Activity rows */
+.admin-usage-list {
+  gap: 8px !important;
+}
+
+.admin-usage-item {
+  padding: 10px 14px !important;
+  border-radius: 14px !important;
+  min-height: 0 !important;
+}
+
+.admin-usage-item span,
+.admin-usage-item p,
+.admin-usage-item small {
+  font-size: 0.82rem !important;
+}
+
+/* Report list items (Payments / Reviews) */
+.admin-report-list {
+  gap: 8px !important;
+}
+
+.admin-report-item {
+  padding: 10px 14px !important;
+  border-radius: 14px !important;
+  gap: 4px !important;
+}
+
+.admin-report-item strong,
+.admin-report-item span,
+.admin-report-item small,
+.admin-report-item p {
+  font-size: 0.82rem !important;
+}
+
+/* Kicker labels inside reports */
+.admin-panel[data-panel="reports"] .admin-kicker {
+  font-size: 0.7rem !important;
+}
+
+.admin-panel[data-panel="reports"] .admin-card h2 {
+  font-size: 1rem !important;
+  margin: 2px 0 0 !important;
+}
+
+/* ── End Reports Dashboard Compact Overrides ─────────────────────────────── */
