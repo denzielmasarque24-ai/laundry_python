@@ -115,166 +115,6 @@
     color: #fff;
     box-shadow: 0 12px 24px rgba(255, 77, 166, 0.22);
   }
-
-  .chat-booking-btn {
-    border: 1px solid rgba(235, 77, 152, 0.38);
-    background: rgba(255, 245, 250, 0.9);
-    color: #c23f84;
-  }
-
-  .chat-booking-btn:hover {
-    background: rgba(255, 236, 246, 0.98);
-    border-color: rgba(235, 77, 152, 0.56);
-  }
-
-  .booking-chat-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 220;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    background: rgba(38, 12, 28, 0.4);
-    backdrop-filter: blur(8px);
-  }
-
-  .booking-chat-overlay.is-open {
-    display: flex;
-  }
-
-  .booking-chat-card {
-    width: min(620px, 96vw);
-    max-height: calc(100vh - 40px);
-    display: grid;
-    grid-template-rows: auto minmax(260px, 1fr) auto;
-    border-radius: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.52);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 231, 243, 0.9));
-    box-shadow: 0 24px 54px rgba(214, 60, 136, 0.24);
-    overflow: hidden;
-  }
-
-  .booking-chat-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 16px 18px;
-    border-bottom: 1px solid rgba(255, 172, 214, 0.4);
-    background: rgba(255, 244, 250, 0.78);
-  }
-
-  .booking-chat-head h3 {
-    margin: 0;
-    color: #4b1f2f;
-    font-size: 1.02rem;
-  }
-
-  .booking-chat-sub {
-    margin: 2px 0 0;
-    color: #8c5e78;
-    font-size: 0.8rem;
-  }
-
-  .booking-chat-close {
-    width: 38px;
-    height: 38px;
-    border: 0;
-    border-radius: 50%;
-    background: rgba(255, 87, 167, 0.12);
-    color: #d14590;
-    cursor: pointer;
-  }
-
-  .booking-chat-messages {
-    padding: 14px 16px;
-    overflow-y: auto;
-    display: grid;
-    gap: 10px;
-    align-content: start;
-  }
-
-  .chat-msg-row {
-    display: flex;
-  }
-
-  .chat-msg-row.user {
-    justify-content: flex-end;
-  }
-
-  .chat-msg-row.admin {
-    justify-content: flex-start;
-  }
-
-  .chat-msg-bubble {
-    max-width: min(82%, 460px);
-    padding: 10px 12px;
-    border-radius: 14px;
-    font-size: 0.88rem;
-    line-height: 1.45;
-    box-shadow: 0 8px 18px rgba(210, 71, 143, 0.12);
-  }
-
-  .chat-msg-row.user .chat-msg-bubble {
-    background: linear-gradient(135deg, #ff4da6, #ff7ac3);
-    color: #fff;
-    border-bottom-right-radius: 6px;
-  }
-
-  .chat-msg-row.admin .chat-msg-bubble {
-    background: rgba(255, 255, 255, 0.92);
-    color: #4b1f2f;
-    border: 1px solid rgba(255, 168, 210, 0.32);
-    border-bottom-left-radius: 6px;
-  }
-
-  .chat-msg-time {
-    margin-top: 4px;
-    font-size: 0.72rem;
-    opacity: 0.8;
-  }
-
-  .booking-chat-compose {
-    padding: 12px 14px;
-    border-top: 1px solid rgba(255, 172, 214, 0.4);
-    background: rgba(255, 246, 251, 0.86);
-  }
-
-  .booking-chat-form {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-  }
-
-  .booking-chat-input {
-    width: 100%;
-    min-height: 42px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 160, 205, 0.45);
-    background: #fff;
-    color: #4b1f2f;
-    resize: none;
-  }
-
-  .booking-chat-send {
-    min-height: 42px;
-    padding: 0 16px;
-    border: 0;
-    border-radius: 12px;
-    color: #fff;
-    font-weight: 700;
-    background: linear-gradient(135deg, #ff4da6, #ff7ac3);
-    cursor: pointer;
-  }
-
-  .booking-chat-empty {
-    text-align: center;
-    color: #9a6f86;
-    font-size: 0.85rem;
-    padding: 22px 8px;
-  }
 </style>
 {% endblock %}
 {% block content %}
@@ -372,7 +212,6 @@
           {% endif %}
           <div class="my-booking-actions-row">
             <button type="button" class="btn-ghost btn-small view-booking-btn" data-booking-id="{{ b.id }}">View</button>
-            <button type="button" class="btn-small chat-booking-btn chat-booking-btn-trigger" data-booking-id="{{ b.id }}">💬 Chat</button>
             {% if b.status == 'Pending' %}
             <button type="button" class="btn-primary btn-small cancel-booking-btn" data-booking-id="{{ b.id }}">Cancel</button>
             {% endif %}
@@ -435,57 +274,36 @@
   </div>
 </div>
 
-<div id="bookingChatOverlay" class="booking-chat-overlay" aria-hidden="true">
-  <div class="booking-chat-card" role="dialog" aria-modal="true" aria-labelledby="bookingChatTitle">
-    <div class="booking-chat-head">
-      <div>
-        <h3 id="bookingChatTitle">Chat with Admin</h3>
-        <p id="bookingChatSub" class="booking-chat-sub">Booking discussion</p>
-      </div>
-      <button type="button" id="bookingChatClose" class="booking-chat-close" aria-label="Close chat">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-    </div>
-    <div id="bookingChatMessages" class="booking-chat-messages"></div>
-    <div class="booking-chat-compose">
-      <form id="bookingChatForm" class="booking-chat-form">
-        <textarea id="bookingChatInput" class="booking-chat-input" placeholder="Type your message..." rows="1" required></textarea>
-        <button type="submit" id="bookingChatSendBtn" class="booking-chat-send">Send</button>
-      </form>
-    </div>
-  </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 (function () {
-  // ── Compact toggle ──────────────────────────────────────────────────────────
-  const compactBtn   = document.getElementById('compactViewBtn');
+  const compactBtn = document.getElementById('compactViewBtn');
   const compactLabel = document.getElementById('compactViewLabel');
-  const statsRow     = document.getElementById('statsRow');
-  const activitySec  = document.getElementById('activitySection');
+  const statsRow = document.getElementById('statsRow');
+  const activitySec = document.getElementById('activitySection');
   let compactMode = false;
 
   if (compactBtn) {
     compactBtn.addEventListener('click', () => {
       compactMode = !compactMode;
-      if (statsRow)    statsRow.style.display    = compactMode ? 'none' : '';
+      if (statsRow) statsRow.style.display = compactMode ? 'none' : '';
       if (activitySec) activitySec.style.display = compactMode ? 'none' : '';
       compactLabel.textContent = compactMode ? 'Activity overview' : 'Compact activity overview';
       compactBtn.querySelector('i').className = compactMode ? 'fa-solid fa-expand' : 'fa-solid fa-wave-square';
     });
   }
 
-  // ── Detail modal helpers ────────────────────────────────────────────────────
-  const overlay    = document.getElementById('bookingDetailOverlay');
-  const closeBtn   = document.getElementById('bookingDetailClose');
+  const overlay = document.getElementById('bookingDetailOverlay');
+  const closeBtn = document.getElementById('bookingDetailClose');
   const detailBody = document.getElementById('bookingDetailBody');
 
   function openModal() {
     overlay.style.display = 'flex';
     document.body.classList.add('auth-modal-open');
   }
+
   function closeModal() {
     overlay.style.display = 'none';
     document.body.classList.remove('auth-modal-open');
@@ -495,14 +313,6 @@
   const cancelConfirmYesBtn = document.getElementById('cancelConfirmYesBtn');
   const cancelConfirmNoBtn = document.getElementById('cancelConfirmNoBtn');
   let cancelConfirmResolver = null;
-  const bookingChatOverlay = document.getElementById('bookingChatOverlay');
-  const bookingChatClose = document.getElementById('bookingChatClose');
-  const bookingChatSub = document.getElementById('bookingChatSub');
-  const bookingChatMessages = document.getElementById('bookingChatMessages');
-  const bookingChatForm = document.getElementById('bookingChatForm');
-  const bookingChatInput = document.getElementById('bookingChatInput');
-  const bookingChatSendBtn = document.getElementById('bookingChatSendBtn');
-  let activeChatBookingId = '';
 
   function closeCancelConfirm(result = false) {
     if (cancelConfirmOverlay) {
@@ -536,84 +346,17 @@
   }
 
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
-  if (overlay)  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
-  if (bookingChatClose) bookingChatClose.addEventListener('click', closeBookingChat);
-  if (bookingChatOverlay) bookingChatOverlay.addEventListener('click', e => { if (e.target === bookingChatOverlay) closeBookingChat(); });
+  if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       closeModal();
       closeCancelConfirm(false);
-      closeBookingChat();
     }
   });
 
-  function formatChatTime(value) {
-    if (!value) return '';
-    const dt = new Date(value);
-    if (Number.isNaN(dt.getTime())) return '';
-    return dt.toLocaleString([], { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-  }
-
-  function scrollChatToBottom() {
-    if (!bookingChatMessages) return;
-    bookingChatMessages.scrollTop = bookingChatMessages.scrollHeight;
-  }
-
-  function renderChatMessages(messages = []) {
-    if (!bookingChatMessages) return;
-    if (!messages.length) {
-      bookingChatMessages.innerHTML = '<div class="booking-chat-empty">No messages yet. Start the conversation.</div>';
-      return;
-    }
-    bookingChatMessages.innerHTML = messages.map(msg => {
-      const sender = (msg.sender || 'admin').toLowerCase() === 'user' ? 'user' : 'admin';
-      return `<div class="chat-msg-row ${sender}">
-        <div class="chat-msg-bubble">
-          <div>${String(msg.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-          <div class="chat-msg-time">${formatChatTime(msg.created_at)}</div>
-        </div>
-      </div>`;
-    }).join('');
-    scrollChatToBottom();
-  }
-
-  async function loadBookingChat(bookingId) {
-    if (!bookingId) return;
-    if (bookingChatMessages) bookingChatMessages.innerHTML = '<div class="booking-chat-empty">Loading messages...</div>';
-    try {
-      const res = await fetch(`/bookings/${bookingId}/messages`);
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to load messages');
-      renderChatMessages(data.messages || []);
-    } catch (err) {
-      if (bookingChatMessages) bookingChatMessages.innerHTML = `<div class="booking-chat-empty">${String(err.message || 'Unable to load messages')}</div>`;
-      if (typeof showToast === 'function') showToast('Unable to load chat', true);
-    }
-  }
-
-  function openBookingChat(bookingId) {
-    activeChatBookingId = bookingId || '';
-    if (bookingChatSub) bookingChatSub.textContent = `Booking ID: ${activeChatBookingId}`;
-    if (bookingChatOverlay) {
-      bookingChatOverlay.classList.add('is-open');
-      bookingChatOverlay.setAttribute('aria-hidden', 'false');
-    }
-    loadBookingChat(activeChatBookingId);
-    setTimeout(() => bookingChatInput?.focus(), 60);
-  }
-
-  function closeBookingChat() {
-    if (bookingChatOverlay) {
-      bookingChatOverlay.classList.remove('is-open');
-      bookingChatOverlay.setAttribute('aria-hidden', 'true');
-    }
-    activeChatBookingId = '';
-    if (bookingChatInput) bookingChatInput.value = '';
-  }
-
   function statusBadge(status) {
     const cls = (status || '').toLowerCase().replace(/\s+/g, '-');
-    return `<span class="fw-badge status-${cls}" style="display:inline-flex;">${status || '—'}</span>`;
+    return `<span class="fw-badge status-${cls}" style="display:inline-flex;">${status || '-'}</span>`;
   }
 
   function row(icon, label, value) {
@@ -626,7 +369,7 @@
   }
 
   function renderDetail(b) {
-    const price = b.total_price !== undefined ? `₱${parseFloat(b.total_price).toFixed(2)}` : '—';
+    const price = b.total_price !== undefined ? `&#8369;${parseFloat(b.total_price).toFixed(2)}` : '-';
     detailBody.innerHTML = `
       ${row('fa-shirt',          'Service',      b.service_type)}
       ${row('fa-calendar',       'Date',         b.pickup_date)}
@@ -646,15 +389,14 @@
     `;
   }
 
-  // ── View button ─────────────────────────────────────────────────────────────
   document.addEventListener('click', async e => {
     const btn = e.target.closest('.view-booking-btn');
     if (!btn) return;
     const id = btn.dataset.bookingId;
-    detailBody.innerHTML = '<p style="text-align:center;color:#8f5b74;">Loading…</p>';
+    detailBody.innerHTML = '<p style="text-align:center;color:#8f5b74;">Loading...</p>';
     openModal();
     try {
-      const res  = await fetch(`/bookings/${id}`);
+      const res = await fetch(`/bookings/${id}`);
       const data = await res.json();
       if (data.ok) {
         renderDetail(data.booking);
@@ -669,25 +411,26 @@
     }
   });
 
-  // ── Cancel button ───────────────────────────────────────────────────────────
   document.addEventListener('click', async e => {
     const btn = e.target.closest('.cancel-booking-btn');
     if (!btn) return;
     const shouldCancel = await openCancelConfirm();
     if (!shouldCancel) return;
-    const id   = btn.dataset.bookingId;
+    const id = btn.dataset.bookingId;
     const card = btn.closest('[data-booking-id]');
     btn.disabled = true;
-    btn.textContent = 'Cancelling…';
+    btn.textContent = 'Cancelling...';
     try {
-      const res  = await fetch(`/bookings/${id}/cancel`, { method: 'POST' });
+      const res = await fetch(`/bookings/${id}/cancel`, { method: 'POST' });
       const data = await res.json();
       if (data.ok) {
         if (typeof showToast === 'function') showToast('Booking cancelled successfully');
-        // Update badge and remove cancel button without full reload
         if (card) {
           const badge = card.querySelector('.fw-badge');
-          if (badge) { badge.className = 'fw-badge status-cancelled'; badge.textContent = 'Cancelled'; }
+          if (badge) {
+            badge.className = 'fw-badge status-cancelled';
+            badge.textContent = 'Cancelled';
+          }
           btn.remove();
         }
       } else {
@@ -701,44 +444,6 @@
       btn.textContent = 'Cancel';
     }
   });
-
-  document.addEventListener('click', e => {
-    const chatBtn = e.target.closest('.chat-booking-btn-trigger');
-    if (!chatBtn) return;
-    openBookingChat(chatBtn.dataset.bookingId || '');
-  });
-
-  if (bookingChatForm) {
-    bookingChatForm.addEventListener('submit', async e => {
-      e.preventDefault();
-      if (!activeChatBookingId) return;
-      const message = (bookingChatInput?.value || '').trim();
-      if (!message) return;
-      if (bookingChatSendBtn) {
-        bookingChatSendBtn.disabled = true;
-        bookingChatSendBtn.textContent = 'Sending...';
-      }
-      try {
-        const res = await fetch(`/bookings/${activeChatBookingId}/messages`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message })
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to send message');
-        if (bookingChatInput) bookingChatInput.value = '';
-        await loadBookingChat(activeChatBookingId);
-        if (typeof showToast === 'function') showToast('Message sent');
-      } catch (err) {
-        if (typeof showToast === 'function') showToast(String(err.message || 'Unable to send message'), true);
-      } finally {
-        if (bookingChatSendBtn) {
-          bookingChatSendBtn.disabled = false;
-          bookingChatSendBtn.textContent = 'Send';
-        }
-      }
-    });
-  }
 })();
 </script>
 {% endblock %}
