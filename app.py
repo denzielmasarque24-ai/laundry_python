@@ -34,10 +34,10 @@ app.secret_key = os.environ.get("SECRET_KEY", "freshwash-secret-key-2024")
 ADMIN_AVATAR_BUCKET = (os.environ.get("FRESHWASH_AVATAR_BUCKET") or "avatars").strip()
 GCASH_ACCOUNT_NAME = os.environ.get("GCASH_ACCOUNT_NAME", "FreshWash Laundry")
 GCASH_NUMBER = os.environ.get("GCASH_NUMBER", "09XX XXX XXXX")
-GCASH_QR_IMAGE = os.environ.get("GCASH_QR_IMAGE", "img/gcash_qr.png")
+GCASH_QR_IMAGE = os.environ.get("GCASH_QR_IMAGE", "images/gcash.jpg")
 PAYMAYA_ACCOUNT_NAME = os.environ.get("PAYMAYA_ACCOUNT_NAME", GCASH_ACCOUNT_NAME)
 PAYMAYA_NUMBER = os.environ.get("PAYMAYA_NUMBER", "09XX XXX XXXX")
-PAYMAYA_QR_IMAGE = os.environ.get("PAYMAYA_QR_IMAGE", "img/paymaya_qr.png")
+PAYMAYA_QR_IMAGE = os.environ.get("PAYMAYA_QR_IMAGE", "images/paymaya.jpg")
 PAYMENT_METHOD_CONFIG = {
     "GCash": {
         "label": "GCash",
@@ -46,12 +46,12 @@ PAYMENT_METHOD_CONFIG = {
         "qr_image": GCASH_QR_IMAGE,
         "copy_label": "Copy GCash number",
     },
-    "PayMaya": {
-        "label": "PayMaya",
+    "Maya": {
+        "label": "Maya",
         "account_name": PAYMAYA_ACCOUNT_NAME,
         "mobile_number": PAYMAYA_NUMBER,
         "qr_image": PAYMAYA_QR_IMAGE,
-        "copy_label": "Copy PayMaya number",
+        "copy_label": "Copy Maya number",
     },
 }
 DIGITAL_PAYMENT_METHODS = set(PAYMENT_METHOD_CONFIG)
@@ -1825,8 +1825,8 @@ def encode_payment_proof_upload(uploaded_file):
 
 def normalize_payment_method(payment_method):
     normalized = (payment_method or "Cash on Delivery").strip() or "Cash on Delivery"
-    if normalized == "Maya":
-        return "PayMaya"
+    if normalized == "PayMaya":
+        return "Maya"
     if normalized == "Cash on Pickup":
         return "Cash on Delivery"
     return normalized

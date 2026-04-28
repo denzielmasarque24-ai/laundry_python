@@ -11355,3 +11355,185 @@ body.otp-modal-open {
 }
 
 /* ── End Reports Dashboard Compact Overrides ─────────────────────────────── */
+
+/* FreshWash premium About/Services refresh */
+body.landing-body .freshwash-home-page .home-services-section,
+body.landing-body .freshwash-home-page .about-section-gated {
+  position: relative;
+  margin-inline: auto;
+  width: min(1180px, 100%);
+  padding: 26px 24px 24px;
+  border-radius: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  background:
+    radial-gradient(circle at 18% 15%, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.18) 38%, transparent 64%),
+    linear-gradient(145deg, rgba(255, 233, 244, 0.9), rgba(255, 245, 250, 0.78) 44%, rgba(255, 218, 238, 0.76) 100%);
+  box-shadow: 0 26px 60px rgba(227, 85, 150, 0.16);
+  overflow: hidden;
+  backdrop-filter: blur(18px);
+}
+
+body.landing-body .freshwash-home-page .home-services-section::before,
+body.landing-body .freshwash-home-page .about-section-gated::before,
+body.landing-body .freshwash-home-page .home-services-section::after,
+body.landing-body .freshwash-home-page .about-section-gated::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.landing-body .freshwash-home-page .home-services-section::before,
+body.landing-body .freshwash-home-page .about-section-gated::before {
+  width: 230px;
+  height: 230px;
+  top: -90px;
+  right: -72px;
+  background: radial-gradient(circle at 34% 34%, rgba(255, 255, 255, 0.8), rgba(255, 136, 194, 0.26) 58%, rgba(255, 122, 195, 0.06) 100%);
+  filter: blur(3px);
+}
+
+body.landing-body .freshwash-home-page .home-services-section::after,
+body.landing-body .freshwash-home-page .about-section-gated::after {
+  width: 260px;
+  height: 260px;
+  left: -90px;
+  bottom: -120px;
+  background: radial-gradient(circle at 62% 38%, rgba(255, 255, 255, 0.7), rgba(255, 132, 196, 0.24) 62%, rgba(255, 122, 195, 0.04) 100%);
+  filter: blur(6px);
+}
+
+body.landing-body .freshwash-home-page .home-services-section > *,
+body.landing-body .freshwash-home-page .about-section-gated > * {
+  position: relative;
+  z-index: 1;
+}
+
+body.landing-body .freshwash-home-page .home-services-section .section-heading,
+body.landing-body .freshwash-home-page .about-section-gated .section-heading {
+  margin-bottom: 8px;
+}
+
+body.landing-body .freshwash-home-page .home-services-section .section-heading h2,
+body.landing-body .freshwash-home-page .about-section-gated .section-heading h2 {
+  position: relative;
+  display: inline-block;
+  margin: 8px 0 0;
+  font-family: "Poppins", "Inter", sans-serif;
+  font-size: clamp(2rem, 3.2vw, 2.8rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  color: #2f1a2d;
+  text-wrap: balance;
+}
+
+body.landing-body .freshwash-home-page .home-services-section .section-heading h2::after,
+body.landing-body .freshwash-home-page .about-section-gated .section-heading h2::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -8px;
+  width: min(220px, 72%);
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 77, 166, 0.85), rgba(255, 122, 195, 0.5));
+  filter: drop-shadow(0 4px 10px rgba(255, 96, 176, 0.32));
+}
+
+body.landing-body .freshwash-home-page .home-services-section .section-heading p,
+body.landing-body .freshwash-home-page .about-section-gated .section-heading p {
+  margin-top: 14px;
+  color: #755a6d;
+}
+
+body.landing-body .freshwash-home-page .service-showcase-grid,
+body.landing-body .freshwash-home-page .about-feature-grid {
+  gap: 18px;
+}
+
+body.landing-body .freshwash-home-page .service-showcase-card,
+body.landing-body .freshwash-home-page .about-feature-card {
+  position: relative;
+  min-height: 100%;
+  padding: 24px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.78), rgba(255, 244, 250, 0.64));
+  box-shadow: 0 20px 42px rgba(227, 85, 150, 0.15);
+  backdrop-filter: blur(14px);
+  transition: transform 0.26s ease, box-shadow 0.26s ease, border-color 0.26s ease;
+}
+
+body.landing-body .freshwash-home-page .service-showcase-card::before,
+body.landing-body .freshwash-home-page .about-feature-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.45), rgba(255, 122, 195, 0.1), rgba(255, 255, 255, 0.32));
+  opacity: 0;
+  transition: opacity 0.26s ease;
+  pointer-events: none;
+}
+
+body.landing-body .freshwash-home-page .service-showcase-card:hover,
+body.landing-body .freshwash-home-page .about-feature-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(255, 122, 195, 0.45);
+  box-shadow: 0 30px 58px rgba(227, 85, 150, 0.28);
+}
+
+body.landing-body .freshwash-home-page .service-showcase-card:hover::before,
+body.landing-body .freshwash-home-page .about-feature-card:hover::before {
+  opacity: 1;
+}
+
+body.landing-body .freshwash-home-page .service-showcase-icon,
+body.landing-body .freshwash-home-page .about-feature-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff4da6, #ff7ac3);
+  box-shadow: 0 14px 30px rgba(255, 82, 170, 0.38);
+  transition: transform 0.26s ease, box-shadow 0.26s ease, filter 0.26s ease;
+}
+
+body.landing-body .freshwash-home-page .service-showcase-icon i,
+body.landing-body .freshwash-home-page .about-feature-icon i {
+  font-size: 1.15rem;
+}
+
+body.landing-body .freshwash-home-page .service-showcase-card:hover .service-showcase-icon,
+body.landing-body .freshwash-home-page .about-feature-card:hover .about-feature-icon {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 18px 36px rgba(255, 82, 170, 0.48);
+  filter: drop-shadow(0 0 12px rgba(255, 100, 178, 0.36));
+}
+
+body.landing-body .freshwash-home-page .service-showcase-card h3,
+body.landing-body .freshwash-home-page .about-feature-card h3 {
+  margin: 0;
+  color: #331f31;
+  font-weight: 800;
+}
+
+body.landing-body .freshwash-home-page .service-showcase-card p,
+body.landing-body .freshwash-home-page .about-feature-card p {
+  margin: 0;
+  color: #7d6275;
+  line-height: 1.66;
+}
+
+@media (max-width: 860px) {
+  body.landing-body .freshwash-home-page .home-services-section,
+  body.landing-body .freshwash-home-page .about-section-gated {
+    padding: 22px 16px 18px;
+    border-radius: 24px;
+  }
+
+  body.landing-body .freshwash-home-page .home-services-section .section-heading h2,
+  body.landing-body .freshwash-home-page .about-section-gated .section-heading h2 {
+    font-size: clamp(1.6rem, 6vw, 2rem);
+  }
+}

@@ -774,7 +774,7 @@
           </div>
 
           {% set selected_payment = form.get('payment_method', 'Cash on Delivery') %}
-          {% if selected_payment == 'Maya' %}{% set selected_payment = 'PayMaya' %}{% endif %}
+          {% if selected_payment == 'PayMaya' %}{% set selected_payment = 'Maya' %}{% endif %}
           {% if selected_payment == 'Cash on Pickup' %}{% set selected_payment = 'Cash on Delivery' %}{% endif %}
 
           <div>
@@ -786,10 +786,10 @@
                 <span class="payment-method-icon is-gcash">G</span>
                 <span>GCash</span>
               </button>
-              <button type="button" class="payment-method-option {% if selected_payment == 'PayMaya' %}is-active{% endif %}" data-payment-method="PayMaya" role="radio" aria-checked="{{ 'true' if selected_payment == 'PayMaya' else 'false' }}">
+              <button type="button" class="payment-method-option {% if selected_payment == 'Maya' %}is-active{% endif %}" data-payment-method="Maya" role="radio" aria-checked="{{ 'true' if selected_payment == 'Maya' else 'false' }}">
                 <span class="payment-method-dot"></span>
                 <span class="payment-method-icon is-maya">maya</span>
-                <span>PayMaya</span>
+                <span>Maya</span>
               </button>
               <button type="button" class="payment-method-option {% if selected_payment == 'Cash on Delivery' %}is-active{% endif %}" data-payment-method="Cash on Delivery" role="radio" aria-checked="{{ 'true' if selected_payment == 'Cash on Delivery' else 'false' }}">
                 <span class="payment-method-dot"></span>
@@ -804,7 +804,7 @@
               <h4 class="payment-card-title"><span class="payment-method-icon is-gcash">G</span> GCash</h4>
               <div class="payment-card-body">
                 <div class="digital-qr-wrap">
-                  <img src="{{ payment_method_config['GCash'].qr_image_url }}" alt="GCash QR code for {{ payment_method_config['GCash'].account_name }}"/>
+                  <img src="{{ url_for('static', filename='images/gcash.jpg') }}" alt="GCash QR code for {{ payment_method_config['GCash'].account_name }}"/>
                   <span>Scan to Pay via GCash</span>
                 </div>
                 <div class="digital-payment-details">
@@ -830,21 +830,21 @@
               </ol>
             </article>
 
-            <article class="payment-option-card {% if selected_payment == 'PayMaya' %}is-active{% endif %}" data-payment-card="PayMaya">
-              <h4 class="payment-card-title"><span class="payment-method-icon is-maya">maya</span> PayMaya</h4>
+            <article class="payment-option-card {% if selected_payment == 'Maya' %}is-active{% endif %}" data-payment-card="Maya">
+              <h4 class="payment-card-title"><span class="payment-method-icon is-maya">maya</span> Maya</h4>
               <div class="payment-card-body">
                 <div class="digital-qr-wrap">
-                  <img src="{{ payment_method_config['PayMaya'].qr_image_url }}" alt="PayMaya QR code for {{ payment_method_config['PayMaya'].account_name }}"/>
-                  <span>Scan to Pay via PayMaya</span>
+                  <img src="{{ url_for('static', filename='images/paymaya.jpg') }}" alt="Maya QR code for {{ payment_method_config['Maya'].account_name }}"/>
+                  <span>Scan to Pay via Maya</span>
                 </div>
                 <div class="digital-payment-details">
                   <div class="digital-payment-detail-row">
                     <span>Account Name</span>
-                    <strong>{{ payment_method_config['PayMaya'].account_name }}</strong>
+                    <strong>{{ payment_method_config['Maya'].account_name }}</strong>
                   </div>
                   <div class="digital-payment-detail-row">
                     <span>Mobile Number</span>
-                    <strong>{{ payment_method_config['PayMaya'].mobile_number }}</strong>
+                    <strong>{{ payment_method_config['Maya'].mobile_number }}</strong>
                   </div>
                   <div class="digital-payment-detail-row is-highlight">
                     <span>Total Amount</span>
@@ -874,12 +874,12 @@
 
           <div class="digital-proof-grid" id="paymentProofRow">
             <div class="booking-field">
-              <label class="fw-label">Reference Number <span>(for GCash / PayMaya only)</span></label>
+              <label class="fw-label">Reference Number <span>(for GCash / Maya only)</span></label>
               <div class="fw-field">
                 <span class="fw-field-icon"><i class="fa-solid fa-hashtag"></i></span>
                 <input type="text" name="reference_number" class="fw-input" id="paymentReferenceInput" value="{{ form.get('reference_number','') }}" placeholder="Enter reference number"/>
               </div>
-              <p class="digital-payment-note">Required for GCash and PayMaya payments.</p>
+              <p class="digital-payment-note">Required for GCash and Maya payments.</p>
             </div>
             <div class="booking-field">
               <label class="fw-label">Proof of Payment <span>(Screenshot)</span></label>

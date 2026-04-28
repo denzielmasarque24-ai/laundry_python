@@ -235,7 +235,7 @@
           <i class="fa-regular fa-eye-slash"></i>
         </button>
       </div>
-      <p id="registerPagePassError" class="rv-error hidden">Passwords do not match.</p>
+      <p id="registerPagePassError" style="display:none;margin:-6px 4px 2px;font-size:12px;color:#dc2626;">Password does not match</p>
       <button type="submit" class="btn-primary w-full">Register</button>
     </form>
     <p class="auth-foot">Already have an account? <a href="#" class="text-link" data-auth-switch="login">Login</a></p>
@@ -514,15 +514,34 @@
     const mismatchErr = document.getElementById("registerPagePassError");
     const invalidErr = document.getElementById("registerPasswordRuleError");
     if (!pass1 || !pass2 || !mismatchErr || !invalidErr) return true;
+
+    const pass1Field = pass1.closest(".rv-field");
+    const pass2Field = pass2.closest(".rv-field");
+    const setFieldState = (field, isValid) => {
+      if (!field) return;
+      if (!field.dataset.defaultBorderColor) {
+        const computed = window.getComputedStyle(field);
+        field.dataset.defaultBorderColor = computed.borderColor;
+        field.dataset.defaultBoxShadow = computed.boxShadow;
+      }
+      if (isValid) {
+        field.style.borderColor = field.dataset.defaultBorderColor || "";
+        field.style.boxShadow = field.dataset.defaultBoxShadow || "";
+      } else {
+        field.style.borderColor = "#dc2626";
+        field.style.boxShadow = "0 0 0 2px rgba(220, 38, 38, 0.14)";
+      }
+    };
+
     const passwordPattern = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
     const isPasswordValid = passwordPattern.test(pass1.value);
     const isMatch = pass1.value === pass2.value;
 
     invalidErr.style.display = isPasswordValid ? "none" : "block";
-    pass1.style.borderColor = isPasswordValid ? "" : "#dc2626";
-    pass1.style.boxShadow = isPasswordValid ? "" : "0 0 0 2px rgba(220, 38, 38, 0.14)";
+    setFieldState(pass1Field, isPasswordValid);
 
-    mismatchErr.classList.toggle("hidden", isMatch);
+    mismatchErr.style.display = isMatch ? "none" : "block";
+    setFieldState(pass2Field, isMatch);
     return isPasswordValid && isMatch;
   }
 
