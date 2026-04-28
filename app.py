@@ -31,7 +31,7 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "freshwash-secret-key-2024")
-ADMIN_AVATAR_BUCKET = "avatars"
+ADMIN_AVATAR_BUCKET = (os.environ.get("FRESHWASH_AVATAR_BUCKET") or "avatars").strip()
 GCASH_ACCOUNT_NAME = os.environ.get("GCASH_ACCOUNT_NAME", "FreshWash Laundry")
 GCASH_NUMBER = os.environ.get("GCASH_NUMBER", "09XX XXX XXXX")
 GCASH_QR_IMAGE = os.environ.get("GCASH_QR_IMAGE", "img/gcash_qr.png")
@@ -201,7 +201,7 @@ def env_flag(name, default=False):
 
 
 OTP_LENGTH = 6
-OTP_EXPIRY_MINUTES = 5
+OTP_EXPIRY_MINUTES = 1
 OTP_MAX_ATTEMPTS = int(os.environ.get("FRESHWASH_OTP_MAX_ATTEMPTS", "3") or 3)
 OTP_RESEND_COOLDOWN_SECONDS = int(os.environ.get("FRESHWASH_OTP_RESEND_COOLDOWN_SECONDS", "60") or 60)
 ENABLE_LOGIN_OTP = env_flag("ENABLE_LOGIN_OTP", default=env_flag("FRESHWASH_ENABLE_LOGIN_OTP", default=False))
@@ -779,6 +779,70 @@ def send_otp_email(email, otp_code):
         raise ValueError(f"Failed to send verification. SMTP error: {normalized_message}") from exc
 
     log_auth_debug("email sending result", email=safe_email_for_log(email), status="sent")
+
+
+def send_booking_email(email, booking_data):
+    cfg = otp_smtp_settings()
+    username = cfg["username"]
+    password = cfg["password"]
+    if not username or not password:
+        raise RuntimeError("Booking email is not configured on this server.")
+
+    recipient = normalize_email(email or "")
+    if not recipient:
+        raise ValueError("Booking email recipient is required.")
+    if not is_valid_email(recipient):
+        raise ValueError("Enter a valid recipient email address.")
+
+    service_type = booking_data.get("service_type", "")
+    machine = booking_data.get("machine", "")
+    load_type = booking_data.get("load_type", "")
+    pickup_date = booking_data.get("pickup_date", "")
+    pickup_time = booking_data.get("pickup_time", "")
+    delivery_option = booking_data.get("delivery_option", "")
+    total_price = booking_data.get("total_price", 0)
+
+    subject = "FreshWash Booking Confirmation"
+    text_body = (
+        "Your FreshWash booking is confirmed.\n\n"
+        f"Service: {service_type}\n"
+        f"Machine: {machine}\n"
+        f"Load Type: {load_type}\n"
+        f"Pickup Date: {pickup_date}\n"
+        f"Pickup Time: {pickup_time}\n"
+        f"Delivery Option: {delivery_option}\n"
+        f"Estimated Total: PHP {total_price}\n\n"
+        "Thank you for choosing FreshWash."
+    )
+    html_body = (
+        "<h2>FreshWash Booking Confirmation</h2>"
+        "<p>Your booking is confirmed.</p>"
+        "<ul>"
+        f"<li><strong>Service:</strong> {service_type}</li>"
+        f"<li><strong>Machine:</strong> {machine}</li>"
+        f"<li><strong>Load Type:</strong> {load_type}</li>"
+        f"<li><strong>Pickup Date:</strong> {pickup_date}</li>"
+        f"<li><strong>Pickup Time:</strong> {pickup_time}</li>"
+        f"<li><strong>Delivery Option:</strong> {delivery_option}</li>"
+        f"<li><strong>Estimated Total:</strong> PHP {total_price}</li>"
+        "</ul>"
+        "<p>Thank you for choosing FreshWash.</p>"
+    )
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = formataddr((cfg["sender_name"], cfg["sender_email"]))
+    message["To"] = recipient
+    message.set_content(text_body)
+    message.add_alternative(html_body, subtype="html")
+
+    with smtplib.SMTP(cfg["host"], cfg["port"], timeout=30) as smtp:
+        smtp.ehlo()
+        if cfg["use_tls"]:
+            smtp.starttls()
+            smtp.ehlo()
+        smtp.login(username, password)
+        smtp.send_message(message)
 
 
 def set_verification_state(email, is_verified):
@@ -1585,6 +1649,7 @@ def is_api_request(req=None):
     return (
         path.startswith("/api/")
         or path.startswith("/admin/api/")
+        or path.startswith("/profile/update")
         or "application/json" in accept
         or requested_with == "xmlhttprequest"
     )
@@ -2622,11 +2687,6 @@ def upload_admin_avatar_to_storage(user_id, image_bytes, content_type):
     if extension not in {"jpg", "png", "gif", "webp"}:
         extension = "jpg"
 
-    if ADMIN_AVATAR_BUCKET != "avatars":
-        raise ValueError(
-            f"Invalid storage bucket configuration: expected 'avatars' but got '{ADMIN_AVATAR_BUCKET}'."
-        )
-
     storage_path = f"{user_id}/admin-profile-{uuid.uuid4().hex}.{extension}"
     try:
         client = get_service_client()
@@ -2638,11 +2698,14 @@ def upload_admin_avatar_to_storage(user_id, image_bytes, content_type):
     except Exception as exc:
         message = str(exc)
         if "bucket not found" in message.lower() or "not found" in message.lower():
-            raise ValueError("Create a public bucket named 'avatars' in Supabase Storage.")
+            raise ValueError(
+                f"Storage bucket '{ADMIN_AVATAR_BUCKET}' was not found. "
+                "Create it in Supabase Storage or set FRESHWASH_AVATAR_BUCKET to the correct name."
+            )
         if "row-level security" in message.lower() or "policy" in message.lower():
             raise ValueError(
                 f"Upload failed for storage bucket '{ADMIN_AVATAR_BUCKET}' because storage policies blocked access: {exc}. "
-                "Add Storage policies for authenticated users on storage.objects: SELECT, INSERT, and UPDATE for bucket_id = 'avatars'."
+                f"Add Storage policies for authenticated users on storage.objects: SELECT, INSERT, and UPDATE for bucket_id = '{ADMIN_AVATAR_BUCKET}'."
             )
         raise ValueError(f"Upload failed for storage bucket '{ADMIN_AVATAR_BUCKET}': {exc}")
 
@@ -4502,6 +4565,15 @@ def booking():
                     enabled=selected_machine.get("enabled", True),
                     load_type=normalize_booking_load_type(selected_machine.get("load_type", load_type)),
                 )
+            try:
+                send_booking_email(user.get("email", ""), payload)
+            except Exception as email_exc:
+                log_exception(
+                    "booking confirmation email failed",
+                    email_exc,
+                    recipient=user.get("email", ""),
+                    booking_payload={k: v for k, v in payload.items() if k != "payment_proof"},
+                )
             flash("Booking confirmed! We'll pick up your laundry soon.", "success")
             return redirect(url_for("home", _anchor="my-booking"))
         except Exception as exc:
@@ -4631,31 +4703,53 @@ def readers_view():
 @app.route("/profile/update", methods=["POST"])
 @login_required
 def profile_update():
-    import json
     user = session["user"]
-    data = request.get_json()
-    name    = data.get("name", "").strip()
-    phone   = data.get("phone", "").strip()
-    address = data.get("address", "").strip()
-    avatar  = data.get("avatar", "")
+    is_json_request = request.is_json
+    data = request.get_json(silent=True) or {}
+    name = (request.form.get("name") if not is_json_request else data.get("name", "") or "").strip()
+    phone = (request.form.get("phone") if not is_json_request else data.get("phone", "") or "").strip()
+    address = (request.form.get("address") if not is_json_request else data.get("address", "") or "").strip()
+    avatar = (data.get("avatar", "") if is_json_request else "").strip()
+    uploaded = request.files.get("avatar")
 
     if not name:
-        return json.dumps({"ok": False, "error": "Name is required"}), 400
+        return jsonify({"ok": False, "error": "Name is required"}), 400
 
     try:
         update_data = {"full_name": name, "phone": phone, "address": address}
-        if avatar and avatar.startswith("data:image"):
+        if uploaded and uploaded.filename:
+            if not (uploaded.mimetype or "").startswith("image/"):
+                return jsonify({"ok": False, "error": "Only image uploads are allowed."}), 400
+            image_bytes = uploaded.read()
+            if not image_bytes:
+                return jsonify({"ok": False, "error": "The selected image is empty."}), 400
+            if len(image_bytes) > 2 * 1024 * 1024:
+                return jsonify({"ok": False, "error": "Profile photo must be 2MB or smaller."}), 400
+            try:
+                avatar = upload_admin_avatar_to_storage(user["id"], image_bytes, uploaded.mimetype)
+            except Exception as storage_exc:
+                return jsonify({"ok": False, "error": f"Avatar upload failed: {storage_exc}"}), 500
+
+        if avatar and (avatar.startswith("http://") or avatar.startswith("https://") or avatar.startswith("data:image")):
             update_data["avatar"] = avatar
+
         if local_auth_enabled():
             update_local_user(user["id"], name, phone, address, update_data.get("avatar", user.get("avatar", "")))
         else:
-            execute_update_with_fallback(
-                "profiles",
-                profile_payload_variants({"id": user["id"], **update_data}),
-                "id",
-                user["id"],
-                clients=[("authenticated session", db())],
-            )
+            try:
+                execute_update_with_fallback(
+                    "profiles",
+                    profile_payload_variants({"id": user["id"], **update_data}),
+                    "id",
+                    user["id"],
+                    clients=[("authenticated session", db())],
+                )
+            except Exception as db_exc:
+                if "missing avatar" in str(db_exc).lower() or "column" in str(db_exc).lower():
+                    raise ValueError(
+                        "Database update failed. Ensure 'profiles.avatar' column exists and is type text."
+                    ) from db_exc
+                raise
         session["user"] = {
             **user,
             "name": name,
@@ -4663,7 +4757,8 @@ def profile_update():
             "address": address,
             "avatar": update_data.get("avatar", user.get("avatar", ""))
         }
-        return json.dumps({"ok": True})
+        persist_session_user(session["user"])
+        return jsonify({"ok": True, "avatar": session["user"].get("avatar", "")})
     except Exception as e:
         if is_supabase_connection_error(e):
             try:
@@ -4683,13 +4778,15 @@ def profile_update():
                     "address": address,
                     "avatar": update_data.get("avatar", user.get("avatar", "")),
                 }
-                return json.dumps({
+                persist_session_user(session["user"])
+                return jsonify({
                     "ok": True,
+                    "avatar": session["user"].get("avatar", ""),
                     "warning": "FreshWash updated your current session, but the remote profile service is unavailable right now."
                 })
             except Exception:
                 pass
-        return json.dumps({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/profile", methods=["GET", "POST"])

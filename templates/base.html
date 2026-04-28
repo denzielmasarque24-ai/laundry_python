@@ -705,6 +705,13 @@
       [navIcon, avatarIcon].forEach(icon => {
         if (icon) icon.style.display = "none";
       });
+    } else {
+      [navImg, avatarImg].forEach(img => {
+        if (img) img.style.display = "none";
+      });
+      [navIcon, avatarIcon].forEach(icon => {
+        if (icon) icon.style.display = "grid";
+      });
     }
   }
 
@@ -713,25 +720,33 @@
     const name = document.getElementById("pName")?.value.trim() || "";
     const phone = document.getElementById("pPhone")?.value.trim() || "";
     const address = document.getElementById("pAddress")?.value.trim() || "";
-    const avatar = document.getElementById("avatarImg")?.src || "";
+    const avatarInput = document.getElementById("avatarInput");
+    const selectedFile = avatarInput?.files?.[0];
+    const currentAvatar = document.getElementById("avatarImg")?.src || "";
     if (!name) {
       showToast("Name is required", true);
       return;
     }
 
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("phone", phone);
+    formData.append("address", address);
+    if (selectedFile) formData.append("avatar", selectedFile);
+
     fetch("/profile/update", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, phone, address, avatar })
+      body: formData
     })
       .then(response => response.json())
       .then(data => {
         if (!data.ok) throw new Error(data.error || "Update failed");
-        const profile = { ...CURRENT_USER, name, phone, address, avatar };
+        const profile = { ...CURRENT_USER, name, phone, address, avatar: data.avatar || currentAvatar };
         persistProfile(profile);
         updateProfileUi(profile);
+        if (avatarInput) avatarInput.value = "";
         closeProfilePanel();
-        showToast("Profile updated successfully");
+        showToast(data.warning || "Profile updated successfully");
       })
       .catch(error => showToast(error.message || "Unable to update profile right now", true));
   }
