@@ -11670,3 +11670,45 @@ body .profile-panel .panel-avatar img {
   outline: 0 !important;
   box-shadow: none !important;
 }
+
+/* Final profile avatar circle lock (prevents oval rendering) */
+body .profile-panel .panel-avatar {
+  width: 160px !important;
+  height: 160px !important;
+  min-width: 160px !important;
+  min-height: 160px !important;
+  max-width: 160px !important;
+  max-height: 160px !important;
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  display: block !important;
+  flex: 0 0 160px !important;
+  background: transparent !important;
+}
+
+body .profile-panel .panel-avatar img,
+body .profile-panel .panel-avatar #avatarImg {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  display: block !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
