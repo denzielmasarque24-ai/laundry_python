@@ -4757,6 +4757,77 @@ def booking_cancel(booking_id):
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 
+@app.route("/bookings/<booking_id>/messages", methods=["GET"])
+@login_required
+def booking_messages_list(booking_id):
+    user = session["user"]
+    client = db()
+    if not client:
+        return jsonify({"ok": False, "error": "Database unavailable."}), 503
+    try:
+        booking_res = (
+            client.table("bookings")
+            .select("id,user_id")
+            .eq("id", booking_id)
+            .eq("user_id", user["id"])
+            .limit(1)
+            .execute()
+        )
+        if not (booking_res.data or []):
+            return jsonify({"ok": False, "error": "Booking not found."}), 404
+
+        msg_res = (
+            client.table("messages")
+            .select("id,booking_id,sender,message,created_at")
+            .eq("booking_id", booking_id)
+            .order("created_at", desc=False)
+            .execute()
+        )
+        return jsonify({"ok": True, "messages": msg_res.data or []})
+    except Exception as exc:
+        log_exception("booking messages list failed", exc, booking_id=booking_id, user=user.get("email", ""))
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@app.route("/bookings/<booking_id>/messages", methods=["POST"])
+@login_required
+def booking_messages_send(booking_id):
+    user = session["user"]
+    client = db()
+    if not client:
+        return jsonify({"ok": False, "error": "Database unavailable."}), 503
+    try:
+        booking_res = (
+            client.table("bookings")
+            .select("id,user_id")
+            .eq("id", booking_id)
+            .eq("user_id", user["id"])
+            .limit(1)
+            .execute()
+        )
+        if not (booking_res.data or []):
+            return jsonify({"ok": False, "error": "Booking not found."}), 404
+
+        payload = request.get_json(silent=True) or {}
+        message_text = str(payload.get("message", "") or "").strip()
+        if not message_text:
+            return jsonify({"ok": False, "error": "Message is required."}), 400
+        if len(message_text) > 1000:
+            return jsonify({"ok": False, "error": "Message is too long."}), 400
+
+        insert_payload = {
+            "booking_id": booking_id,
+            "sender": "user",
+            "message": message_text,
+        }
+        insert_res = client.table("messages").insert(insert_payload).execute()
+        inserted = (insert_res.data or [{}])[0]
+        return jsonify({"ok": True, "message": inserted})
+    except Exception as exc:
+        log_exception("booking messages send failed", exc, booking_id=booking_id, user=user.get("email", ""))
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
 @app.route("/")
 def home():
     user = session.get("user")
