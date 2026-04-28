@@ -1,0 +1,49 @@
+{% extends "admin_base.html" %}
+
+{% block content %}
+<section class="admin-panel is-active" data-panel="messages" aria-label="Contact messages">
+  <div class="admin-card">
+    <div class="admin-bookings-head">
+      <div class="admin-bookings-head-copy">
+        <h3>Contact Messages</h3>
+        <p>Customer-submitted Contact Us messages.</p>
+      </div>
+      <div class="admin-bookings-controls">
+        <span class="admin-pill">{{ messages|length }} messages</span>
+      </div>
+    </div>
+
+    <div class="admin-bookings-table-wrap">
+      <table class="admin-table admin-bookings-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Subject</th>
+            <th>Message</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if messages %}
+            {% for m in messages %}
+            <tr>
+              <td>{{ m.name or "-" }}</td>
+              <td>{{ m.email or "-" }}</td>
+              <td>{{ m.subject or "-" }}</td>
+              <td style="max-width:360px;white-space:normal;">{{ m.message or "-" }}</td>
+              <td>{{ m.created_at or "-" }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="5">No messages yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}
+

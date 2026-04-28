@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Contact Us{% endblock %}
+{% block extra_head %}
+<style>
+  .contact-page {
+    min-height: calc(100vh - 220px);
+    display: grid;
+    place-items: center;
+    padding: 24px 16px;
+  }
+
+  .contact-card {
+    width: min(640px, 100%);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 178, 218, 0.38);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 236, 247, 0.88));
+    box-shadow: 0 20px 44px rgba(214, 86, 153, 0.18);
+    padding: 24px 22px;
+  }
+
+  .contact-title {
+    margin: 0 0 4px;
+    color: #3f2031;
+    font-size: 1.35rem;
+    font-weight: 800;
+  }
+
+  .contact-sub {
+    margin: 0 0 16px;
+    color: #7f6376;
+  }
+
+  .contact-grid {
+    display: grid;
+    gap: 12px;
+  }
+
+  .contact-input,
+  .contact-textarea {
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 168, 211, 0.45);
+    background: #fff;
+    color: #462234;
+    padding: 11px 12px;
+    font-size: 0.94rem;
+    outline: none;
+  }
+
+  .contact-input:focus,
+  .contact-textarea:focus {
+    border-color: rgba(235, 77, 152, 0.75);
+    box-shadow: 0 0 0 3px rgba(255, 77, 166, 0.12);
+  }
+
+  .contact-textarea {
+    min-height: 130px;
+    resize: vertical;
+  }
+
+  .contact-submit {
+    border: 0;
+    border-radius: 12px;
+    min-height: 44px;
+    color: #fff;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ff4da6, #ff7ac3);
+    cursor: pointer;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="contact-page">
+  <section class="contact-card">
+    <h2 class="contact-title">Contact Us</h2>
+    <p class="contact-sub">Send us your concern and our team will review it shortly.</p>
+    <form id="contactForm" class="contact-grid">
+      <input class="contact-input" id="contactName" type="text" placeholder="Name" value="{{ (user or {}).get('name', '') }}" required />
+      <input class="contact-input" id="contactEmail" type="email" placeholder="Email" value="{{ (user or {}).get('email', '') }}" required />
+      <input class="contact-input" id="contactSubject" type="text" placeholder="Subject" required />
+      <textarea class="contact-textarea" id="contactMessage" placeholder="Message" required></textarea>
+      <button class="contact-submit" id="contactSubmitBtn" type="submit">Send Message</button>
+    </form>
+  </section>
+</div>
+
+<script>
+(() => {
+  const form = document.getElementById("contactForm");
+  const submitBtn = document.getElementById("contactSubmitBtn");
+  const nameEl = document.getElementById("contactName");
+  const emailEl = document.getElementById("contactEmail");
+  const subjectEl = document.getElementById("contactSubject");
+  const messageEl = document.getElementById("contactMessage");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      name: (nameEl.value || "").trim(),
+      email: (emailEl.value || "").trim(),
+      subject: (subjectEl.value || "").trim(),
+      message: (messageEl.value || "").trim()
+    };
+    if (!payload.name || !payload.email || !payload.subject || !payload.message) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Sending...";
+    try {
+      const res = await fetch("/api/contact-us", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Unable to send message");
+      messageEl.value = "";
+      subjectEl.value = "";
+      if (typeof showToast === "function") {
+        showToast(data.confirmation || "Your message has been sent successfully.");
+      } else {
+        alert(data.confirmation || "Your message has been sent successfully.");
+      }
+    } catch (err) {
+      if (typeof showToast === "function") {
+        showToast(String(err.message || "Unable to send message"), true);
+      } else {
+        alert(String(err.message || "Unable to send message"));
+      }
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Send Message";
+    }
+  });
+})();
+</script>
+{% endblock %}
+
