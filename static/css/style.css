@@ -11562,3 +11562,29 @@ body .profile-panel .panel-avatar #avatarIcon {
   font-size: 2rem;
   color: #ffffff;
 }
+
+/* Navbar avatar distortion fix */
+body .header-actions .profile-trigger {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+body .header-actions .profile-trigger img,
+body .header-actions .profile-trigger #navAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+  display: block;
+}
+
+body .header-actions .profile-trigger #navAvatarIcon {
+  font-size: 0.95rem;
+  line-height: 1;
+}

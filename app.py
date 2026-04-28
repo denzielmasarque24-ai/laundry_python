@@ -57,6 +57,7 @@ PAYMENT_METHOD_CONFIG = {
 DIGITAL_PAYMENT_METHODS = set(PAYMENT_METHOD_CONFIG)
 VALID_PAYMENT_METHODS = {"Cash on Pickup", "Cash on Delivery", *DIGITAL_PAYMENT_METHODS}
 MAX_PAYMENT_PROOF_BYTES = 2 * 1024 * 1024
+DEFAULT_DELIVERY_FEE = float(os.environ.get("FRESHWASH_DELIVERY_FEE", "50") or 50)
 
 
 def resolve_instance_path():
@@ -128,15 +129,7 @@ HOMEPAGE_SERVICES = [
         "icon": "fa-fire-flame-curved",
         "accent": "sunrise",
     },
-    {
-        "name": "Pickup & Delivery",
-        "description": "Door-to-door laundry service",
-        "price_prefix": "Free over",
-        "price_value": "₱1500",
-        "icon": "fa-truck-fast",
-        "accent": "mint",
-    },
-]
+    ]
 
 MACHINE_TYPE_CONTENT = {
     "Light": {
@@ -1796,10 +1789,19 @@ def booking_insert_payload_variants(payload):
         }
         payment_variants = [payment_payload, payment_without_proof, payment_core, {}]
 
+    delivery_payload = {
+        key: payload[key]
+        for key in ("delivery_type", "delivery_fee", "total_amount")
+        if key in payload and payload[key] not in (None, "")
+    }
+    delivery_variants = [delivery_payload, {}] if delivery_payload else [{}]
+
     variants = []
     seen = set()
-    for address_variant, optional_variant, payment_variant in product(address_variants, optional_variants, payment_variants):
-        variant = {**base_payload, **address_variant, **optional_variant, **payment_variant}
+    for address_variant, optional_variant, payment_variant, delivery_variant in product(
+        address_variants, optional_variants, payment_variants, delivery_variants
+    ):
+        variant = {**base_payload, **address_variant, **optional_variant, **payment_variant, **delivery_variant}
         key = tuple(sorted(variant.keys()))
         if key in seen:
             continue
@@ -1846,6 +1848,7 @@ def booking_template_context(user, form, machines):
         "form": form,
         "machines": machines or [],
         "payment_method_config": payment_method_config,
+        "delivery_fee_amount": DEFAULT_DELIVERY_FEE,
     }
 
 
@@ -4531,6 +4534,10 @@ def booking():
             return render_template("booking.html", **booking_template_context(user, request.form, machines))
 
         payment_status = "Pending Verification" if payment_method in DIGITAL_PAYMENT_METHODS else "Pending Payment"
+        delivery_type = delivery_option.strip().lower()
+        delivery_fee = DEFAULT_DELIVERY_FEE if delivery_type == "delivery" else 0.0
+        laundry_total = round(float(SERVICES.get(service_type, {}).get("price", 0) or 0) * weight, 2)
+        total_amount = round(laundry_total + delivery_fee, 2)
 
         payload = {
             "user_id": user.get("id", ""),
@@ -4543,7 +4550,10 @@ def booking():
             "pickup_date": pickup_date,
             "pickup_time": pickup_time,
             "weight": weight,
-            "total_price": round(float(SERVICES.get(service_type, {}).get("price", 0) or 0) * weight, 2),
+            "total_price": total_amount,
+            "total_amount": total_amount,
+            "delivery_fee": round(delivery_fee, 2),
+            "delivery_type": delivery_type,
             "delivery_option": delivery_option,
             "notes": notes,
             "status": "Pending",
@@ -4832,5 +4842,6 @@ def profile():
 if __name__ == "__main__":
     init_local_auth_db()
     app.run(debug=True)
+
 
 

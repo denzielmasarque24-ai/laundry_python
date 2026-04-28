@@ -744,7 +744,7 @@
           <label class="fw-label">Delivery Option</label>
           <div class="fw-field">
             <span class="fw-field-icon"><i class="fa-solid fa-truck"></i></span>
-            <select name="delivery_option" class="fw-input">
+            <select name="delivery_option" class="fw-input" id="deliveryOptionSelect">
               <option value="Pickup" {% if form.get('delivery_option', 'Pickup') == 'Pickup' %}selected{% endif %}>Pickup</option>
               <option value="Delivery" {% if form.get('delivery_option') == 'Delivery' %}selected{% endif %}>Delivery</option>
             </select>
@@ -766,6 +766,10 @@
             <div class="booking-payment-row">
               <span>Subtotal</span>
               <strong id="paymentSubtotal">&#8369;0.00</strong>
+            </div>
+            <div class="booking-payment-row">
+              <span id="deliveryFeeLabel">Free Pickup</span>
+              <strong id="paymentDeliveryFee">&#8369;0.00</strong>
             </div>
             <div class="booking-payment-row is-total">
               <span>Total</span>
@@ -915,8 +919,11 @@
   const wt = document.getElementById('weightInput');
   const loadTypeSelect = document.getElementById('loadTypeSelect');
   const machineSelect = document.getElementById('machineSelect');
+  const deliveryOptionSelect = document.getElementById('deliveryOptionSelect');
   const paymentMethodSelect = document.getElementById('paymentMethodSelect');
   const paymentSubtotal = document.getElementById('paymentSubtotal');
+  const paymentDeliveryFee = document.getElementById('paymentDeliveryFee');
+  const deliveryFeeLabel = document.getElementById('deliveryFeeLabel');
   const paymentTotal = document.getElementById('paymentTotal');
   const paymentCard = document.getElementById('paymentCard');
   const paymentMethodOptions = Array.from(document.querySelectorAll('[data-payment-method]'));
@@ -935,7 +942,7 @@
   let pendingRequestedMachine = initialRequestedMachine || '';
   let bookingMachinesRefreshTimer = null;
   const pickupDateInput = document.querySelector('[name="pickup_date"]');
-  const pickupDeliveryFee = 0;
+  const configuredDeliveryFee = Number.parseFloat({{ delivery_fee_amount | tojson }}) || 50;
   const loadWeights = {
     'Light': '2.5',
     'Medium': '5',
@@ -965,9 +972,15 @@
     const servicePrice = getSelectedServicePrice();
     const weight = Number.parseFloat(wt?.value || '0') || 0;
     const subtotal = servicePrice * weight;
-    const total = subtotal + pickupDeliveryFee;
+    const deliveryOption = (deliveryOptionSelect?.value || 'Pickup').trim();
+    const deliveryFee = deliveryOption === 'Delivery' ? configuredDeliveryFee : 0;
+    const total = subtotal + deliveryFee;
 
     if (paymentSubtotal) paymentSubtotal.textContent = formatPeso(subtotal);
+    if (paymentDeliveryFee) paymentDeliveryFee.textContent = formatPeso(deliveryFee);
+    if (deliveryFeeLabel) {
+      deliveryFeeLabel.textContent = deliveryOption === 'Delivery' ? 'Delivery Fee' : 'Free Pickup';
+    }
     if (paymentTotal) paymentTotal.textContent = formatPeso(total);
     digitalTotalAmounts.forEach(totalElement => {
       totalElement.textContent = formatPeso(total);
@@ -1149,6 +1162,10 @@
   if (wt) {
     wt.addEventListener('input', updatePaymentSummary);
     wt.addEventListener('change', updatePaymentSummary);
+  }
+
+  if (deliveryOptionSelect) {
+    deliveryOptionSelect.addEventListener('change', updatePaymentSummary);
   }
 
   paymentMethodOptions.forEach(option => {
