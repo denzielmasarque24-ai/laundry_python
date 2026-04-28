@@ -2,6 +2,26 @@
 {% block title %}My Bookings{% endblock %}
 {% block extra_head %}
 <style>
+  .fw-page.my-bookings-page.my-bookings-v2 {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .fw-page.my-bookings-page.my-bookings-v2 .my-bookings-list {
+    width: 100%;
+    max-width: none;
+  }
+
+  @media (max-width: 768px) {
+    .fw-page.my-bookings-page.my-bookings-v2 {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+  }
+
   .cancel-confirm-overlay {
     position: fixed;
     inset: 0;
@@ -270,7 +290,7 @@
       compactMode = !compactMode;
       if (statsRow)    statsRow.style.display    = compactMode ? 'none' : '';
       if (activitySec) activitySec.style.display = compactMode ? 'none' : '';
-      compactLabel.textContent = compactMode ? 'Full activity overview' : 'Compact activity overview';
+      compactLabel.textContent = compactMode ? 'Activity overview' : 'Compact activity overview';
       compactBtn.querySelector('i').className = compactMode ? 'fa-solid fa-expand' : 'fa-solid fa-wave-square';
     });
   }

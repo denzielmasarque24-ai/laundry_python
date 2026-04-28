@@ -1051,7 +1051,7 @@
     .admin-bookings-table .col-load    { width: 58px; }
     .admin-bookings-table .col-delivery { width: 82px; }
     .admin-bookings-table .col-notes   { width: 170px; }
-    .admin-bookings-table .col-action  { width: 72px; }
+    .admin-bookings-table .col-action  { width: 138px; }
 
     .admin-bookings-table td.col-notes {
       white-space: normal;
@@ -1108,6 +1108,30 @@
       font-size: 0.72rem;
       border-radius: 9px;
       width: 100%;
+    }
+
+    .admin-booking-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      align-items: stretch;
+    }
+
+    .admin-button-outline-pink {
+      border: 1px solid rgba(235, 77, 152, 0.42);
+      background: rgba(255, 244, 250, 0.9);
+      color: #c43f87;
+      box-shadow: none;
+    }
+
+    .admin-button-outline-pink:hover {
+      background: rgba(255, 233, 244, 0.96);
+    }
+
+    .admin-bookings-table tr:not(.is-editing) .booking-editable {
+      opacity: 0.92;
+      pointer-events: none;
+      background: rgba(255, 255, 255, 0.55);
     }
 
     .admin-bookings-table th.col-action,
@@ -1407,6 +1431,12 @@
     body.admin-dashboard-body.dark-mode .admin-bookings-table th.col-action,
     body.admin-dashboard-body.dark-mode .admin-bookings-table td.col-action {
       background: rgba(35, 18, 36, 0.95);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-button-outline-pink {
+      border-color: rgba(255, 110, 168, 0.5);
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffd7e8;
     }
 
     body.admin-dashboard-body.dark-mode .admin-empty-bookings-state {
@@ -2396,7 +2426,7 @@ const DASHBOARD_CONFIG = {
       if (countPill) countPill.textContent = `${users.length} user${users.length === 1 ? "" : "s"}`;
       if (!users.length) { body.innerHTML = '<tr><td colspan="7" class="admin-empty-cell">No data available</td></tr>'; return; }
       body.innerHTML = users.map(user => `
-        <tr>
+        <tr data-booking-id="${escapeHtml(booking.id)}">
           <td><strong>${escapeHtml(user.name)}</strong></td>
           <td>${escapeHtml(user.email)}</td>
           <td>${escapeHtml(user.phone || "No phone")}</td>
@@ -2450,7 +2480,7 @@ const DASHBOARD_CONFIG = {
           <td class="col-date">${escapeHtml(formatDate(booking.pickup_date))}</td>
           <td class="col-time">${escapeHtml(booking.pickup_time || "-")}</td>
           <td class="col-status">
-            <select class="admin-inline-select" id="bookingStatus-${escapeHtml(booking.id)}">
+            <select class="admin-inline-select booking-editable" id="bookingStatus-${escapeHtml(booking.id)}" disabled>
               <option value="Pending" ${booking.status === "Pending" ? "selected" : ""}>Pending</option>
               <option value="In Progress" ${booking.status === "In Progress" ? "selected" : ""}>In Progress</option>
               <option value="Completed" ${booking.status === "Completed" ? "selected" : ""}>Completed</option>
@@ -2460,13 +2490,19 @@ const DASHBOARD_CONFIG = {
           <td class="col-price">${escapeHtml(formatCurrency(booking.total_price))}</td>
           <td class="col-load">${escapeHtml(booking.load_type || "-")}</td>
           <td class="col-delivery">
-            <span class="admin-booking-delivery-badge ${escapeHtml(deliveryBadgeClass)}">${escapeHtml(deliveryOption)}</span>
+            <select class="admin-inline-select booking-editable" id="bookingDelivery-${escapeHtml(booking.id)}" disabled>
+              <option value="Pickup" ${deliveryOption === "Pickup" ? "selected" : ""}>Pickup</option>
+              <option value="Delivery" ${deliveryOption === "Delivery" ? "selected" : ""}>Delivery</option>
+            </select>
           </td>
-          <td class="col-notes" title="${escapeHtml(booking.notes || "")}">
-            <span class="booking-note-text">${escapeHtml(booking.notes || "-")}</span>
+          <td class="col-notes">
+            <textarea class="admin-inline-input booking-editable" id="bookingNotes-${escapeHtml(booking.id)}" rows="2" disabled>${escapeHtml(booking.notes || "")}</textarea>
           </td>
           <td class="col-action">
-            <button type="button" class="admin-button admin-button-primary" onclick="updateBookingStatus(${JSON.stringify(String(booking.id)).replace(/"/g,'&quot;')})">Save</button>
+            <div class="admin-booking-actions">
+              <button type="button" class="admin-button admin-button-outline-pink" onclick="startEditBookingRow(${JSON.stringify(String(booking.id)).replace(/"/g,'&quot;')})">Edit</button>
+              <button type="button" class="admin-button admin-button-primary" onclick="saveBookingRow(${JSON.stringify(String(booking.id)).replace(/"/g,'&quot;')})">Save</button>
+            </div>
           </td>
         </tr>`;
       }).join("");
@@ -2849,13 +2885,41 @@ const DASHBOARD_CONFIG = {
       } catch (error) { logSupabaseError("Service delete failed", error); }
     }
 
-    async function updateBookingStatus(bookingId) {
+    function getBookingRowElement(bookingId) {
+      return document.querySelector(`#bookingsTableBody tr[data-booking-id="${CSS.escape(String(bookingId))}"]`);
+    }
+
+    function setBookingRowEditable(bookingId, editable) {
+      const row = getBookingRowElement(bookingId);
+      if (!row) return;
+      row.classList.toggle("is-editing", editable);
+      row.querySelectorAll(".booking-editable").forEach(field => {
+        field.disabled = !editable;
+      });
+    }
+
+    function startEditBookingRow(bookingId) {
+      setBookingRowEditable(bookingId, true);
+      const firstField = document.getElementById(`bookingStatus-${bookingId}`);
+      if (firstField) firstField.focus();
+    }
+
+    async function saveBookingRow(bookingId) {
       try {
         const statusField = document.getElementById(`bookingStatus-${bookingId}`);
-        if (!statusField) return;
-        await postAdminJson(`/admin/api/bookings/${encodeURIComponent(bookingId)}`, { action: "status", status: statusField.value });
+        const deliveryField = document.getElementById(`bookingDelivery-${bookingId}`);
+        const notesField = document.getElementById(`bookingNotes-${bookingId}`);
+        if (!statusField || !deliveryField || !notesField) return;
+        await postAdminJson(`/admin/api/bookings/${encodeURIComponent(bookingId)}`, {
+          action: "edit",
+          status: statusField.value,
+          delivery_option: deliveryField.value,
+          notes: notesField.value || "",
+        });
+        showSuccess("Booking updated successfully.");
+        setBookingRowEditable(bookingId, false);
         await refreshSectionData("bookings");
-      } catch (error) { logSupabaseError("Booking status update failed", error); }
+      } catch (error) { logSupabaseError("Booking update failed", error); }
     }
 
     async function saveProfileSettings(event) {
