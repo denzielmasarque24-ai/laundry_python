@@ -16,6 +16,7 @@ import re
 import os
 import json
 import base64
+import html
 import tempfile
 import random
 import smtplib
@@ -794,6 +795,15 @@ def send_booking_email(email, booking_data):
     pickup_time = booking_data.get("pickup_time", "")
     delivery_option = booking_data.get("delivery_option", "")
     total_price = booking_data.get("total_price", 0)
+    total_display = f"PHP {total_price}"
+
+    service_type_safe = html.escape(str(service_type or "-"))
+    machine_safe = html.escape(str(machine or "-"))
+    load_type_safe = html.escape(str(load_type or "-"))
+    pickup_date_safe = html.escape(str(pickup_date or "-"))
+    pickup_time_safe = html.escape(str(pickup_time or "-"))
+    delivery_option_safe = html.escape(str(delivery_option or "-"))
+    total_display_safe = html.escape(total_display)
 
     subject = "FreshWash Booking Confirmation"
     text_body = (
@@ -804,22 +814,49 @@ def send_booking_email(email, booking_data):
         f"Pickup Date: {pickup_date}\n"
         f"Pickup Time: {pickup_time}\n"
         f"Delivery Option: {delivery_option}\n"
-        f"Estimated Total: PHP {total_price}\n\n"
+        f"Estimated Total: {total_display}\n\n"
         "Thank you for choosing FreshWash."
     )
     html_body = (
-        "<h2>FreshWash Booking Confirmation</h2>"
-        "<p>Your booking is confirmed.</p>"
-        "<ul>"
-        f"<li><strong>Service:</strong> {service_type}</li>"
-        f"<li><strong>Machine:</strong> {machine}</li>"
-        f"<li><strong>Load Type:</strong> {load_type}</li>"
-        f"<li><strong>Pickup Date:</strong> {pickup_date}</li>"
-        f"<li><strong>Pickup Time:</strong> {pickup_time}</li>"
-        f"<li><strong>Delivery Option:</strong> {delivery_option}</li>"
-        f"<li><strong>Estimated Total:</strong> PHP {total_price}</li>"
-        "</ul>"
-        "<p>Thank you for choosing FreshWash.</p>"
+        "<!doctype html>"
+        "<html>"
+        "<body style=\"margin:0;padding:0;background:#fff4fa;font-family:Arial,Helvetica,sans-serif;color:#3f2235;\">"
+        "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"background:#fff4fa;padding:20px 0;\">"
+        "<tr><td align=\"center\">"
+        "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"max-width:640px;\">"
+        "<tr><td style=\"padding:0 16px;\">"
+        "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border-radius:22px;overflow:hidden;background:#ffffff;box-shadow:0 12px 30px rgba(255,105,180,0.16);\">"
+        "<tr>"
+        "<td style=\"padding:22px 24px;background:linear-gradient(135deg,#ff4da6,#ff7ac3);color:#ffffff;text-align:center;\">"
+        "<div style=\"font-size:22px;line-height:1.25;font-weight:700;\">FreshWash Booking Confirmation</div>"
+        "</td>"
+        "</tr>"
+        "<tr>"
+        "<td style=\"padding:22px 24px;\">"
+        "<div style=\"display:inline-block;padding:6px 12px;border-radius:999px;background:#ffe3f1;color:#c03581;font-size:12px;font-weight:700;\">Confirmed</div>"
+        "<p style=\"margin:14px 0 18px;font-size:15px;line-height:1.6;color:#5a3950;\">Your booking is confirmed. Here are your booking details:</p>"
+        "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border-collapse:separate;border-spacing:0;border:1px solid #ffd8ea;border-radius:14px;overflow:hidden;background:#fff9fc;\">"
+        f"<tr><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;color:#7b5a70;\">Service</td><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;font-weight:600;color:#341c2e;text-align:right;\">{service_type_safe}</td></tr>"
+        f"<tr><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;color:#7b5a70;\">Machine</td><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;font-weight:600;color:#341c2e;text-align:right;\">{machine_safe}</td></tr>"
+        f"<tr><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;color:#7b5a70;\">Load Type</td><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;font-weight:600;color:#341c2e;text-align:right;\">{load_type_safe}</td></tr>"
+        f"<tr><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;color:#7b5a70;\">Pickup Date</td><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;font-weight:600;color:#341c2e;text-align:right;\">{pickup_date_safe}</td></tr>"
+        f"<tr><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;color:#7b5a70;\">Pickup Time</td><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;font-weight:600;color:#341c2e;text-align:right;\">{pickup_time_safe}</td></tr>"
+        f"<tr><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;color:#7b5a70;\">Delivery Option</td><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;font-weight:600;color:#341c2e;text-align:right;\">{delivery_option_safe}</td></tr>"
+        f"<tr><td style=\"padding:12px 14px;font-size:14px;color:#7b5a70;\">Estimated Total</td><td style=\"padding:12px 14px;font-size:15px;font-weight:700;color:#bf2d79;text-align:right;\">{total_display_safe}</td></tr>"
+        "</table>"
+        "<p style=\"margin:18px 0 0;font-size:14px;line-height:1.6;color:#5a3950;\">Thank you for choosing FreshWash. We appreciate your trust in us.</p>"
+        "</td>"
+        "</tr>"
+        "<tr>"
+        "<td style=\"padding:14px 20px;text-align:center;background:#fff0f7;font-size:12px;color:#8e6882;\">&copy; 2026 FreshWash. Fresh. Clean. You.</td>"
+        "</tr>"
+        "</table>"
+        "</td></tr>"
+        "</table>"
+        "</td></tr>"
+        "</table>"
+        "</body>"
+        "</html>"
     )
 
     message = EmailMessage()

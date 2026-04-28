@@ -2917,9 +2917,13 @@ const DASHBOARD_CONFIG = {
           notes: notesField.value || "",
         });
         showSuccess("Booking updated successfully.");
+        if (typeof showToast === "function") showToast("Booking updated");
         setBookingRowEditable(bookingId, false);
         await refreshSectionData("bookings");
-      } catch (error) { logSupabaseError("Booking update failed", error); }
+      } catch (error) {
+        if (typeof showToast === "function") showToast("Booking update failed", true);
+        logSupabaseError("Booking update failed", error);
+      }
     }
 
     async function saveProfileSettings(event) {
