@@ -2726,6 +2726,7 @@ const DASHBOARD_CONFIG = {
             </div>
             <p>${escapeHtml(payment.booking_id)} - ${escapeHtml(payment.method)} - ${escapeHtml(payment.status)}</p>
             ${payment.reference_number ? `<p>Ref: ${escapeHtml(payment.reference_number)}</p>` : ""}
+            <p>Proof: ${payment.payment_proof ? "Uploaded" : "No proof uploaded"}</p>
             <p>${escapeHtml(formatDate(payment.paid_at))}</p>
           </article>
         `).join("");

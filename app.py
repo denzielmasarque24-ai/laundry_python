@@ -2042,8 +2042,9 @@ def insert_booking_record(client, payload):
 
     for variant in booking_insert_payload_variants(payload):
         try:
-            client.table("bookings").insert(variant).execute()
-            return
+            result = client.table("bookings").insert(variant).execute()
+            inserted = (getattr(result, "data", None) or [{}])[0]
+            return inserted
         except Exception as exc:
             missing_column = extract_schema_cache_missing_column(exc, "bookings")
             if missing_column:
@@ -2063,6 +2064,32 @@ def insert_booking_record(client, payload):
         )
 
     raise RuntimeError("FreshWash could not save the booking with the current bookings table schema.")
+
+
+def insert_payment_record(client, payment_payload):
+    if not client:
+        raise RuntimeError("Payment insert requires an available database connection.")
+    client.table("payments").insert(payment_payload).execute()
+
+
+def build_payment_record_from_booking(booking, index=0):
+    return {
+        "id": booking.get("id") or f"payment-{index}",
+        "booking_id": booking.get("id") or "No booking linked",
+        "user_id": booking.get("user_id") or "",
+        "amount": float(booking.get("total_price", 0) or booking.get("total_amount", 0) or 0),
+        "status": booking.get("payment_status") or "Pending",
+        "payment_status": booking.get("payment_status") or "Pending",
+        "method": booking.get("payment_method") or "Unspecified",
+        "payment_method": booking.get("payment_method") or "Unspecified",
+        "reference_number": booking.get("reference_number") or "",
+        "payment_proof": booking.get("payment_proof") or booking.get("proof_image") or "",
+        "proof_image": booking.get("payment_proof") or booking.get("proof_image") or "",
+        "paid_at": booking.get("created_at") or booking.get("pickup_date") or "",
+        "created_at": booking.get("created_at") or booking.get("pickup_date") or "",
+        "customer_name": booking.get("full_name") or "FreshWash Customer",
+        "full_name": booking.get("full_name") or "FreshWash Customer",
+    }
 
 
 def normalize_booking_load_type(value):
@@ -2985,25 +3012,50 @@ def build_admin_reports(bookings, machines):
     }
 
 
-def build_admin_payment_records(bookings):
-    payment_records = []
-    for index, booking in enumerate(bookings or []):
-        payment_method = booking.get("payment_method") or ""
-        if not payment_method:
-            continue
-        payment_records.append({
-            "id": booking.get("id") or f"payment-{index}",
-            "booking_id": booking.get("id") or "No booking linked",
-            "amount": float(booking.get("total_price", 0) or 0),
-            "status": booking.get("payment_status") or "Pending Payment",
-            "method": payment_method,
-            "reference_number": booking.get("reference_number") or "",
-            "payment_proof": booking.get("payment_proof") or booking.get("proof_image") or "",
-            "proof_image": booking.get("payment_proof") or booking.get("proof_image") or "",
-            "paid_at": booking.get("created_at") or booking.get("pickup_date") or "",
-            "customer_name": booking.get("full_name") or "FreshWash Customer",
-        })
-    return payment_records
+def admin_dashboard_payments(bookings_fallback=None):
+    client = admin_db_client()
+    if not client:
+        return []
+    try:
+        result = (
+            client.table("payments")
+            .select("id,booking_id,user_id,customer_name,payment_method,payment_status,amount,payment_proof,created_at")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        rows = result.data or []
+        return [
+            {
+                "id": row.get("id") or f"payment-{index}",
+                "booking_id": row.get("booking_id") or "No booking linked",
+                "user_id": row.get("user_id") or "",
+                "amount": float(row.get("amount", 0) or 0),
+                "status": row.get("payment_status") or "Pending",
+                "payment_status": row.get("payment_status") or "Pending",
+                "method": row.get("payment_method") or "Unspecified",
+                "payment_method": row.get("payment_method") or "Unspecified",
+                "payment_proof": row.get("payment_proof") or "",
+                "proof_image": row.get("payment_proof") or "",
+                "paid_at": row.get("created_at") or "",
+                "created_at": row.get("created_at") or "",
+                "customer_name": row.get("customer_name") or "FreshWash Customer",
+                "full_name": row.get("customer_name") or "FreshWash Customer",
+            }
+            for index, row in enumerate(rows)
+        ]
+    except Exception as exc:
+        missing_column = extract_schema_cache_missing_column(exc, "payments")
+        if missing_column:
+            log_exception("admin payments query missing column", exc, missing_column=missing_column)
+        else:
+            log_exception("admin payments query failed", exc)
+        # Backward fallback: synthesize from bookings if payments table isn't available yet.
+        fallback_records = []
+        for index, booking in enumerate(bookings_fallback or []):
+            if not (booking.get("payment_method") or ""):
+                continue
+            fallback_records.append(build_payment_record_from_booking(booking, index=index))
+        return fallback_records
 
 
 def build_admin_dashboard_payload():
@@ -3012,7 +3064,7 @@ def build_admin_dashboard_payload():
     machines = admin_dashboard_machines()
     services = admin_dashboard_services()
     settings = get_admin_settings()
-    payments = build_admin_payment_records(bookings)
+    payments = admin_dashboard_payments(bookings_fallback=bookings)
     completed_orders = sum(1 for booking in bookings if booking.get("status") == "Completed")
     pending_orders = sum(1 for booking in bookings if booking.get("status") == "Pending")
     cancelled_orders = sum(1 for booking in bookings if booking.get("status") == "Cancelled")
@@ -4984,7 +5036,28 @@ def booking():
         print("USER:", user)
 
         try:
-            insert_booking_record(db(), payload)
+            inserted_booking = insert_booking_record(db(), payload) or {}
+            booking_id = inserted_booking.get("id", "")
+            if booking_id:
+                payment_record = {
+                    "booking_id": booking_id,
+                    "user_id": user.get("id", ""),
+                    "customer_name": full_name,
+                    "payment_method": payment_method,
+                    "payment_status": "Pending",
+                    "amount": total_amount,
+                    "payment_proof": payment_proof or None,
+                }
+                try:
+                    insert_payment_record(db(), payment_record)
+                except Exception as payment_exc:
+                    log_exception(
+                        "payment record insert failed",
+                        payment_exc,
+                        booking_id=booking_id,
+                        payment_method=payment_method,
+                        user=user.get("email", ""),
+                    )
             if selected_machine and selected_machine.get("machine_number") is not None:
                 update_machine(
                     int(selected_machine["machine_number"]),
