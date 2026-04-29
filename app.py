@@ -875,6 +875,43 @@ def send_booking_email(email, booking_data):
         smtp.send_message(message)
 
 
+def send_delivery_status_email(email, delivery_status):
+    cfg = otp_smtp_settings()
+    username = cfg["username"]
+    password = cfg["password"]
+    if not username or not password:
+        raise RuntimeError("Delivery status email is not configured on this server.")
+
+    recipient = normalize_email(email or "")
+    if not recipient:
+        raise ValueError("Delivery status recipient email is required.")
+    if not is_valid_email(recipient):
+        raise ValueError("Enter a valid recipient email address.")
+
+    if delivery_status == "Out for Delivery":
+        subject = "FreshWash Delivery Update"
+        text_body = "Your laundry is now on the way."
+    elif delivery_status == "Delivered":
+        subject = "FreshWash Delivered"
+        text_body = "Your laundry has been delivered. Thank you for choosing FreshWash."
+    else:
+        raise ValueError("Unsupported delivery status for email notification.")
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = formataddr((cfg["sender_name"], cfg["sender_email"]))
+    message["To"] = recipient
+    message.set_content(text_body)
+
+    with smtplib.SMTP(cfg["host"], cfg["port"], timeout=30) as smtp:
+        smtp.ehlo()
+        if cfg["use_tls"]:
+            smtp.starttls()
+            smtp.ehlo()
+        smtp.login(username, password)
+        smtp.send_message(message)
+
+
 def set_verification_state(email, is_verified):
     email = normalize_email(email)
     if local_auth_enabled():
@@ -4122,6 +4159,22 @@ def admin_booking_action(booking_id):
                 return jsonify({"ok": False, "error": "Invalid status value."}), 400
             client.table("bookings").update({"status": status}).eq("id", booking_id).execute()
         elif action == "edit":
+            existing_booking = {}
+            try:
+                existing_res = client.table("bookings").select(
+                    "id,user_id,delivery_status,out_for_delivery_email_sent,delivered_email_sent"
+                ).eq("id", booking_id).limit(1).execute()
+                existing_booking = (existing_res.data or [{}])[0] if existing_res else {}
+            except Exception as exc:
+                missing_column = extract_schema_cache_missing_column(exc, "bookings")
+                if missing_column in {"out_for_delivery_email_sent", "delivered_email_sent"}:
+                    existing_res = client.table("bookings").select("id,user_id,delivery_status").eq("id", booking_id).limit(1).execute()
+                    existing_booking = (existing_res.data or [{}])[0] if existing_res else {}
+                    existing_booking.setdefault("out_for_delivery_email_sent", False)
+                    existing_booking.setdefault("delivered_email_sent", False)
+                else:
+                    raise
+
             payload = {}
             maybe_status = (data.get("status", "") or "").strip()
             if maybe_status:
@@ -4206,6 +4259,66 @@ def admin_booking_action(booking_id):
                 if last_error:
                     raise last_error
                 raise RuntimeError("Booking update failed because no compatible bookings schema variant was found.")
+
+            new_delivery_status = payload.get("delivery_status")
+            previous_delivery_status = str(existing_booking.get("delivery_status", "") or "")
+            transitioned = bool(new_delivery_status) and new_delivery_status != previous_delivery_status
+            should_notify = transitioned and new_delivery_status in {"Out for Delivery", "Delivered"}
+            if should_notify:
+                already_sent = (
+                    bool(existing_booking.get("out_for_delivery_email_sent"))
+                    if new_delivery_status == "Out for Delivery"
+                    else bool(existing_booking.get("delivered_email_sent"))
+                )
+                if not already_sent:
+                    recipient_email = ""
+                    user_id = (existing_booking.get("user_id", "") or "").strip()
+                    if user_id:
+                        try:
+                            profile_res = client.table("profiles").select("email").eq("id", user_id).limit(1).execute()
+                            profile_row = (profile_res.data or [{}])[0] if profile_res else {}
+                            recipient_email = normalize_email(profile_row.get("email", "") or "")
+                        except Exception as lookup_exc:
+                            log_exception(
+                                "delivery status profile lookup failed",
+                                lookup_exc,
+                                booking_id=booking_id,
+                                user_id=user_id,
+                                delivery_status=new_delivery_status,
+                            )
+                    if recipient_email:
+                        try:
+                            send_delivery_status_email(recipient_email, new_delivery_status)
+                            flag_payload = (
+                                {"out_for_delivery_email_sent": True}
+                                if new_delivery_status == "Out for Delivery"
+                                else {"delivered_email_sent": True}
+                            )
+                            try:
+                                client.table("bookings").update(flag_payload).eq("id", booking_id).execute()
+                            except Exception as flag_exc:
+                                log_exception(
+                                    "delivery status email flag update failed",
+                                    flag_exc,
+                                    booking_id=booking_id,
+                                    delivery_status=new_delivery_status,
+                                )
+                        except Exception as email_exc:
+                            log_exception(
+                                "delivery status email failed",
+                                email_exc,
+                                booking_id=booking_id,
+                                recipient=recipient_email,
+                                delivery_status=new_delivery_status,
+                            )
+                    else:
+                        log_exception(
+                            "delivery status email skipped due to missing recipient",
+                            ValueError("Recipient email not found"),
+                            booking_id=booking_id,
+                            user_id=user_id,
+                            delivery_status=new_delivery_status,
+                        )
         elif action == "cancel":
             client.table("bookings").update({"status": "Cancelled"}).eq("id", booking_id).execute()
         elif action == "delete":
@@ -4827,12 +4940,40 @@ def messages_page():
 @admin_required
 def admin_messages():
     messages = []
+    admin_data = empty_admin_dashboard_payload()
+    # Keep safe defaults available for templates that reference top-level admin identity.
+    admin_data.setdefault("name", "Admin")
+    admin_data.setdefault("email", "admin@gmail.com")
+    admin_data.setdefault("avatar", None)
+    profile_defaults = admin_data.setdefault("settings", {}).setdefault("profile", {})
+    profile_defaults.setdefault("name", "Admin")
+    profile_defaults.setdefault("email", "admin@gmail.com")
+    profile_defaults.setdefault("avatar", None)
     try:
         result = db().table("contact_messages").select("id,name,email,subject,message,created_at").order("created_at", desc=True).execute()
         messages = result.data or []
     except Exception as exc:
         log_exception("admin contact messages load failed", exc, user=session.get("user", {}).get("email", ""))
-    return render_template("admin_contact_messages.html", user=session.get("user", {}), active_page="messages", messages=messages)
+    try:
+        payload = build_admin_dashboard_payload() or {}
+        if isinstance(payload, dict):
+            admin_data = payload
+            admin_data.setdefault("name", "Admin")
+            admin_data.setdefault("email", "admin@gmail.com")
+            admin_data.setdefault("avatar", None)
+            profile_safe = admin_data.setdefault("settings", {}).setdefault("profile", {})
+            profile_safe.setdefault("name", "Admin")
+            profile_safe.setdefault("email", "admin@gmail.com")
+            profile_safe.setdefault("avatar", None)
+    except Exception as exc:
+        log_exception("admin messages admin_data payload failed", exc, user=session.get("user", {}).get("email", ""))
+    return render_template(
+        "admin_contact_messages.html",
+        user=session.get("user", {}),
+        active_page="messages",
+        messages=messages,
+        admin_data=admin_data,
+    )
 
 
 @app.route("/api/admin/messages", methods=["GET"])
