@@ -3680,9 +3680,6 @@ def forgot_password():
     if request.method == "GET":
         return render_template("forgot_password.html")
 
-    if not is_supabase_enabled() or not supabase:
-        return jsonify({"ok": False, "error": "Password reset is unavailable right now."}), 503
-
     payload = request.get_json(silent=True) or {}
     if not payload and request.form:
         payload = request.form.to_dict() or {}
@@ -3692,46 +3689,18 @@ def forgot_password():
     if not is_valid_email(email):
         return jsonify({"ok": False, "error": "Please enter a valid email address."}), 400
 
-    # Surface not-found explicitly when service-role access is available.
-    if is_supabase_service_role_enabled():
-        try:
-            existing_auth_user = find_supabase_auth_user_by_email(email)
-            if not existing_auth_user:
-                print(f"FORGOT_PASSWORD: auth user not found for {safe_email_for_log(email)}")
-                return jsonify({"ok": False, "error": "No account found for this email address."}), 404
-        except Exception as lookup_exc:
-            log_exception("forgot password lookup failed", lookup_exc, email=safe_email_for_log(email))
+    if not is_supabase_enabled() or not supabase:
+        return jsonify({"ok": False, "error": "Password reset is unavailable right now."}), 503
 
     try:
         reset_redirect = (
             (os.environ.get("FRESHWASH_PASSWORD_RESET_REDIRECT_TO") or "").strip()
             or "http://localhost:5000/reset-password"
         )
-        print(
-            "FORGOT_PASSWORD: sending reset",
-            f"email={safe_email_for_log(email)}",
-            f"redirect_to={reset_redirect}",
-        )
-        response = supabase.auth.reset_password_for_email(
-            email,
-            {"redirect_to": reset_redirect},
-        )
-        print(f"FORGOT_PASSWORD: supabase response={response!r}")
-        return jsonify({"ok": True, "message": "Check your email"})
+        supabase.auth.reset_password_for_email(email, {"redirect_to": reset_redirect})
     except Exception as exc:
         log_exception("forgot password send failed", exc, email=safe_email_for_log(email))
-        message = extract_supabase_error_message(exc)
-        print(
-            "FORGOT_PASSWORD: send failed",
-            f"email={safe_email_for_log(email)}",
-            f"error={message}",
-        )
-        lowered = message.lower()
-        if "user not found" in lowered:
-            return jsonify({"ok": False, "error": "No account found for this email address."}), 404
-        if "invalid email" in lowered:
-            return jsonify({"ok": False, "error": "Please enter a valid email address."}), 400
-        return jsonify({"ok": False, "error": "Unable to send reset link right now. Please try again."}), 500
+    return jsonify({"ok": True, "message": "If the email exists, a reset link has been sent."})
 
 
 @app.route("/reset-password", methods=["GET"])

@@ -1,176 +1,85 @@
-content = open('app.py', 'rb').read().decode('utf-8')
+c = open('app.py', 'rb').read().decode('utf-8')
 
-# ── Patch 1: forgot_password ──────────────────────────────────────────────────
-old1 = (
-    "    if not is_supabase_enabled() or not supabase:\r\n"
-    "        return jsonify({\"ok\": False, \"error\": \"Password reset is unavailable right now.\"}), 503\r\n"
-    "\r\n"
-    "    payload = request.get_json(silent=True) or {}\r\n"
-    "    if not payload and request.form:\r\n"
-    "        payload = request.form.to_dict() or {}\r\n"
-    "    email = normalize_email(payload.get(\"email\", \"\"))\r\n"
-    "    if not email:\r\n"
-    "        return jsonify({\"ok\": False, \"error\": \"Email is required.\"}), 400\r\n"
-    "    if not is_valid_email(email):\r\n"
-    "        return jsonify({\"ok\": False, \"error\": \"Please enter a valid email address.\"}), 400\r\n"
-    "\r\n"
-    "    # Surface not-found explicitly when service-role access is available.\r\n"
-    "    if is_supabase_service_role_enabled():\r\n"
-    "        try:\r\n"
-    "            existing_auth_user = find_supabase_auth_user_by_email(email)\r\n"
-    "            if not existing_auth_user:\r\n"
-    "                print(f\"FORGOT_PASSWORD: auth user not found for {safe_email_for_log(email)}\")\r\n"
-    "                return jsonify({\"ok\": False, \"error\": \"No account found for this email address.\"}), 404\r\n"
-    "        except Exception as lookup_exc:\r\n"
-    "            log_exception(\"forgot password lookup failed\", lookup_exc, email=safe_email_for_log(email))\r\n"
-    "\r\n"
-    "    try:\r\n"
+old = (
+    '    if not is_supabase_enabled() or not supabase:\n'
+    '        return jsonify({"ok": False, "error": "Password reset is unavailable right now."}), 503\n'
+    '\n'
+    '    payload = request.get_json(silent=True) or {}\n'
+    '    if not payload and request.form:\n'
+    '        payload = request.form.to_dict() or {}\n'
+    '    email = normalize_email(payload.get("email", ""))\n'
+    '    if not email:\n'
+    '        return jsonify({"ok": False, "error": "Email is required."}), 400\n'
+    '    if not is_valid_email(email):\n'
+    '        return jsonify({"ok": False, "error": "Please enter a valid email address."}), 400\n'
+    '\n'
+    '    # Surface not-found explicitly when service-role access is available.\n'
+    '    if is_supabase_service_role_enabled():\n'
+    '        try:\n'
+    '            existing_auth_user = find_supabase_auth_user_by_email(email)\n'
+    '            if not existing_auth_user:\n'
+    '                print(f"FORGOT_PASSWORD: auth user not found for {safe_email_for_log(email)}")\n'
+    '                return jsonify({"ok": False, "error": "No account found for this email address."}), 404\n'
+    '        except Exception as lookup_exc:\n'
+    '            log_exception("forgot password lookup failed", lookup_exc, email=safe_email_for_log(email))\n'
+    '\n'
+    '    try:\n'
+    '        reset_redirect = (\n'
+    '            (os.environ.get("FRESHWASH_PASSWORD_RESET_REDIRECT_TO") or "").strip()\n'
+    '            or "http://localhost:5000/reset-password"\n'
+    '        )\n'
+    '        print(\n'
+    '            "FORGOT_PASSWORD: sending reset",\n'
+    '            f"email={safe_email_for_log(email)}",\n'
+    '            f"redirect_to={reset_redirect}",\n'
+    '        )\n'
+    '        response = supabase.auth.reset_password_for_email(\n'
+    '            email,\n'
+    '            {"redirect_to": reset_redirect},\n'
+    '        )\n'
+    '        print(f"FORGOT_PASSWORD: supabase response={response!r}")\n'
+    '        return jsonify({"ok": True, "message": "Check your email"})\n'
+    '    except Exception as exc:\n'
+    '        log_exception("forgot password send failed", exc, email=safe_email_for_log(email))\n'
+    '        message = extract_supabase_error_message(exc)\n'
+    '        print(\n'
+    '            "FORGOT_PASSWORD: send failed",\n'
+    '            f"email={safe_email_for_log(email)}",\n'
+    '            f"error={message}",\n'
+    '        )\n'
+    '        lowered = message.lower()\n'
+    '        if "user not found" in lowered:\n'
+    '            return jsonify({"ok": False, "error": "No account found for this email address."}), 404\n'
+    '        if "invalid email" in lowered:\n'
+    '            return jsonify({"ok": False, "error": "Please enter a valid email address."}), 400\n'
+    '        return jsonify({"ok": False, "error": "Unable to send reset link right now. Please try again."}), 500\n'
 )
 
-new1 = (
-    "    payload = request.get_json(silent=True) or {}\r\n"
-    "    if not payload and request.form:\r\n"
-    "        payload = request.form.to_dict() or {}\r\n"
-    "    email = normalize_email(payload.get(\"email\", \"\"))\r\n"
-    "    if not email:\r\n"
-    "        return jsonify({\"ok\": False, \"error\": \"Email is required.\"}), 400\r\n"
-    "    if not is_valid_email(email):\r\n"
-    "        return jsonify({\"ok\": False, \"error\": \"Please enter a valid email address.\"}), 400\r\n"
-    "\r\n"
-    "    local_user, _ = find_local_user(email)\r\n"
-    "\r\n"
-    "    # Surface not-found explicitly when service-role access is available.\r\n"
-    "    if is_supabase_service_role_enabled():\r\n"
-    "        try:\r\n"
-    "            existing_auth_user = find_supabase_auth_user_by_email(email)\r\n"
-    "            if not existing_auth_user and not local_user:\r\n"
-    "                print(f\"FORGOT_PASSWORD: auth user not found for {safe_email_for_log(email)}\")\r\n"
-    "                return jsonify({\"ok\": False, \"error\": \"No account found for this email address.\"}), 404\r\n"
-    "        except Exception as lookup_exc:\r\n"
-    "            log_exception(\"forgot password lookup failed\", lookup_exc, email=safe_email_for_log(email))\r\n"
-    "            existing_auth_user = None\r\n"
-    "    else:\r\n"
-    "        existing_auth_user = None\r\n"
-    "\r\n"
-    "    # Local-only account: send OTP reset code instead of Supabase link\r\n"
-    "    if local_user and not existing_auth_user:\r\n"
-    "        try:\r\n"
-    "            otp_code = generate_otp_code()\r\n"
-    "            otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRY_MINUTES)\r\n"
-    "            store_email_otp(email, \"password_reset\", otp_code, otp_expiry)\r\n"
-    "            send_otp_email(email, otp_code)\r\n"
-    "            session[\"password_reset_email\"] = email\r\n"
-    "            session.modified = True\r\n"
-    "            return jsonify({\"ok\": True, \"message\": \"Check your email\", \"flow\": \"local_otp\"})\r\n"
-    "        except Exception as exc:\r\n"
-    "            log_exception(\"forgot password local otp send failed\", exc, email=safe_email_for_log(email))\r\n"
-    "            return jsonify({\"ok\": False, \"error\": \"Unable to send reset code right now. Please try again.\"}), 500\r\n"
-    "\r\n"
-    "    if not is_supabase_enabled() or not supabase:\r\n"
-    "        return jsonify({\"ok\": False, \"error\": \"Password reset is unavailable right now.\"}), 503\r\n"
-    "\r\n"
-    "    try:\r\n"
+new = (
+    '    payload = request.get_json(silent=True) or {}\n'
+    '    if not payload and request.form:\n'
+    '        payload = request.form.to_dict() or {}\n'
+    '    email = normalize_email(payload.get("email", ""))\n'
+    '    if not email:\n'
+    '        return jsonify({"ok": False, "error": "Email is required."}), 400\n'
+    '    if not is_valid_email(email):\n'
+    '        return jsonify({"ok": False, "error": "Please enter a valid email address."}), 400\n'
+    '\n'
+    '    if not is_supabase_enabled() or not supabase:\n'
+    '        return jsonify({"ok": False, "error": "Password reset is unavailable right now."}), 503\n'
+    '\n'
+    '    try:\n'
+    '        reset_redirect = (\n'
+    '            (os.environ.get("FRESHWASH_PASSWORD_RESET_REDIRECT_TO") or "").strip()\n'
+    '            or "http://localhost:5000/reset-password"\n'
+    '        )\n'
+    '        supabase.auth.reset_password_for_email(email, {"redirect_to": reset_redirect})\n'
+    '    except Exception as exc:\n'
+    '        log_exception("forgot password send failed", exc, email=safe_email_for_log(email))\n'
+    '    return jsonify({"ok": True, "message": "If the email exists, a reset link has been sent."})\n'
 )
 
-assert old1 in content, "Patch 1 target not found!"
-content = content.replace(old1, new1, 1)
-print("Patch 1 applied.")
-
-# ── Patch 2: reset_password_submit ───────────────────────────────────────────
-old2 = (
-    "@app.route(\"/reset-password\", methods=[\"POST\"])\r\n"
-    "def reset_password_submit():\r\n"
-    "    if not is_supabase_enabled() or not supabase:\r\n"
-    "        return jsonify({\"ok\": False, \"error\": \"Password reset is unavailable right now.\"}), 503\r\n"
-    "\r\n"
-    "    payload = request.get_json(silent=True) or {}\r\n"
-    "    password = str(payload.get(\"password\", \"\") or \"\")\r\n"
-    "    confirm_password = str(payload.get(\"confirm_password\", \"\") or \"\")\r\n"
-    "    access_token = str(payload.get(\"access_token\", \"\") or \"\").strip()\r\n"
-    "    refresh_token = str(payload.get(\"refresh_token\", \"\") or \"\").strip()\r\n"
-    "\r\n"
-    "    errors = validate_reset_password(password, confirm_password)\r\n"
-    "    if errors:\r\n"
-    "        return jsonify({\"ok\": False, \"error\": errors[0]}), 400\r\n"
-    "    if not access_token:\r\n"
-    "        return jsonify({\"ok\": False, \"error\": \"Reset link is invalid or expired. Please request a new one.\"}), 400\r\n"
-    "\r\n"
-    "    try:\r\n"
-    "        authed = get_authed_client(access_token, refresh_token)\r\n"
-    "        authed.auth.update_user({\"password\": password})\r\n"
-    "        return jsonify({\"ok\": True, \"message\": \"Password reset successful. You can now log in.\"})\r\n"
-    "    except Exception as exc:\r\n"
-    "        log_exception(\"reset password update failed\", exc)\r\n"
-    "        message = extract_supabase_error_message(exc)\r\n"
-    "        lowered = message.lower()\r\n"
-    "        if \"expired\" in lowered or \"invalid\" in lowered or \"jwt\" in lowered:\r\n"
-    "            return jsonify({\"ok\": False, \"error\": \"Reset link is invalid or expired. Please request a new one.\"}), 400\r\n"
-    "        return jsonify({\"ok\": False, \"error\": \"Unable to reset password right now. Please try again.\"}), 500\r\n"
-)
-
-new2 = (
-    "@app.route(\"/reset-password\", methods=[\"POST\"])\r\n"
-    "def reset_password_submit():\r\n"
-    "    payload = request.get_json(silent=True) or {}\r\n"
-    "    password = str(payload.get(\"password\", \"\") or \"\")\r\n"
-    "    confirm_password = str(payload.get(\"confirm_password\", \"\") or \"\")\r\n"
-    "    access_token = str(payload.get(\"access_token\", \"\") or \"\").strip()\r\n"
-    "    refresh_token = str(payload.get(\"refresh_token\", \"\") or \"\").strip()\r\n"
-    "    otp_code = str(payload.get(\"otp_code\", \"\") or \"\").strip()\r\n"
-    "\r\n"
-    "    errors = validate_reset_password(password, confirm_password)\r\n"
-    "    if errors:\r\n"
-    "        return jsonify({\"ok\": False, \"error\": errors[0]}), 400\r\n"
-    "\r\n"
-    "    # Local OTP-based reset\r\n"
-    "    if otp_code:\r\n"
-    "        email = normalize_email(session.get(\"password_reset_email\", \"\"))\r\n"
-    "        if not email:\r\n"
-    "            return jsonify({\"ok\": False, \"error\": \"Reset session expired. Please request a new reset link.\"}), 400\r\n"
-    "        otp_record = get_email_otp(email, \"password_reset\")\r\n"
-    "        if not otp_record:\r\n"
-    "            return jsonify({\"ok\": False, \"error\": \"Reset code expired. Please request a new one.\"}), 400\r\n"
-    "        expires_at = otp_record.get(\"expires_at\")\r\n"
-    "        if isinstance(expires_at, datetime):\r\n"
-    "            if expires_at.tzinfo is None:\r\n"
-    "                expires_at = expires_at.replace(tzinfo=timezone.utc)\r\n"
-    "            if expires_at <= datetime.now(timezone.utc):\r\n"
-    "                mark_email_otp_used(otp_record.get(\"id\"))\r\n"
-    "                return jsonify({\"ok\": False, \"error\": \"Reset code expired. Please request a new one.\"}), 400\r\n"
-    "        if otp_record.get(\"otp_code\") != otp_code:\r\n"
-    "            return jsonify({\"ok\": False, \"error\": \"Invalid reset code.\"}), 400\r\n"
-    "        mark_email_otp_used(otp_record.get(\"id\"))\r\n"
-    "        local_user, users = find_local_user(email)\r\n"
-    "        if not local_user:\r\n"
-    "            return jsonify({\"ok\": False, \"error\": \"Account not found.\"}), 404\r\n"
-    "        local_user[\"password_hash\"] = generate_password_hash(password)\r\n"
-    "        save_local_users(users)\r\n"
-    "        session.pop(\"password_reset_email\", None)\r\n"
-    "        session.modified = True\r\n"
-    "        return jsonify({\"ok\": True, \"message\": \"Password reset successful. You can now log in.\"})\r\n"
-    "\r\n"
-    "    # Supabase token-based reset\r\n"
-    "    if not is_supabase_enabled() or not supabase:\r\n"
-    "        return jsonify({\"ok\": False, \"error\": \"Password reset is unavailable right now.\"}), 503\r\n"
-    "    if not access_token:\r\n"
-    "        return jsonify({\"ok\": False, \"error\": \"Reset link is invalid or expired. Please request a new one.\"}), 400\r\n"
-    "\r\n"
-    "    try:\r\n"
-    "        authed = get_authed_client(access_token, refresh_token)\r\n"
-    "        authed.auth.update_user({\"password\": password})\r\n"
-    "        return jsonify({\"ok\": True, \"message\": \"Password reset successful. You can now log in.\"})\r\n"
-    "    except Exception as exc:\r\n"
-    "        log_exception(\"reset password update failed\", exc)\r\n"
-    "        message = extract_supabase_error_message(exc)\r\n"
-    "        lowered = message.lower()\r\n"
-    "        if \"expired\" in lowered or \"invalid\" in lowered or \"jwt\" in lowered:\r\n"
-    "            return jsonify({\"ok\": False, \"error\": \"Reset link is invalid or expired. Please request a new one.\"}), 400\r\n"
-    "        return jsonify({\"ok\": False, \"error\": \"Unable to reset password right now. Please try again.\"}), 500\r\n"
-)
-
-assert old2 in content, "Patch 2 target not found!"
-content = content.replace(old2, new2, 1)
-print("Patch 2 applied.")
-
-open('app.py', 'wb').write(content.encode('utf-8'))
+assert old in c, "Target not found in app.py!"
+c = c.replace(old, new, 1)
+open('app.py', 'wb').write(c.encode('utf-8'))
 print("Done.")
