@@ -5188,7 +5188,7 @@ def contact_us_send_api():
             "subject": subject,
             "message": message_text,
         }
-        inserted = (client.table("contact_messages").insert(insert_payload).execute().data or [{}])[0]
+        inserted = (client.table("contact_us").insert(insert_payload).execute().data or [{}])[0]
         return jsonify({"ok": True, "message": inserted, "confirmation": "Your message has been sent successfully."})
     except Exception as exc:
         log_exception("contact us send failed", exc, user=user.get("email", ""))
@@ -5217,7 +5217,7 @@ def admin_messages():
     profile_defaults.setdefault("email", "admin@gmail.com")
     profile_defaults.setdefault("avatar", None)
     try:
-        result = db().table("contact_messages").select("id,name,email,subject,message,created_at").order("created_at", desc=True).execute()
+        result = db().table("contact_us").select("id,name,email,subject,message,created_at").order("created_at", desc=True).execute()
         messages = result.data or []
     except Exception as exc:
         log_exception("admin contact messages load failed", exc, user=session.get("user", {}).get("email", ""))
@@ -5251,7 +5251,7 @@ def admin_messages_api():
         return jsonify({"ok": False, "error": "Database unavailable."}), 503
     try:
         rows = (
-            client.table("contact_messages")
+            client.table("contact_us")
             .select("id,name,email,subject,message,created_at")
             .order("created_at", desc=True)
             .execute()
