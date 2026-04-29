@@ -894,10 +894,7 @@ def send_delivery_status_email(email, delivery_status, booking_data=None):
         text_body = "Your laundry is now on the way."
     elif delivery_status == "Delivered":
         subject = "FreshWash Delivered"
-        text_body = (
-            "Your laundry has been delivered.\n"
-            "Thank you for choosing FreshWash. We hope you enjoyed our service."
-        )
+        text_body = "Your laundry has been delivered. Thank you for choosing FreshWash."
     else:
         raise ValueError("Unsupported delivery status for email notification.")
 
@@ -925,25 +922,19 @@ def send_delivery_status_email(email, delivery_status, booking_data=None):
             "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border-radius:20px;overflow:hidden;background:#ffffff;box-shadow:0 10px 24px rgba(255,105,180,0.15);\">"
             "<tr>"
             "<td style=\"padding:18px 20px;background:linear-gradient(135deg,#ff4da6,#ff7ac3);color:#ffffff;text-align:center;\">"
-            "<div style=\"font-size:24px;line-height:1.2;font-weight:700;\">FreshWash</div>"
-            "<div style=\"margin-top:4px;font-size:13px;line-height:1.4;opacity:0.95;\">Delivery Completed</div>"
+            "<div style=\"font-size:24px;line-height:1.2;font-weight:700;\">FreshWash Delivered</div>"
             "</td>"
             "</tr>"
             "<tr>"
             "<td style=\"padding:18px 20px;background:#fff9fc;\">"
             "<div style=\"display:inline-block;padding:6px 12px;border-radius:999px;background:#def7e6;color:#18794e;font-size:12px;font-weight:700;\">Delivered</div>"
-            "<h2 style=\"margin:12px 0 10px;font-size:22px;line-height:1.25;color:#341c2e;\">Your laundry has been delivered 🎉</h2>"
-            "<p style=\"margin:0 0 14px;font-size:14px;line-height:1.6;color:#5a3950;\">Thank you for choosing FreshWash. We hope you enjoyed our service.</p>"
+            "<h2 style=\"margin:12px 0 10px;font-size:22px;line-height:1.25;color:#341c2e;\">Your laundry has been delivered.</h2>"
+            "<p style=\"margin:0 0 14px;font-size:14px;line-height:1.6;color:#5a3950;\">Your laundry has been delivered. Thank you for choosing FreshWash.</p>"
             "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border-collapse:separate;border-spacing:0;border:1px solid #ffd8ea;border-radius:14px;overflow:hidden;background:#ffffff;\">"
             f"<tr><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;color:#7b5a70;\">Service</td><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;font-weight:600;color:#341c2e;text-align:right;\">{service_type}</td></tr>"
             f"<tr><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;color:#7b5a70;\">Machine</td><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;font-weight:600;color:#341c2e;text-align:right;\">{machine}</td></tr>"
-            f"<tr><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;color:#7b5a70;\">Delivery Type</td><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;font-weight:600;color:#341c2e;text-align:right;\">{delivery_option}</td></tr>"
+            f"<tr><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;color:#7b5a70;\">Delivery Option</td><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;font-weight:600;color:#341c2e;text-align:right;\">{delivery_option}</td></tr>"
             f"<tr><td style=\"padding:10px 12px;font-size:13px;color:#7b5a70;\">Total Amount</td><td style=\"padding:10px 12px;font-size:14px;font-weight:700;color:#bf2d79;text-align:right;\">{total_display_safe}</td></tr>"
-            "</table>"
-            "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"margin-top:14px;\">"
-            "<tr><td align=\"center\">"
-            "<a href=\"https://freshwash.example.com/booking\" style=\"display:inline-block;padding:11px 18px;border-radius:999px;background:linear-gradient(135deg,#ff4da6,#ff7ac3);color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;\">Book Again</a>"
-            "</td></tr>"
             "</table>"
             "</td>"
             "</tr>"
@@ -3619,7 +3610,7 @@ def forgot_password():
             email,
             {"redirect_to": reset_redirect},
         )
-        return jsonify({"ok": True, "message": "Reset link sent. Please check your email."})
+        return jsonify({"ok": True, "message": "Reset link sent. Check your email."})
     except Exception as exc:
         log_exception("forgot password send failed", exc, email=safe_email_for_log(email))
         message = extract_supabase_error_message(exc)
