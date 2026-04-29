@@ -5475,7 +5475,7 @@ def profile():
 
 if __name__ == "__main__":
     init_local_auth_db()
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=5000)
 
 
 
