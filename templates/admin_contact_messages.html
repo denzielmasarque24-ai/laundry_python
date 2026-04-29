@@ -1,5 +1,85 @@
 {% extends "admin_base.html" %}
 
+{% block extra_head %}
+<style>
+  .contact-message-cell {
+    white-space: nowrap;
+    width: 120px;
+  }
+  .contact-message-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(18, 10, 18, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+    padding: 20px;
+  }
+  .contact-message-modal.is-open {
+    display: flex;
+  }
+  .contact-message-modal-card {
+    width: min(680px, 100%);
+    background: #fff9fc;
+    border-radius: 18px;
+    box-shadow: 0 18px 45px rgba(191, 45, 121, 0.2);
+    border: 1px solid rgba(255, 157, 207, 0.38);
+    overflow: hidden;
+  }
+  .contact-message-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, #ff4da6, #ff7ac3);
+    color: #fff;
+  }
+  .contact-message-modal-close {
+    border: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.24);
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  .contact-message-modal-body {
+    padding: 16px 18px 18px;
+    display: grid;
+    gap: 10px;
+  }
+  .contact-message-modal-row {
+    display: grid;
+    gap: 4px;
+  }
+  .contact-message-modal-row strong {
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #8b3a66;
+  }
+  .contact-message-modal-row p {
+    margin: 0;
+    color: #3a2130;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+  body.admin-dashboard-body.dark-mode .contact-message-modal-card {
+    background: #211525;
+    border-color: rgba(255, 122, 195, 0.28);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+  }
+  body.admin-dashboard-body.dark-mode .contact-message-modal-row strong {
+    color: #f3a7d0;
+  }
+  body.admin-dashboard-body.dark-mode .contact-message-modal-row p {
+    color: #f9e7f2;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="admin-panel is-active" data-panel="messages" aria-label="Contact messages">
   <div class="admin-card">
@@ -31,7 +111,15 @@
               <td>{{ m.name or "-" }}</td>
               <td>{{ m.email or "-" }}</td>
               <td>{{ m.subject or "-" }}</td>
-              <td style="max-width:360px;white-space:normal;">{{ m.message or "-" }}</td>
+              <td class="contact-message-cell">
+                <button
+                  type="button"
+                  class="admin-button admin-button-outline-pink"
+                  onclick='openContactMessageModal({{ m|tojson|safe }})'
+                >
+                  View
+                </button>
+              </td>
               <td>{{ m.created_at or "-" }}</td>
             </tr>
             {% endfor %}
@@ -45,5 +133,75 @@
     </div>
   </div>
 </section>
+
+<div class="contact-message-modal" id="contactMessageModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="contactMessageModalTitle">
+  <div class="contact-message-modal-card">
+    <div class="contact-message-modal-head">
+      <h3 id="contactMessageModalTitle">Contact Message</h3>
+      <button type="button" class="contact-message-modal-close" aria-label="Close" onclick="closeContactMessageModal()">&times;</button>
+    </div>
+    <div class="contact-message-modal-body">
+      <div class="contact-message-modal-row">
+        <strong>Name</strong>
+        <p id="contactModalName">-</p>
+      </div>
+      <div class="contact-message-modal-row">
+        <strong>Email</strong>
+        <p id="contactModalEmail">-</p>
+      </div>
+      <div class="contact-message-modal-row">
+        <strong>Subject</strong>
+        <p id="contactModalSubject">-</p>
+      </div>
+      <div class="contact-message-modal-row">
+        <strong>Full Message</strong>
+        <p id="contactModalMessage">-</p>
+      </div>
+      <div class="contact-message-modal-row">
+        <strong>Date</strong>
+        <p id="contactModalDate">-</p>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
+{% block scripts %}
+<script>
+  function openContactMessageModal(message) {
+    const modal = document.getElementById("contactMessageModal");
+    if (!modal) return;
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = String(value || "-");
+    };
+    setText("contactModalName", message?.name || "-");
+    setText("contactModalEmail", message?.email || "-");
+    setText("contactModalSubject", message?.subject || "-");
+    setText("contactModalMessage", message?.message || "-");
+    setText("contactModalDate", message?.created_at || "-");
+    modal.classList.add("is-open");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeContactMessageModal() {
+    const modal = document.getElementById("contactMessageModal");
+    if (!modal) return;
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const modal = document.getElementById("contactMessageModal");
+    if (!modal) return;
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) closeContactMessageModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && modal.classList.contains("is-open")) {
+        closeContactMessageModal();
+      }
+    });
+  });
+</script>
+{% endblock %}

@@ -1300,28 +1300,59 @@ def list_supabase_auth_users():
     if not is_supabase_service_role_enabled():
         return []
     client = get_service_client()
-    try:
-        response = client.auth.admin.list_users()
-    except Exception as exc:
-        log_exception("register auth users list failed", exc)
-        return []
+    all_users = []
+    seen_ids = set()
+    # Supabase auth admin list can be paginated; scan several pages to avoid false "not found".
+    for page in range(1, 31):
+        try:
+            try:
+                response = client.auth.admin.list_users(page=page, per_page=200)
+            except TypeError:
+                response = client.auth.admin.list_users()
+        except Exception as exc:
+            log_exception("register auth users list failed", exc, page=page)
+            break
 
-    if isinstance(response, dict):
-        users = response.get("users") or (response.get("data") or {}).get("users") or []
-        return users if isinstance(users, list) else []
+        if isinstance(response, dict):
+            users = response.get("users") or (response.get("data") or {}).get("users") or []
+        else:
+            direct_users = getattr(response, "users", None)
+            if isinstance(direct_users, list):
+                users = direct_users
+            else:
+                data = getattr(response, "data", None)
+                nested_users = getattr(data, "users", None) if data is not None else None
+                if isinstance(nested_users, list):
+                    users = nested_users
+                elif isinstance(data, dict):
+                    users = data.get("users") or []
+                else:
+                    users = []
 
-    direct_users = getattr(response, "users", None)
-    if isinstance(direct_users, list):
-        return direct_users
+        if not isinstance(users, list) or not users:
+            break
 
-    data = getattr(response, "data", None)
-    nested_users = getattr(data, "users", None) if data is not None else None
-    if isinstance(nested_users, list):
-        return nested_users
-    if isinstance(data, dict):
-        users = data.get("users") or []
-        return users if isinstance(users, list) else []
-    return []
+        added = 0
+        for user in users:
+            user_id = ""
+            if isinstance(user, dict):
+                user_id = str(user.get("id", "") or "")
+            else:
+                user_id = str(getattr(user, "id", "") or "")
+            dedupe_key = user_id or repr(user)
+            if dedupe_key in seen_ids:
+                continue
+            seen_ids.add(dedupe_key)
+            all_users.append(user)
+            added += 1
+
+        # If pagination params are unsupported, we'd keep getting the same first page.
+        if added == 0:
+            break
+        if len(users) < 200:
+            break
+
+    return all_users
 
 
 def find_supabase_auth_user_by_email(email):
