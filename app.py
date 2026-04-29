@@ -1266,31 +1266,44 @@ def create_supabase_signup_user(name, email, phone, address, password, role, ema
         "role": normalized_role,
     }
 
-    if not is_supabase_service_role_enabled():
-        raise RuntimeError(
-            "SUPABASE_SERVICE_ROLE_KEY is required for OTP-only signup. "
-            "Add it to .env so FreshWash can create users with OTP-code verification."
-        )
+    # Admin users are created via service role.
+    if normalized_role == "admin":
+        if not is_supabase_service_role_enabled():
+            raise RuntimeError(
+                "SUPABASE_SERVICE_ROLE_KEY is required for admin signup. "
+                "Add it to .env so FreshWash can create admin auth users."
+            )
+        client = get_service_client()
+        created = client.auth.admin.create_user({
+            "email": email,
+            "password": password,
+            "email_confirm": bool(email_confirm or normalized_role == "admin"),
+            "user_metadata": metadata,
+        })
+        created_user = getattr(created, "user", None) or getattr(getattr(created, "data", None), "user", None)
+        provider = "service_role_admin_create_user"
+    else:
+        # Regular users must exist in auth.users immediately for forgot-password flow.
+        if not is_supabase_enabled() or not supabase:
+            raise RuntimeError("Supabase Auth signup is unavailable.")
+        signup_result = supabase.auth.sign_up({
+            "email": email,
+            "password": password,
+            "options": {"data": metadata},
+        })
+        created_user = resolve_signup_auth_user(signup_result, fallback_email=email)
+        provider = "supabase_auth_sign_up"
 
-    client = get_service_client()
-    # Regular users rely on Supabase OTP verification; avoid auto link email.
-    created = client.auth.admin.create_user({
-        "email": email,
-        "password": password,
-        "email_confirm": bool(email_confirm or normalized_role == "admin"),
-        "user_metadata": metadata,
-    })
-    created_user = getattr(created, "user", None) or getattr(getattr(created, "data", None), "user", None)
     if not created_user or not getattr(created_user, "id", None):
         # Surface the raw Supabase response so the exact error is visible
-        raw_error = extract_supabase_error_message(created)
+        raw_error = extract_supabase_error_message(locals().get("created") or locals().get("signup_result"))
         raise RuntimeError(f"Supabase signup failed: {raw_error}")
     log_auth_debug(
         "auth signup result",
         email=email,
         has_user=True,
         has_session=False,
-        provider="service_role_admin_create_user",
+        provider=provider,
         role=normalized_role,
     )
     return created_user
@@ -3312,38 +3325,37 @@ def register():
                     flash("Account already exists, please login.", "error")
                     return redirect_to_auth_modal("login", {"email": email})
 
-                # User signup in OTP flow is completed after OTP verification.
-                if role == "admin":
-                    signup_auth_user = create_supabase_signup_user(
-                        name=name,
-                        email=email,
-                        phone=phone,
-                        address=address,
-                        password=password,
-                        role=role,
-                    )
-                    ensure_supabase_profile_record(
-                        signup_auth_user,
-                        {
-                            "full_name": name,
-                            "email": email,
-                            "phone": phone,
-                            "address": address,
-                            "role": role,
-                            "is_verified": True,
-                            "otp_code": "",
-                            "otp_expiry": None,
-                        },
-                    )
-                    upsert_local_user(
-                        name,
-                        email,
-                        phone,
-                        address,
-                        password,
-                        role_override=role,
-                        is_verified=True,
-                    )
+                # Always create auth user first, then profile row using auth user id.
+                signup_auth_user = create_supabase_signup_user(
+                    name=name,
+                    email=email,
+                    phone=phone,
+                    address=address,
+                    password=password,
+                    role=role,
+                )
+                ensure_supabase_profile_record(
+                    signup_auth_user,
+                    {
+                        "full_name": name,
+                        "email": email,
+                        "phone": phone,
+                        "address": address,
+                        "role": role,
+                        "is_verified": bool(role == "admin"),
+                        "otp_code": "",
+                        "otp_expiry": None,
+                    },
+                )
+                upsert_local_user(
+                    name,
+                    email,
+                    phone,
+                    address,
+                    password,
+                    role_override=role,
+                    is_verified=bool(role == "admin"),
+                )
 
             if role == "admin":
                 log_auth_debug("otp skipped for admin", email=email, role=role, flow="register")
@@ -3685,6 +3697,7 @@ def forgot_password():
         try:
             existing_auth_user = find_supabase_auth_user_by_email(email)
             if not existing_auth_user:
+                print(f"FORGOT_PASSWORD: auth user not found for {safe_email_for_log(email)}")
                 return jsonify({"ok": False, "error": "No account found for this email address."}), 404
         except Exception as lookup_exc:
             log_exception("forgot password lookup failed", lookup_exc, email=safe_email_for_log(email))
@@ -3692,17 +3705,30 @@ def forgot_password():
     try:
         reset_redirect = (
             (os.environ.get("FRESHWASH_PASSWORD_RESET_REDIRECT_TO") or "").strip()
-            or url_for("reset_password_page", _external=True)
+            or "http://localhost:5000/reset-password"
         )
-        supabase.auth.reset_password_for_email(
+        print(
+            "FORGOT_PASSWORD: sending reset",
+            f"email={safe_email_for_log(email)}",
+            f"redirect_to={reset_redirect}",
+        )
+        response = supabase.auth.reset_password_for_email(
             email,
             {"redirect_to": reset_redirect},
         )
-        return jsonify({"ok": True, "message": "Reset link sent. Check your email"})
+        print(f"FORGOT_PASSWORD: supabase response={response!r}")
+        return jsonify({"ok": True, "message": "Check your email"})
     except Exception as exc:
         log_exception("forgot password send failed", exc, email=safe_email_for_log(email))
         message = extract_supabase_error_message(exc)
+        print(
+            "FORGOT_PASSWORD: send failed",
+            f"email={safe_email_for_log(email)}",
+            f"error={message}",
+        )
         lowered = message.lower()
+        if "user not found" in lowered:
+            return jsonify({"ok": False, "error": "No account found for this email address."}), 404
         if "invalid email" in lowered:
             return jsonify({"ok": False, "error": "Please enter a valid email address."}), 400
         return jsonify({"ok": False, "error": "Unable to send reset link right now. Please try again."}), 500
@@ -3815,19 +3841,16 @@ def api_register():
                 # Auth user exists — already registered, direct to login
                 return jsonify({"ok": False, "errors": ["This email is already registered. Please log in."], "action": "login"})
 
-            # Admin path: create Supabase user immediately (no OTP needed)
-            if role == "admin":
-                signup_auth_user = create_supabase_signup_user(
-                    name=name, email=email, phone=phone, address=address,
-                    password=password, role=role,
-                )
-                ensure_supabase_profile_record(signup_auth_user, {
-                    "full_name": name, "email": email, "phone": phone, "address": address,
-                    "role": role, "is_verified": True, "otp_code": "", "otp_expiry": None,
-                })
-                upsert_local_user(name, email, phone, address, password, role_override=role, is_verified=True)
-            # Non-admin: defer Supabase user creation to after OTP verification
-            # (pending_signup stored in session challenge, created in api_otp_verify)
+            # Create auth user first for all roles, then ensure profile row.
+            signup_auth_user = create_supabase_signup_user(
+                name=name, email=email, phone=phone, address=address,
+                password=password, role=role,
+            )
+            ensure_supabase_profile_record(signup_auth_user, {
+                "full_name": name, "email": email, "phone": phone, "address": address,
+                "role": role, "is_verified": bool(role == "admin"), "otp_code": "", "otp_expiry": None,
+            })
+            upsert_local_user(name, email, phone, address, password, role_override=role, is_verified=bool(role == "admin"))
 
         if role == "admin":
             return jsonify({"ok": True, "otp": False, "redirect": url_for("admin_dashboard")})
