@@ -3663,12 +3663,17 @@ def logout():
     return redirect_to_auth_modal("login")
 
 
-@app.route("/forgot-password", methods=["POST"])
+@app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
+    if request.method == "GET":
+        return render_template("forgot_password.html")
+
     if not is_supabase_enabled() or not supabase:
         return jsonify({"ok": False, "error": "Password reset is unavailable right now."}), 503
 
     payload = request.get_json(silent=True) or {}
+    if not payload and request.form:
+        payload = request.form.to_dict() or {}
     email = normalize_email(payload.get("email", ""))
     if not email:
         return jsonify({"ok": False, "error": "Email is required."}), 400
