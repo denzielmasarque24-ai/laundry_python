@@ -1,29 +1,32 @@
 {% extends "admin_base.html" %}
 
-{% block extra_head %}
+{% block content %}
 <style>
   .contact-message-cell {
     white-space: nowrap;
     width: 120px;
+    text-align: center;
   }
   .contact-message-modal {
     position: fixed;
     inset: 0;
-    background: rgba(18, 10, 18, 0.45);
+    background: rgba(8, 4, 10, 0.56);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     display: none;
     align-items: center;
     justify-content: center;
-    z-index: 1200;
+    z-index: 9999;
     padding: 20px;
   }
   .contact-message-modal.is-open {
     display: flex;
   }
   .contact-message-modal-card {
-    width: min(680px, 100%);
+    width: min(700px, 100%);
     background: #fff9fc;
     border-radius: 18px;
-    box-shadow: 0 18px 45px rgba(191, 45, 121, 0.2);
+    box-shadow: 0 20px 46px rgba(191, 45, 121, 0.22);
     border: 1px solid rgba(255, 157, 207, 0.38);
     overflow: hidden;
   }
@@ -34,6 +37,9 @@
     padding: 16px 18px;
     background: linear-gradient(135deg, #ff4da6, #ff7ac3);
     color: #fff;
+  }
+  .contact-message-modal-head h3 {
+    margin: 0;
   }
   .contact-message-modal-close {
     border: 0;
@@ -65,6 +71,7 @@
     color: #3a2130;
     line-height: 1.5;
     word-break: break-word;
+    white-space: pre-wrap;
   }
   body.admin-dashboard-body.dark-mode .contact-message-modal-card {
     background: #211525;
@@ -78,9 +85,7 @@
     color: #f9e7f2;
   }
 </style>
-{% endblock %}
 
-{% block content %}
 <section class="admin-panel is-active" data-panel="messages" aria-label="Contact messages">
   <div class="admin-card">
     <div class="admin-bookings-head">
@@ -115,7 +120,12 @@
                 <button
                   type="button"
                   class="admin-button admin-button-outline-pink"
-                  onclick='openContactMessageModal({{ m|tojson|safe }})'
+                  data-name="{{ (m.name or '')|e }}"
+                  data-email="{{ (m.email or '')|e }}"
+                  data-subject="{{ (m.subject or '')|e }}"
+                  data-message="{{ (m.message or '')|e }}"
+                  data-created-at="{{ (m.created_at or '')|e }}"
+                  onclick="openContactMessageModalFromButton(this)"
                 >
                   View
                 </button>
@@ -164,24 +174,35 @@
     </div>
   </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
 <script>
+  function openContactMessageModalFromButton(button) {
+    if (!button) return;
+    openContactMessageModal({
+      name: button.dataset.name || "",
+      email: button.dataset.email || "",
+      subject: button.dataset.subject || "",
+      message: button.dataset.message || "",
+      created_at: button.dataset.createdAt || "",
+    });
+  }
+
   function openContactMessageModal(message) {
     const modal = document.getElementById("contactMessageModal");
     if (!modal) return;
     const setText = (id, value) => {
       const el = document.getElementById(id);
-      if (el) el.textContent = String(value || "-");
+      const clean = (value === null || value === undefined) ? "" : String(value).trim();
+      if (el) el.textContent = clean || "-";
     };
-    setText("contactModalName", message?.name || "-");
-    setText("contactModalEmail", message?.email || "-");
-    setText("contactModalSubject", message?.subject || "-");
-    setText("contactModalMessage", message?.message || "-");
-    setText("contactModalDate", message?.created_at || "-");
+    setText("contactModalName", message && message.name);
+    setText("contactModalEmail", message && message.email);
+    setText("contactModalSubject", message && message.subject);
+    setText("contactModalMessage", message && message.message);
+    setText("contactModalDate", message && message.created_at);
     modal.classList.add("is-open");
     modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("auth-modal-open");
   }
 
   function closeContactMessageModal() {
@@ -189,6 +210,7 @@
     if (!modal) return;
     modal.classList.remove("is-open");
     modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("auth-modal-open");
   }
 
   document.addEventListener("DOMContentLoaded", () => {
