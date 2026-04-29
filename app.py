@@ -3693,7 +3693,7 @@ def forgot_password():
             email,
             {"redirect_to": reset_redirect},
         )
-        return jsonify({"ok": True, "message": "Reset link sent. Check your email."})
+        return jsonify({"ok": True, "message": "Reset link sent. Check your email"})
     except Exception as exc:
         log_exception("forgot password send failed", exc, email=safe_email_for_log(email))
         message = extract_supabase_error_message(exc)
