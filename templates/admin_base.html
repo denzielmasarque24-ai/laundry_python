@@ -1011,13 +1011,13 @@
     .admin-bookings-table {
       table-layout: fixed;
       width: 100%;
-      min-width: 960px;
-      font-size: 0.75rem;
+      min-width: 0;
+      font-size: 0.69rem;
     }
 
     .admin-bookings-table th,
     .admin-bookings-table td {
-      padding: 6px 6px;
+      padding: 4px 4px;
       vertical-align: top;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1040,19 +1040,19 @@
     }
 
     /* Column widths tuned for laptop fit */
-    .admin-bookings-table .col-id      { width: 64px; }
-    .admin-bookings-table .col-user    { width: 96px; }
-    .admin-bookings-table .col-service { width: 88px; }
-    .admin-bookings-table .col-machine { width: 66px; }
-    .admin-bookings-table .col-date    { width: 74px; }
-    .admin-bookings-table .col-time    { width: 56px; }
-    .admin-bookings-table .col-status  { width: 106px; }
-    .admin-bookings-table .col-price   { width: 70px; }
-    .admin-bookings-table .col-load    { width: 58px; }
-    .admin-bookings-table .col-delivery { width: 82px; }
-    .admin-bookings-table .col-delivery-status { width: 132px; }
-    .admin-bookings-table .col-notes   { width: 170px; }
-    .admin-bookings-table .col-action  { width: 138px; }
+    .admin-bookings-table .col-id      { width: 54px; }
+    .admin-bookings-table .col-user    { width: 84px; }
+    .admin-bookings-table .col-service { width: 74px; }
+    .admin-bookings-table .col-machine { width: 54px; }
+    .admin-bookings-table .col-date    { width: 64px; }
+    .admin-bookings-table .col-time    { width: 48px; }
+    .admin-bookings-table .col-status  { width: 90px; }
+    .admin-bookings-table .col-price   { width: 62px; }
+    .admin-bookings-table .col-load    { width: 50px; }
+    .admin-bookings-table .col-delivery { width: 62px; }
+    .admin-bookings-table .col-delivery-status { width: 104px; }
+    .admin-bookings-table .col-notes   { width: 108px; }
+    .admin-bookings-table .col-action  { width: 90px; }
 
     .admin-bookings-table td.col-notes {
       white-space: normal;
@@ -1096,25 +1096,25 @@
     .admin-bookings-table .admin-inline-select {
       min-width: 0;
       width: 100%;
-      min-height: 30px;
-      padding: 0 5px;
-      font-size: 0.72rem;
-      border-radius: 9px;
+      min-height: 26px;
+      padding: 0 4px;
+      font-size: 0.66rem;
+      border-radius: 8px;
     }
 
     /* Compact save button */
     .admin-bookings-table .admin-button {
-      min-height: 30px;
-      padding: 0 8px;
-      font-size: 0.72rem;
-      border-radius: 9px;
+      min-height: 24px;
+      padding: 0 6px;
+      font-size: 0.64rem;
+      border-radius: 7px;
       width: 100%;
     }
 
     .admin-booking-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 6px;
+      gap: 4px;
       align-items: stretch;
     }
 
@@ -1131,6 +1131,16 @@
 
     .admin-bookings-table .booking-editable {
       background: rgba(255, 255, 255, 0.78);
+    }
+    .admin-bookings-table textarea.booking-editable {
+      min-height: 34px;
+      height: 34px;
+      padding: 4px 6px;
+      font-size: 0.64rem;
+      line-height: 1.2;
+      resize: none;
+      overflow: auto;
+      white-space: normal;
     }
 
     .admin-booking-view-overlay {
@@ -2598,7 +2608,7 @@ const DASHBOARD_CONFIG = {
             </select>
           </td>
           <td class="col-notes">
-            <textarea class="admin-inline-input booking-editable" id="bookingNotes-${escapeHtml(booking.id)}" rows="2">${escapeHtml(booking.notes || "")}</textarea>
+            <textarea class="admin-inline-input booking-editable" id="bookingNotes-${escapeHtml(booking.id)}" rows="1">${escapeHtml(booking.notes || "")}</textarea>
           </td>
           <td class="col-action">
             <div class="admin-booking-actions">
