@@ -38,27 +38,54 @@
             <div id="machineUsageList" class="admin-usage-list"></div>
           </article>
 
-          <article class="admin-card">
+          <article class="admin-card" style="grid-column: 1 / -1;">
             <div class="admin-card-head">
               <div>
                 <small class="admin-kicker">Payments</small>
-                <h2>Payments</h2>
+                <h2>Payment Summary</h2>
               </div>
-              <span class="admin-pill" id="paymentsCountPill">0 payments</span>
             </div>
-            <div id="paymentsList" class="admin-report-list"></div>
+            <div id="paymentSummaryCards" class="admin-stats-inline"></div>
           </article>
 
-          <article class="admin-card">
+          <article class="admin-card" style="grid-column: 1 / -1;">
             <div class="admin-card-head">
               <div>
-                <small class="admin-kicker">Reviews</small>
-                <h2>Reviews</h2>
+                <small class="admin-kicker">Payment Records</small>
+                <h2>All Payment Methods</h2>
               </div>
-              <span class="admin-pill" id="reviewsCountPill">0 reviews</span>
+              <div class="admin-bookings-controls">
+                <label for="paymentsFilter" class="admin-filter-label">Filter</label>
+                <select id="paymentsFilter" class="admin-inline-select">
+                  <option value="all">All Methods</option>
+                  <option value="gcash">GCash</option>
+                  <option value="maya">Maya</option>
+                  <option value="cod">Cash on Delivery</option>
+                  <option value="paid">Paid</option>
+                  <option value="pending">Pending</option>
+                </select>
+              </div>
             </div>
-            <div id="reviewsList" class="admin-report-list"></div>
+            <div class="admin-bookings-table-wrap">
+              <table class="admin-table admin-bookings-table">
+                <thead>
+                  <tr>
+                    <th>Customer Name</th>
+                    <th>Booking ID</th>
+                    <th>Payment Method</th>
+                    <th>Amount</th>
+                    <th>Payment Status</th>
+                    <th>Date</th>
+                    <th>Proof of Payment</th>
+                  </tr>
+                </thead>
+                <tbody id="paymentsTableBody">
+                  <tr><td colspan="7" class="admin-empty-cell">No data available</td></tr>
+                </tbody>
+              </table>
+            </div>
           </article>
+
         </div>
       </section>
 

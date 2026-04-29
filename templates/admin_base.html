@@ -2046,7 +2046,7 @@ const DASHBOARD_CONFIG = {
       bookings: "Review laundry bookings, update statuses, and keep operations moving.",
       machines: "Track machine availability, load types, and operational status.",
       services: "Maintain service offerings, pricing, and customer-facing descriptions.",
-      reports: "Review payments, usage, reviews, and performance insights.",
+      reports: "Review booking trends, machine usage, and performance insights.",
       settings: "Manage your admin account information and password"
     };
 
@@ -2338,12 +2338,22 @@ const DASHBOARD_CONFIG = {
     }
 
     function normalizePayment(payment, index = 0) {
+      const rawMethod = String(payment?.method || payment?.payment_method || "Unspecified").trim();
+      const loweredMethod = rawMethod.toLowerCase();
+      const method = loweredMethod.includes("paymaya") || loweredMethod === "maya"
+        ? "Maya"
+        : (loweredMethod.includes("cash") ? "Cash on Delivery" : (rawMethod || "Unspecified"));
+      const rawStatus = String(payment?.status || payment?.payment_status || "Pending").trim();
+      const loweredStatus = rawStatus.toLowerCase();
+      const normalizedStatus = loweredStatus.includes("paid") || loweredStatus.includes("verified") || loweredStatus.includes("completed")
+        ? "Paid"
+        : "Pending";
       return {
         id: payment?.id || `payment-${index}`,
         booking_id: payment?.booking_id || payment?.booking || "No booking linked",
         amount: Number(payment?.amount ?? payment?.total ?? 0),
-        status: payment?.status || "Pending",
-        method: payment?.method || payment?.payment_method || "Unspecified",
+        status: normalizedStatus,
+        method: method,
         reference_number: payment?.reference_number || payment?.reference || "",
         payment_proof: payment?.payment_proof || payment?.proof_image || "",
         proof_image: payment?.payment_proof || payment?.proof_image || "",
@@ -2669,11 +2679,10 @@ const DASHBOARD_CONFIG = {
       const mostUsedServiceCard = document.getElementById("mostUsedServiceCard");
       const bookingsPerDayBars = document.getElementById("bookingsPerDayBars");
       const machineUsageList = document.getElementById("machineUsageList");
-      const paymentsList = document.getElementById("paymentsList");
-      const reviewsList = document.getElementById("reviewsList");
-      const paymentsCountPill = document.getElementById("paymentsCountPill");
-      const reviewsCountPill = document.getElementById("reviewsCountPill");
-      if (!statsInline || !mostUsedServiceCard || !bookingsPerDayBars || !machineUsageList || !paymentsList || !reviewsList) return;
+      const paymentSummaryCards = document.getElementById("paymentSummaryCards");
+      const paymentsTableBody = document.getElementById("paymentsTableBody");
+      const paymentsFilter = document.getElementById("paymentsFilter");
+      if (!statsInline || !mostUsedServiceCard || !bookingsPerDayBars || !machineUsageList || !paymentSummaryCards || !paymentsTableBody || !paymentsFilter) return;
 
       const breakdown = reports.statusBreakdown || {};
       const completedRevenue = reports.completedRevenue || 0;
@@ -2714,39 +2723,79 @@ const DASHBOARD_CONFIG = {
         `).join("");
       }
 
-      if (paymentsCountPill) paymentsCountPill.textContent = `${dashboardState.payments.length} payment${dashboardState.payments.length === 1 ? "" : "s"}`;
-      if (!dashboardState.payments.length) {
-        paymentsList.innerHTML = '<p class="admin-empty">No data available</p>';
-      } else {
-        paymentsList.innerHTML = dashboardState.payments.map(payment => `
-          <article class="admin-report-item">
-            <div class="admin-report-item-head">
-              <strong>${escapeHtml(payment.customer_name)}</strong>
-              <span class="admin-service-price">${escapeHtml(formatCurrency(payment.amount))}</span>
-            </div>
-            <p>${escapeHtml(payment.booking_id)} - ${escapeHtml(payment.method)} - ${escapeHtml(payment.status)}</p>
-            ${payment.reference_number ? `<p>Ref: ${escapeHtml(payment.reference_number)}</p>` : ""}
-            <p>Proof: ${payment.payment_proof ? "Uploaded" : "No proof uploaded"}</p>
-            <p>${escapeHtml(formatDate(payment.paid_at))}</p>
-          </article>
-        `).join("");
-      }
+      const payments = Array.isArray(dashboardState.payments)
+        ? dashboardState.payments.map((payment, index) => normalizePayment(payment, index))
+        : [];
+      const totals = payments.reduce((acc, payment) => {
+        const methodKey = String(payment.method || "").toLowerCase();
+        const statusKey = String(payment.status || "").toLowerCase();
+        acc.total += 1;
+        acc.revenue += Number(payment.amount || 0);
+        if (methodKey === "gcash") acc.gcash += 1;
+        if (methodKey === "maya") acc.maya += 1;
+        if (methodKey === "cash on delivery") acc.cod += 1;
+        if (statusKey === "paid") acc.paid += 1;
+        if (statusKey === "pending") acc.pending += 1;
+        return acc;
+      }, { total: 0, gcash: 0, maya: 0, cod: 0, revenue: 0, pending: 0, paid: 0 });
 
-      if (reviewsCountPill) reviewsCountPill.textContent = `${dashboardState.reviews.length} review${dashboardState.reviews.length === 1 ? "" : "s"}`;
-      if (!dashboardState.reviews.length) {
-        reviewsList.innerHTML = '<p class="admin-empty">No data available</p>';
-      } else {
-        reviewsList.innerHTML = dashboardState.reviews.map(review => `
-          <article class="admin-report-item">
-            <div class="admin-report-item-head">
-              <strong>${escapeHtml(review.full_name)}</strong>
-              <span class="admin-rating">${escapeHtml(review.rating || 0)} / 5</span>
-            </div>
-            <p>${escapeHtml(review.comment)}</p>
-            <p>${escapeHtml(formatDate(review.created_at))}</p>
-          </article>
-        `).join("");
+      paymentSummaryCards.innerHTML = `
+        <article class="admin-inline-stat"><strong>${escapeHtml(totals.total)}</strong><span>Total Payments</span></article>
+        <article class="admin-inline-stat"><strong>${escapeHtml(totals.gcash)}</strong><span>GCash Payments</span></article>
+        <article class="admin-inline-stat"><strong>${escapeHtml(totals.maya)}</strong><span>Maya/PayMaya Payments</span></article>
+        <article class="admin-inline-stat"><strong>${escapeHtml(totals.cod)}</strong><span>Cash on Delivery Payments</span></article>
+        <article class="admin-inline-stat"><strong>${escapeHtml(formatCurrency(totals.revenue))}</strong><span>Total Revenue</span></article>
+        <article class="admin-inline-stat"><strong>${escapeHtml(totals.pending)}</strong><span>Pending Payments</span></article>
+        <article class="admin-inline-stat"><strong>${escapeHtml(totals.paid)}</strong><span>Paid Payments</span></article>
+      `;
+
+      const applyPaymentsFilter = () => {
+        const filterValue = String(paymentsFilter.value || "all").toLowerCase();
+        const filteredPayments = payments.filter((payment) => {
+          const method = String(payment.method || "").toLowerCase();
+          const status = String(payment.status || "").toLowerCase();
+          if (filterValue === "all") return true;
+          if (filterValue === "gcash") return method === "gcash";
+          if (filterValue === "maya") return method === "maya";
+          if (filterValue === "cod") return method === "cash on delivery";
+          if (filterValue === "paid") return status === "paid";
+          if (filterValue === "pending") return status === "pending";
+          return true;
+        });
+
+        if (!filteredPayments.length) {
+          paymentsTableBody.innerHTML = '<tr><td colspan="7" class="admin-empty-cell">No data available</td></tr>';
+          return;
+        }
+        paymentsTableBody.innerHTML = filteredPayments.map((payment) => {
+          const proofValue = String(payment.payment_proof || "").trim();
+          const method = String(payment.method || "");
+          let proofCell = "No proof uploaded";
+          if (method === "Cash on Delivery") {
+            proofCell = "No proof required";
+          } else if (proofValue) {
+            proofCell = `<a href="${escapeHtml(proofValue)}" target="_blank" rel="noopener noreferrer">View Proof</a>`;
+          }
+          return `
+            <tr>
+              <td><strong>${escapeHtml(payment.customer_name || "FreshWash Customer")}</strong></td>
+              <td>${escapeHtml(payment.booking_id || "No booking linked")}</td>
+              <td>${escapeHtml(method || "Unspecified")}</td>
+              <td>${escapeHtml(formatCurrency(payment.amount || 0))}</td>
+              <td><span class="admin-user-role ${escapeHtml(formatStatusClass(payment.status || "Pending"))}">${escapeHtml(payment.status || "Pending")}</span></td>
+              <td>${escapeHtml(formatDate(payment.paid_at || payment.created_at || ""))}</td>
+              <td>${proofCell}</td>
+            </tr>
+          `;
+        }).join("");
+      };
+
+      if (paymentsFilter.dataset.bound !== "true") {
+        paymentsFilter.dataset.bound = "true";
+        paymentsFilter.addEventListener("change", applyPaymentsFilter);
       }
+      applyPaymentsFilter();
+
     }
 
     function renderSettings(settings = {}) {
