@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from supabase_client import (
     supabase,
     get_service_client,
+    get_authed_client,
     is_supabase_enabled,
     is_supabase_service_role_enabled,
     get_supabase_config_error,
@@ -875,7 +876,7 @@ def send_booking_email(email, booking_data):
         smtp.send_message(message)
 
 
-def send_delivery_status_email(email, delivery_status):
+def send_delivery_status_email(email, delivery_status, booking_data=None):
     cfg = otp_smtp_settings()
     username = cfg["username"]
     password = cfg["password"]
@@ -893,15 +894,116 @@ def send_delivery_status_email(email, delivery_status):
         text_body = "Your laundry is now on the way."
     elif delivery_status == "Delivered":
         subject = "FreshWash Delivered"
-        text_body = "Your laundry has been delivered. Thank you for choosing FreshWash."
+        text_body = (
+            "Your laundry has been delivered.\n"
+            "Thank you for choosing FreshWash. We hope you enjoyed our service."
+        )
     else:
         raise ValueError("Unsupported delivery status for email notification.")
+
+    booking_data = booking_data or {}
+    customer_name = html.escape(str(booking_data.get("full_name", "") or "-"))
+    service_type = html.escape(str(booking_data.get("service_type", "") or "-"))
+    machine = html.escape(str(booking_data.get("machine", "") or "-"))
+    delivery_option = html.escape(str(booking_data.get("delivery_option", "") or "-"))
+    raw_total = booking_data.get("total_amount", booking_data.get("total_price", 0))
+    try:
+        total_display = f"PHP {float(raw_total or 0):.2f}"
+    except (TypeError, ValueError):
+        total_display = f"PHP {raw_total}"
+    total_display_safe = html.escape(total_display)
+
+    if delivery_status == "Delivered":
+        html_body = (
+            "<!doctype html>"
+            "<html>"
+            "<body style=\"margin:0;padding:0;background:#fff4fa;font-family:Arial,Helvetica,sans-serif;color:#3f2235;\">"
+            "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"background:#fff4fa;padding:16px 0;\">"
+            "<tr><td align=\"center\">"
+            "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"max-width:620px;\">"
+            "<tr><td style=\"padding:0 14px;\">"
+            "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border-radius:20px;overflow:hidden;background:#ffffff;box-shadow:0 10px 24px rgba(255,105,180,0.15);\">"
+            "<tr>"
+            "<td style=\"padding:18px 20px;background:linear-gradient(135deg,#ff4da6,#ff7ac3);color:#ffffff;text-align:center;\">"
+            "<div style=\"font-size:24px;line-height:1.2;font-weight:700;\">FreshWash</div>"
+            "<div style=\"margin-top:4px;font-size:13px;line-height:1.4;opacity:0.95;\">Delivery Completed</div>"
+            "</td>"
+            "</tr>"
+            "<tr>"
+            "<td style=\"padding:18px 20px;background:#fff9fc;\">"
+            "<div style=\"display:inline-block;padding:6px 12px;border-radius:999px;background:#def7e6;color:#18794e;font-size:12px;font-weight:700;\">Delivered</div>"
+            "<h2 style=\"margin:12px 0 10px;font-size:22px;line-height:1.25;color:#341c2e;\">Your laundry has been delivered 🎉</h2>"
+            "<p style=\"margin:0 0 14px;font-size:14px;line-height:1.6;color:#5a3950;\">Thank you for choosing FreshWash. We hope you enjoyed our service.</p>"
+            "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border-collapse:separate;border-spacing:0;border:1px solid #ffd8ea;border-radius:14px;overflow:hidden;background:#ffffff;\">"
+            f"<tr><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;color:#7b5a70;\">Service</td><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;font-weight:600;color:#341c2e;text-align:right;\">{service_type}</td></tr>"
+            f"<tr><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;color:#7b5a70;\">Machine</td><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;font-weight:600;color:#341c2e;text-align:right;\">{machine}</td></tr>"
+            f"<tr><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;color:#7b5a70;\">Delivery Type</td><td style=\"padding:10px 12px;border-bottom:1px solid #ffe4f0;font-size:13px;font-weight:600;color:#341c2e;text-align:right;\">{delivery_option}</td></tr>"
+            f"<tr><td style=\"padding:10px 12px;font-size:13px;color:#7b5a70;\">Total Amount</td><td style=\"padding:10px 12px;font-size:14px;font-weight:700;color:#bf2d79;text-align:right;\">{total_display_safe}</td></tr>"
+            "</table>"
+            "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"margin-top:14px;\">"
+            "<tr><td align=\"center\">"
+            "<a href=\"https://freshwash.example.com/booking\" style=\"display:inline-block;padding:11px 18px;border-radius:999px;background:linear-gradient(135deg,#ff4da6,#ff7ac3);color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;\">Book Again</a>"
+            "</td></tr>"
+            "</table>"
+            "</td>"
+            "</tr>"
+            "<tr>"
+            "<td style=\"padding:12px 16px;text-align:center;background:#fff0f7;font-size:11px;color:#8e6882;\">&copy; 2026 FreshWash. Fresh. Clean. You.</td>"
+            "</tr>"
+            "</table>"
+            "</td></tr>"
+            "</table>"
+            "</td></tr>"
+            "</table>"
+            "</body>"
+            "</html>"
+        )
+    else:
+        html_body = (
+            "<!doctype html>"
+            "<html>"
+            "<body style=\"margin:0;padding:0;background:#fff4fa;font-family:Arial,Helvetica,sans-serif;color:#3f2235;\">"
+            "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"background:#fff4fa;padding:20px 0;\">"
+            "<tr><td align=\"center\">"
+            "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"max-width:640px;\">"
+            "<tr><td style=\"padding:0 16px;\">"
+            "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border-radius:22px;overflow:hidden;background:#ffffff;box-shadow:0 12px 30px rgba(255,105,180,0.16);\">"
+            "<tr>"
+            "<td style=\"padding:22px 24px;background:linear-gradient(135deg,#ff4da6,#ff7ac3);color:#ffffff;text-align:center;\">"
+            "<div style=\"font-size:22px;line-height:1.25;font-weight:700;\">FreshWash Delivery Update</div>"
+            "</td>"
+            "</tr>"
+            "<tr>"
+            "<td style=\"padding:22px 24px;\">"
+            "<div style=\"display:inline-block;padding:6px 12px;border-radius:999px;background:#ffe3f1;color:#c03581;font-size:12px;font-weight:700;\">Out for Delivery</div>"
+            "<p style=\"margin:14px 0 18px;font-size:15px;line-height:1.6;color:#5a3950;\">Your laundry is now on the way.</p>"
+            "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border-collapse:separate;border-spacing:0;border:1px solid #ffd8ea;border-radius:14px;overflow:hidden;background:#fff9fc;\">"
+            f"<tr><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;color:#7b5a70;\">Customer</td><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;font-weight:600;color:#341c2e;text-align:right;\">{customer_name}</td></tr>"
+            f"<tr><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;color:#7b5a70;\">Service</td><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;font-weight:600;color:#341c2e;text-align:right;\">{service_type}</td></tr>"
+            f"<tr><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;color:#7b5a70;\">Machine</td><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;font-weight:600;color:#341c2e;text-align:right;\">{machine}</td></tr>"
+            f"<tr><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;color:#7b5a70;\">Delivery Option</td><td style=\"padding:11px 14px;border-bottom:1px solid #ffe4f0;font-size:14px;font-weight:600;color:#341c2e;text-align:right;\">{delivery_option}</td></tr>"
+            f"<tr><td style=\"padding:12px 14px;font-size:14px;color:#7b5a70;\">Total Amount</td><td style=\"padding:12px 14px;font-size:15px;font-weight:700;color:#bf2d79;text-align:right;\">{total_display_safe}</td></tr>"
+            "</table>"
+            "</td>"
+            "</tr>"
+            "<tr>"
+            "<td style=\"padding:14px 20px;text-align:center;background:#fff0f7;font-size:12px;color:#8e6882;\">&copy; 2026 FreshWash. Fresh. Clean. You.</td>"
+            "</tr>"
+            "</table>"
+            "</td></tr>"
+            "</table>"
+            "</td></tr>"
+            "</table>"
+            "</body>"
+            "</html>"
+        )
 
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = formataddr((cfg["sender_name"], cfg["sender_email"]))
     message["To"] = recipient
     message.set_content(text_body)
+    message.add_alternative(html_body, subtype="html")
 
     with smtplib.SMTP(cfg["host"], cfg["port"], timeout=30) as smtp:
         smtp.ehlo()
@@ -1657,6 +1759,23 @@ def validate_login_form(email, password):
         errors.append("Enter a valid email address.")
     if not password:
         errors.append("Password is required.")
+    return errors
+
+
+def validate_reset_password(password, confirm_password):
+    errors = []
+    if not password:
+        errors.append("New password is required.")
+    elif len(password) < 8:
+        errors.append("Password must be at least 8 characters.")
+    elif not any(char.isupper() for char in password):
+        errors.append("Password must include at least one uppercase letter.")
+    elif not any(char.isdigit() for char in password):
+        errors.append("Password must include at least one number.")
+    if not confirm_password:
+        errors.append("Please confirm your new password.")
+    elif password != confirm_password:
+        errors.append("Passwords do not match.")
     return errors
 
 
@@ -3470,6 +3589,81 @@ def logout():
     return redirect_to_auth_modal("login")
 
 
+@app.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    if not is_supabase_enabled() or not supabase:
+        return jsonify({"ok": False, "error": "Password reset is unavailable right now."}), 503
+
+    payload = request.get_json(silent=True) or {}
+    email = normalize_email(payload.get("email", ""))
+    if not email:
+        return jsonify({"ok": False, "error": "Email is required."}), 400
+    if not is_valid_email(email):
+        return jsonify({"ok": False, "error": "Please enter a valid email address."}), 400
+
+    # Surface not-found explicitly when service-role access is available.
+    if is_supabase_service_role_enabled():
+        try:
+            existing_auth_user = find_supabase_auth_user_by_email(email)
+            if not existing_auth_user:
+                return jsonify({"ok": False, "error": "No account found for this email address."}), 404
+        except Exception as lookup_exc:
+            log_exception("forgot password lookup failed", lookup_exc, email=safe_email_for_log(email))
+
+    try:
+        reset_redirect = (
+            (os.environ.get("FRESHWASH_PASSWORD_RESET_REDIRECT_TO") or "").strip()
+            or url_for("reset_password_page", _external=True)
+        )
+        supabase.auth.reset_password_for_email(
+            email,
+            {"redirect_to": reset_redirect},
+        )
+        return jsonify({"ok": True, "message": "Reset link sent. Please check your email."})
+    except Exception as exc:
+        log_exception("forgot password send failed", exc, email=safe_email_for_log(email))
+        message = extract_supabase_error_message(exc)
+        lowered = message.lower()
+        if "invalid email" in lowered:
+            return jsonify({"ok": False, "error": "Please enter a valid email address."}), 400
+        return jsonify({"ok": False, "error": "Unable to send reset link right now. Please try again."}), 500
+
+
+@app.route("/reset-password", methods=["GET"])
+def reset_password_page():
+    return render_template("reset_password.html")
+
+
+@app.route("/reset-password", methods=["POST"])
+def reset_password_submit():
+    if not is_supabase_enabled() or not supabase:
+        return jsonify({"ok": False, "error": "Password reset is unavailable right now."}), 503
+
+    payload = request.get_json(silent=True) or {}
+    password = str(payload.get("password", "") or "")
+    confirm_password = str(payload.get("confirm_password", "") or "")
+    access_token = str(payload.get("access_token", "") or "").strip()
+    refresh_token = str(payload.get("refresh_token", "") or "").strip()
+
+    errors = validate_reset_password(password, confirm_password)
+    if errors:
+        return jsonify({"ok": False, "error": errors[0]}), 400
+    if not access_token:
+        return jsonify({"ok": False, "error": "Reset link is invalid or expired. Please request a new one."}), 400
+
+    try:
+        authed = get_authed_client(access_token, refresh_token)
+        authed.auth.update_user({"password": password})
+        return jsonify({"ok": True, "message": "Password reset successful. You can now log in."})
+    except Exception as exc:
+        log_exception("reset password update failed", exc)
+        message = extract_supabase_error_message(exc)
+        lowered = message.lower()
+        if "expired" in lowered or "invalid" in lowered or "jwt" in lowered:
+            return jsonify({"ok": False, "error": "Reset link is invalid or expired. Please request a new one."}), 400
+        return jsonify({"ok": False, "error": "Unable to reset password right now. Please try again."}), 500
+
+
 # ── Pages ─────────────────────────────────────────────────────────────────────
 
 
@@ -4162,13 +4356,15 @@ def admin_booking_action(booking_id):
             existing_booking = {}
             try:
                 existing_res = client.table("bookings").select(
-                    "id,user_id,delivery_status,out_for_delivery_email_sent,delivered_email_sent"
+                    "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,delivery_status,out_for_delivery_email_sent,delivered_email_sent"
                 ).eq("id", booking_id).limit(1).execute()
                 existing_booking = (existing_res.data or [{}])[0] if existing_res else {}
             except Exception as exc:
                 missing_column = extract_schema_cache_missing_column(exc, "bookings")
                 if missing_column in {"out_for_delivery_email_sent", "delivered_email_sent"}:
-                    existing_res = client.table("bookings").select("id,user_id,delivery_status").eq("id", booking_id).limit(1).execute()
+                    existing_res = client.table("bookings").select(
+                        "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,delivery_status"
+                    ).eq("id", booking_id).limit(1).execute()
                     existing_booking = (existing_res.data or [{}])[0] if existing_res else {}
                     existing_booking.setdefault("out_for_delivery_email_sent", False)
                     existing_booking.setdefault("delivered_email_sent", False)
@@ -4288,7 +4484,14 @@ def admin_booking_action(booking_id):
                             )
                     if recipient_email:
                         try:
-                            send_delivery_status_email(recipient_email, new_delivery_status)
+                            email_booking_data = {
+                                "full_name": payload.get("full_name", existing_booking.get("full_name", "")),
+                                "service_type": payload.get("service_type", existing_booking.get("service_type", "")),
+                                "machine": payload.get("machine", existing_booking.get("machine", "")),
+                                "delivery_option": payload.get("delivery_option", existing_booking.get("delivery_option", "")),
+                                "total_amount": payload.get("total_amount", existing_booking.get("total_amount", existing_booking.get("total_price", 0))),
+                            }
+                            send_delivery_status_email(recipient_email, new_delivery_status, booking_data=email_booking_data)
                             flag_payload = (
                                 {"out_for_delivery_email_sent": True}
                                 if new_delivery_status == "Out for Delivery"
