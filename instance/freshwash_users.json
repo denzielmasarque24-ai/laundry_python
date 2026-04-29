@@ -1,19 +1,5 @@
 [
   {
-    "id": "bfbef2a2-fe12-407b-a4f9-e0f88b3fbe93",
-    "email": "denzielmasarque24@gmail.com",
-    "password_hash": "scrypt:32768:8:1$scUD9EELjEuJ0Yix$002af71e198a8a0bb44622abfc739a8e37975a2310a9ebad9ee824ab24020a700a1ae732608c17019e6ffe719baccf32f577e2f7a1337b95538d940148d13931",
-    "full_name": "denz",
-    "phone": "09914405837",
-    "address": "talisay",
-    "avatar": "",
-    "role": "user",
-    "otp_code": "",
-    "otp_expiry": "",
-    "is_verified": true,
-    "created_at": "2026-04-27T22:28:21.793120"
-  },
-  {
     "id": "863a90a0-d4f7-4f81-abd2-47c233ecc4b6",
     "email": "johnclaidetan143@gmail.com",
     "password_hash": "scrypt:32768:8:1$P5tYIVmGGbtkf8ZG$03ea858dddc32bb6ecd2714edb4891b3f816d61507af478e9e4bc601671e6050720104d4150159080c7e62c22c37e8c34ee55423720a7418fc27a48ca55c6812",
@@ -208,5 +194,19 @@
     "otp_expiry": "",
     "is_verified": true,
     "created_at": "2026-04-16T16:37:11.298699"
+  },
+  {
+    "id": "1d05fdc4-87fd-451e-8970-2970c3c95a62",
+    "email": "denzielmasarque24@gmail.com",
+    "password_hash": "scrypt:32768:8:1$jnkVSjhhapGRo7qK$6f807f463a5344cecc96e899e5e6a8b520bdf5053e958d0da9f153763333a52771e4ac862d3875e90ee67085f65de44186e4ca53cd7f25bb4b153ed0ed2718a2",
+    "full_name": "Denziel Masarque",
+    "phone": "09838347388",
+    "address": "duljo",
+    "avatar": "",
+    "role": "user",
+    "otp_code": "",
+    "otp_expiry": "",
+    "is_verified": false,
+    "created_at": "2026-04-29T18:06:21.196805"
   }
 ]
