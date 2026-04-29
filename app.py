@@ -33,6 +33,8 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "freshwash-secret-key-2024")
+app.config["SUPABASE_URL"] = os.environ.get("SUPABASE_URL", "")
+app.config["SUPABASE_ANON_KEY"] = os.environ.get("SUPABASE_ANON_KEY", "")
 ADMIN_AVATAR_BUCKET = (os.environ.get("FRESHWASH_AVATAR_BUCKET") or "avatars").strip()
 GCASH_ACCOUNT_NAME = os.environ.get("GCASH_ACCOUNT_NAME", "FreshWash Laundry")
 GCASH_NUMBER = os.environ.get("GCASH_NUMBER", "09XX XXX XXXX")
