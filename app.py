@@ -3697,7 +3697,7 @@ def forgot_password():
     try:
         reset_redirect = (
             (os.environ.get("FRESHWASH_PASSWORD_RESET_REDIRECT_TO") or "").strip()
-            or "http://localhost:5000/reset-password"
+            or url_for("reset_password_page", _external=True)
         )
         supabase.auth.reset_password_for_email(email, {"redirect_to": reset_redirect})
     except Exception as exc:
