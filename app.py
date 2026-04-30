@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, has_request_context
+﻿from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, has_request_context
 from supabase_client import (
     supabase,
     get_service_client,
@@ -106,7 +106,7 @@ HOMEPAGE_SERVICES = [
         "name": "Wash",
         "description": "Professional washing with premium detergents",
         "price_prefix": "From",
-        "price_value": "₱150 / kg",
+        "price_value": "â‚±150 / kg",
         "icon": "fa-soap",
         "accent": "bubble",
     },
@@ -114,7 +114,7 @@ HOMEPAGE_SERVICES = [
         "name": "Dry Clean",
         "description": "Gentle dry cleaning for delicate fabrics",
         "price_prefix": "From",
-        "price_value": "₱250 / piece",
+        "price_value": "â‚±250 / piece",
         "icon": "fa-shirt",
         "accent": "lavender",
     },
@@ -122,7 +122,7 @@ HOMEPAGE_SERVICES = [
         "name": "Fold & Pack",
         "description": "Expertly folded and neatly packed",
         "price_prefix": "From",
-        "price_value": "₱99 / kg",
+        "price_value": "â‚±99 / kg",
         "icon": "fa-box-open",
         "accent": "sky",
     },
@@ -130,7 +130,7 @@ HOMEPAGE_SERVICES = [
         "name": "Iron & Press",
         "description": "Crisp ironing for a sharp look",
         "price_prefix": "From",
-        "price_value": "₱129 / piece",
+        "price_value": "â‚±129 / piece",
         "icon": "fa-fire-flame-curved",
         "accent": "sunrise",
     },
@@ -2931,7 +2931,7 @@ def update_admin_profile_settings(user_id, name, email, phone="", password="", a
         raise ValueError(f"Could not update admin profile: {exc}")
 
 
-# ── FIXED: build_admin_reports now uses camelCase keys to match the JS frontend ──
+# â”€â”€ FIXED: build_admin_reports now uses camelCase keys to match the JS frontend â”€â”€
 def upload_admin_avatar_to_storage(user_id, image_bytes, content_type):
     if not is_supabase_enabled():
         raise ValueError("Supabase is not configured.")
@@ -3141,7 +3141,7 @@ def build_admin_dashboard_payload():
     }
 
 
-# ── FIXED: empty_admin_dashboard_payload now uses camelCase keys to match JS ──
+# â”€â”€ FIXED: empty_admin_dashboard_payload now uses camelCase keys to match JS â”€â”€
 def empty_admin_dashboard_payload():
     return {
         "summary": {
@@ -3214,7 +3214,7 @@ def render_admin_dashboard_view(section="dashboard"):
     )
 
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
+# â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/register", methods=["GET", "POST"])
 def register():
     print('DEBUG: register route called, method=', request.method)
@@ -3406,9 +3406,9 @@ def register():
                 if "resend code in" in lowered or "rate limit" in lowered:
                     flash(str(otp_error), "error")
                     return redirect_to_auth_modal("verify", otp_modal_form_data())
-                # OTP send failed — still log them in but warn
+                # OTP send failed â€” still log them in but warn
                 persist_session_user(pending_user_data)
-                flash("Account created! Verification email could not be sent — check SMTP settings.", "success")
+                flash("Account created! Verification email could not be sent â€” check SMTP settings.", "success")
                 return redirect(url_for("home"))
 
         except ValueError as e:
@@ -3742,7 +3742,7 @@ def reset_password_submit():
         return jsonify({"ok": False, "error": "Unable to reset password right now. Please try again."}), 500
 
 
-# ── Pages ─────────────────────────────────────────────────────────────────────
+# â”€â”€ Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 @app.route("/api/register", methods=["POST"])
@@ -3792,7 +3792,7 @@ def api_register():
                 email, (existing_profile or {}).get("role", "user"), auth_metadata
             ) if existing_auth_user else ""
 
-            # Profile exists but no auth user — stale profile from a deleted account.
+            # Profile exists but no auth user â€” stale profile from a deleted account.
             if existing_profile and not existing_auth_user:
                 print(f"REGISTER: orphaned profile found for {email}, deleting before re-registration")
                 try:
@@ -3811,7 +3811,7 @@ def api_register():
             if existing_auth_user:
                 if existing_role == "admin":
                     return jsonify({"ok": False, "errors": ["This email is reserved for admin."]})
-                # Auth user exists — already registered, direct to login
+                # Auth user exists â€” already registered, direct to login
                 return jsonify({"ok": False, "errors": ["This email is already registered. Please log in."], "action": "login"})
 
             # Create auth user first for all roles, then ensure profile row.
@@ -4190,7 +4190,7 @@ def api_otp_verify():
                 try: set_verification_state(email, True)
                 except Exception: pass
             clear_pending_otp_challenge()
-            # Do NOT auto-login after signup OTP — send user to login modal
+            # Do NOT auto-login after signup OTP â€” send user to login modal
             session["just_registered"] = True
             session.modified = True
             return jsonify({
@@ -4431,7 +4431,7 @@ def admin_booking_action(booking_id):
             existing_booking = {}
             try:
                 existing_res = client.table("bookings").select(
-                    "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,delivery_status,out_for_delivery_email_sent,delivered_email_sent"
+                    "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,delivery_status,out_for_delivery_email_sent,delivered_email_sent,payment_method,payment_proof"
                 ).eq("id", booking_id).limit(1).execute()
                 existing_booking = (existing_res.data or [{}])[0] if existing_res else {}
             except Exception as exc:
@@ -4530,6 +4530,62 @@ def admin_booking_action(booking_id):
                 if last_error:
                     raise last_error
                 raise RuntimeError("Booking update failed because no compatible bookings schema variant was found.")
+
+            # --- Payment upsert after booking update ---
+            try:
+                final_status = payload.get("status") or existing_booking.get("status", "Pending")
+                payment_status_map = {
+                    "Completed": "Paid",
+                    "Cancelled": "Cancelled",
+                    "Pending": "Pending",
+                    "In Progress": "Pending",
+                }
+                payment_status = payment_status_map.get(final_status, "Pending")
+                amount = float(
+                    payload.get("total_price")
+                    or existing_booking.get("total_price")
+                    or existing_booking.get("total_amount")
+                    or 0
+                )
+                customer_name = (
+                    payload.get("full_name")
+                    or existing_booking.get("full_name")
+                    or "FreshWash Customer"
+                )
+                payment_method = existing_booking.get("payment_method") or "Unspecified"
+                proof_of_payment = (
+                    existing_booking.get("payment_proof")
+                    or existing_booking.get("proof_of_payment")
+                    or ""
+                )
+                payment_payload = {
+                    "booking_id": booking_id,
+                    "customer_name": customer_name,
+                    "payment_method": payment_method,
+                    "amount": amount,
+                    "payment_status": payment_status,
+                    "proof_of_payment": proof_of_payment,
+                    "date": datetime.now(timezone.utc).isoformat(),
+                }
+                existing_payment_res = (
+                    client.table("payments")
+                    .select("id")
+                    .eq("booking_id", booking_id)
+                    .limit(1)
+                    .execute()
+                )
+                existing_payment = (
+                    (existing_payment_res.data or [{}])[0]
+                    if existing_payment_res
+                    else {}
+                )
+                if existing_payment.get("id"):
+                    client.table("payments").update(payment_payload).eq("booking_id", booking_id).execute()
+                else:
+                    client.table("payments").insert(payment_payload).execute()
+            except Exception as pay_exc:
+                log_exception("payment upsert after booking edit failed", pay_exc, booking_id=booking_id)
+            # --- End payment upsert ---
 
             new_delivery_status = payload.get("delivery_status")
             previous_delivery_status = str(existing_booking.get("delivery_status", "") or "")
@@ -5480,6 +5536,7 @@ def profile():
 if __name__ == "__main__":
     init_local_auth_db()
     app.run(debug=True, host="0.0.0.0", port=5000)
+
 
 
 
