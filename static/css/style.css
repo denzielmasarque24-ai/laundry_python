@@ -2613,11 +2613,13 @@ body.booking-body .page-shell {
 }
 
 .my-bookings-page {
-  width: min(1080px, 100%);
+  width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
   display: grid;
   gap: 1.15rem;
   align-content: start;
+  box-sizing: border-box;
 }
 
 .my-bookings-page .page-header {
@@ -2699,7 +2701,8 @@ body.booking-body .page-shell {
 }
 
 .my-bookings-v2 {
-  width: min(1360px, 100%);
+  width: 100%;
+  max-width: 1400px;
   gap: 1.35rem;
 }
 
@@ -2781,6 +2784,14 @@ body.booking-body .page-shell {
   border-radius: 30px;
   background: rgba(255, 255, 255, 0.74);
   box-shadow: 0 20px 44px rgba(233, 102, 161, 0.12);
+  width: 100%;
+  box-sizing: border-box;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.my-booking-card-v2:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 28px 56px rgba(233, 102, 161, 0.2);
 }
 
 .my-booking-card-icon {

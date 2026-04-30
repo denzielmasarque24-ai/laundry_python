@@ -4,15 +4,47 @@
 <style>
   .fw-page.my-bookings-page.my-bookings-v2 {
     width: 100%;
-    max-width: none;
-    margin: 0;
+    max-width: 1400px;
+    margin: 0 auto;
     padding-left: 24px;
     padding-right: 24px;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
   .fw-page.my-bookings-page.my-bookings-v2 .my-bookings-list {
     width: 100%;
     max-width: none;
+  }
+
+  .fw-page.my-bookings-page.my-bookings-v2 .my-booking-card-v2 {
+    width: 100%;
+  }
+
+  /* Force page-shell to not constrain bookings page */
+  .page-shell:has(.my-bookings-v2) {
+    width: 100%;
+    max-width: none;
+    justify-content: stretch;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  @media (min-width: 1366px) {
+    .fw-page.my-bookings-page.my-bookings-v2 {
+      max-width: 1600px;
+      padding-left: 32px;
+      padding-right: 32px;
+    }
+
+    .my-bookings-v2 .stats-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .my-booking-card-v2 {
+      grid-template-columns: 120px minmax(0, 1fr);
+      padding: 1.5rem 1.75rem;
+    }
   }
 
   @media (max-width: 768px) {
