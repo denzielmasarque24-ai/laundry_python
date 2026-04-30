@@ -35,6 +35,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "freshwash-secret-key-2024")
 app.config["SUPABASE_URL"] = os.environ.get("SUPABASE_URL", "")
 app.config["SUPABASE_ANON_KEY"] = os.environ.get("SUPABASE_ANON_KEY", "")
+app.config["APP_URL"] = (os.environ.get("APP_URL") or "http://localhost:5000").rstrip("/")
 ADMIN_AVATAR_BUCKET = (os.environ.get("FRESHWASH_AVATAR_BUCKET") or "avatars").strip()
 GCASH_ACCOUNT_NAME = os.environ.get("GCASH_ACCOUNT_NAME", "FreshWash Laundry")
 GCASH_NUMBER = os.environ.get("GCASH_NUMBER", "09XX XXX XXXX")
@@ -3695,9 +3696,10 @@ def forgot_password():
         return jsonify({"ok": False, "error": "Password reset is unavailable right now."}), 503
 
     try:
+        app_url = (os.environ.get("APP_URL") or "http://localhost:5000").rstrip("/")
         reset_redirect = (
             (os.environ.get("FRESHWASH_PASSWORD_RESET_REDIRECT_TO") or "").strip()
-            or url_for("reset_password_page", _external=True)
+            or f"{app_url}/reset-password"
         )
         supabase.auth.reset_password_for_email(email, {"redirect_to": reset_redirect})
     except Exception as exc:
