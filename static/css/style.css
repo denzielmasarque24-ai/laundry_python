@@ -5039,10 +5039,12 @@ body.admin-dashboard-body {
   margin-left: var(--admin-sidebar-width);
   padding: 28px;
   display: grid;
+  grid-template-columns: 1fr;
   align-content: start;
   gap: 22px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  width: calc(100% - var(--admin-sidebar-width));
 }
 
 .admin-header,
@@ -5143,6 +5145,8 @@ body.admin-dashboard-body {
 
 .admin-panel.is-active {
   display: grid;
+  grid-template-columns: 1fr;
+  width: 100%;
   gap: 22px;
   animation: fadeUp 0.35s ease;
 }
@@ -5160,10 +5164,14 @@ body.admin-dashboard-body {
 
 .admin-dashboard-grid {
   grid-template-columns: 1fr;
+  width: 100%;
 }
 
-.admin-dashboard-grid .admin-live-machines-card {
+.admin-dashboard-grid .admin-live-machines-card,
+.admin-dashboard-grid .admin-recent-bookings-card {
   grid-column: 1 / -1;
+  width: 100%;
+}
 }
 
 .admin-reports-grid {
