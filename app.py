@@ -58,9 +58,18 @@ PAYMENT_METHOD_CONFIG = {
         "qr_image": PAYMAYA_QR_IMAGE,
         "copy_label": "Copy Maya number",
     },
+    "Card": {
+        "label": "Card",
+        "account_name": "FreshWash Bank Transfer",
+        "mobile_number": "",
+        "qr_image": "",
+        "copy_label": "Choose bank",
+    },
 }
-DIGITAL_PAYMENT_METHODS = set(PAYMENT_METHOD_CONFIG)
+REFERENCE_REQUIRED_PAYMENT_METHODS = {"GCash", "Maya"}
+DIGITAL_PAYMENT_METHODS = {"GCash", "Maya"}
 VALID_PAYMENT_METHODS = {"Cash on Pickup", "Cash on Delivery", *DIGITAL_PAYMENT_METHODS}
+VALID_PAYMENT_METHODS.add("Card")
 MAX_PAYMENT_PROOF_BYTES = 2 * 1024 * 1024
 DEFAULT_DELIVERY_FEE = float(os.environ.get("FRESHWASH_DELIVERY_FEE", "50") or 50)
 
@@ -185,7 +194,7 @@ DEFAULT_MACHINE_ROWS = [
     for number in range(1, 9)
 ]
 
-VALID_MACHINE_STATUSES = {"Available", "In Use", "Disabled"}
+VALID_MACHINE_STATUSES = {"Available", "In Use", "Maintenance"}
 
 EMAIL_RE = re.compile(r"^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$", re.IGNORECASE)
 PHONE_E164_RE = re.compile(r"^\+[1-9]\d{7,14}$")
@@ -1186,7 +1195,7 @@ def issue_otp_challenge(email, purpose, pending_user=None, trigger_send=True, pe
     return challenge
 
 
-def user_role_for_email(email, stored_role="user", metadata=None):
+def user_role_for_email(email, stored_role="customer", metadata=None):
     metadata = metadata or {}
     stored_role = (stored_role or "").strip().lower()
     metadata_role = str(metadata.get("role", "") or "").strip().lower()
@@ -1194,12 +1203,14 @@ def user_role_for_email(email, stored_role="user", metadata=None):
         return "admin"
     if normalize_email(email) in configured_admin_emails():
         return "admin"
-    return "user"
+    return "customer"
 
 
 def normalize_profile_role(role):
     normalized_role = (role or "").strip().lower()
-    if normalized_role not in {"admin", "user"}:
+    if normalized_role == "user":
+        normalized_role = "customer"
+    if normalized_role not in {"admin", "customer"}:
         raise ValueError("Your account role is missing or invalid. Please contact FreshWash support.")
     return normalized_role
 
@@ -2003,7 +2014,7 @@ def booking_insert_payload_variants(payload):
     ]
     payment_payload = {
         key: payload[key]
-        for key in ("payment_method", "reference_number", "payment_proof", "proof_image", "payment_status")
+        for key in ("payment_method", "reference_number", "payment_reference", "payment_proof", "proof_image", "payment_status")
         if key in payload and payload[key] not in (None, "")
     }
     payment_variants = [{}]
@@ -2069,12 +2080,14 @@ def booking_template_context(user, form, machines):
     payment_method_config = {
         method: {
             **config,
-            "qr_image_url": url_for("static", filename=config["qr_image"]),
+            "qr_image_url": url_for("static", filename=config["qr_image"]) if config.get("qr_image") else "",
+            "requires_reference": method in REFERENCE_REQUIRED_PAYMENT_METHODS,
+            "requires_proof": method in DIGITAL_PAYMENT_METHODS,
         }
         for method, config in PAYMENT_METHOD_CONFIG.items()
     }
     return {
-        "services": SERVICES,
+        "services": current_services_map(),
         "user": user,
         "form": form,
         "machines": machines or [],
@@ -2129,7 +2142,8 @@ def build_payment_record_from_booking(booking, index=0):
         "payment_status": booking.get("payment_status") or "Pending",
         "method": booking.get("payment_method") or "Unspecified",
         "payment_method": booking.get("payment_method") or "Unspecified",
-        "reference_number": booking.get("reference_number") or "",
+        "reference_number": booking.get("reference_number") or booking.get("payment_reference") or "",
+        "payment_reference": booking.get("payment_reference") or booking.get("reference_number") or "",
         "payment_proof": booking.get("payment_proof") or booking.get("proof_image") or "",
         "proof_image": booking.get("payment_proof") or booking.get("proof_image") or "",
         "paid_at": booking.get("created_at") or booking.get("pickup_date") or "",
@@ -2356,7 +2370,7 @@ def compact_session_user(user):
         "phone": user.get("phone", "") or "",
         "address": user.get("address", "") or "",
         "avatar": avatar,
-        "role": normalize_profile_role(user.get("role", "user")),
+        "role": normalize_profile_role(user.get("role", "customer")),
     }
 
 
@@ -2496,12 +2510,12 @@ def admin_dashboard_machines():
         status = row.get("status", "Available")
         if status not in VALID_MACHINE_STATUSES:
             status = "Available"
-        enabled = bool(row.get("enabled", status != "Disabled")) and status != "Disabled"
+        enabled = bool(row.get("enabled", status != "Maintenance")) and status != "Maintenance"
         effective_enabled = enabled and machines_globally_enabled
         load_type = row.get("load_type", "Medium")
         if load_type not in allowed_load_types and allowed_load_types:
             load_type = allowed_load_types[min(1, len(allowed_load_types) - 1)]
-        status_display = status if effective_enabled and status != "Disabled" else "Disabled"
+        status_display = status if effective_enabled else "Disabled"
         return {
             "id": machine_id,
             "machine_number": machine_number,
@@ -2536,7 +2550,7 @@ def admin_dashboard_machines():
                                     "name": row.get("name") or f"Machine {row.get('machine_number')}",
                                     "status": row.get("status", "Available"),
                                     "load_type": row.get("load_type", "Medium"),
-                                    "enabled": bool(row.get("enabled", True)) and row.get("status", "Available") != "Disabled",
+                                    "enabled": bool(row.get("enabled", True)) and row.get("status", "Available") != "Maintenance",
                                 }
                                 for row in seed_rows
                             ],
@@ -2624,6 +2638,7 @@ def admin_dashboard_services():
             if rows:
                 return [
                     {
+                        "id": row.get("id") or row.get("name", ""),
                         "name": row.get("name", ""),
                         "price": float(row.get("price", 0) or 0),
                         "description": row.get("description", ""),
@@ -2643,14 +2658,28 @@ def admin_dashboard_services():
                 """
             ).fetchall()
         return [
-            {"name": row["name"], "price": float(row["price"]), "description": row["description"]}
+            {"id": row["name"], "name": row["name"], "price": float(row["price"]), "description": row["description"]}
             for row in rows
         ]
     except sqlite3.OperationalError:
         return [
-            {"name": name, "price": float(data["price"]), "description": data["desc"]}
+            {"id": name, "name": name, "price": float(data["price"]), "description": data["desc"]}
             for name, data in ADMIN_SERVICE_DEFAULTS.items()
         ]
+
+
+def current_services_map():
+    rows = admin_dashboard_services()
+    if not rows:
+        return SERVICES
+    return {
+        row["name"]: {
+            "price": float(row.get("price", 0) or 0),
+            "desc": row.get("description", "") or row.get("desc", ""),
+        }
+        for row in rows
+        if row.get("name")
+    } or SERVICES
 
 
 def update_machine(machine_number, name=None, status=None, enabled=None, load_type=None):
@@ -2674,7 +2703,7 @@ def update_machine(machine_number, name=None, status=None, enabled=None, load_ty
         raise ValueError("Invalid machine status.")
     machine_load_type = load_type if load_type is not None else (current_machine or {}).get("load_type", base_machine["load_type"])
     machine_enabled = bool(enabled) if enabled is not None else bool((current_machine or {}).get("enabled", base_machine["enabled"]))
-    if machine_status == "Disabled":
+    if machine_status == "Maintenance":
         machine_enabled = False
     client = admin_db_client()
     if client:
@@ -2751,7 +2780,7 @@ def update_machine_status_by_id(machine_id, status, load_type=None):
         int(machine.get("machine_number") or machine.get("id")),
         name=machine.get("name"),
         status=status,
-        enabled=status != "Disabled",
+        enabled=status != "Maintenance",
         load_type=resolved_load_type,
     )
     return machine
@@ -2771,11 +2800,13 @@ def update_service(name, price, description):
     with local_auth_conn() as conn:
         conn.execute(
             """
-            UPDATE admin_services
-            SET price = ?, description = ?
-            WHERE name = ?
+            INSERT INTO admin_services (name, price, description)
+            VALUES (?, ?, ?)
+            ON CONFLICT(name) DO UPDATE SET
+              price = excluded.price,
+              description = excluded.description
             """,
-            (price, description, name)
+            (name, price, description)
         )
 
 
@@ -3033,6 +3064,11 @@ def build_admin_reports(bookings, machines):
         for booking in bookings
         if (booking.get("status") or "").lower() == "completed"
     )
+    total_income = sum(
+        float(booking.get("total_price", 0) or booking.get("total_amount", 0) or 0)
+        for booking in bookings
+        if (booking.get("payment_status") or "").strip().lower() == "paid"
+    )
 
     return {
         "bookingsPerDay": [
@@ -3057,6 +3093,8 @@ def build_admin_reports(bookings, machines):
             "cancelled": status_counter.get("Cancelled", 0),
         },
         "completedRevenue": round(completed_revenue, 2),
+        "totalBookings": len(bookings),
+        "totalIncome": round(total_income, 2),
     }
 
 
@@ -3067,7 +3105,7 @@ def admin_dashboard_payments(bookings_fallback=None):
     try:
         result = (
             client.table("payments")
-            .select("id,booking_id,user_id,customer_name,payment_method,payment_status,amount,payment_proof,created_at")
+            .select("id,booking_id,user_id,customer_name,payment_method,payment_status,amount,payment_reference,reference_number,payment_proof,created_at")
             .order("created_at", desc=True)
             .execute()
         )
@@ -3082,6 +3120,8 @@ def admin_dashboard_payments(bookings_fallback=None):
                 "payment_status": row.get("payment_status") or "Pending",
                 "method": row.get("payment_method") or "Unspecified",
                 "payment_method": row.get("payment_method") or "Unspecified",
+                "payment_reference": row.get("payment_reference") or row.get("reference_number") or "",
+                "reference_number": row.get("reference_number") or row.get("payment_reference") or "",
                 "payment_proof": row.get("payment_proof") or "",
                 "proof_image": row.get("payment_proof") or "",
                 "paid_at": row.get("created_at") or "",
@@ -3120,6 +3160,15 @@ def build_admin_dashboard_payload():
     available_machines = sum(1 for machine in machines if machine["enabled"] and machine["status"] == "Available")
     revenue = sum(float(booking.get("total_price", 0) or 0) for booking in bookings if booking.get("status") == "Completed")
     reports = build_admin_reports(bookings, machines)
+    reports["totalUsers"] = len(users)
+    reports["totalIncome"] = round(
+        sum(
+            float(payment.get("amount", 0) or 0)
+            for payment in payments
+            if (payment.get("payment_status") or payment.get("status") or "").strip().lower() == "paid"
+        ),
+        2,
+    )
 
     return {
         "summary": {
@@ -4569,8 +4618,8 @@ def admin_booking_action(booking_id):
                     "payment_method": payment_method,
                     "amount": amount,
                     "payment_status": payment_status,
-                    "proof_of_payment": proof_of_payment,
-                    "date": datetime.now(timezone.utc).isoformat(),
+                    "payment_proof": proof_of_payment,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
                 }
                 existing_payment_res = (
                     client.table("payments")
@@ -4724,8 +4773,11 @@ def admin_service_action(service_name=None):
     action = data.get("action", "save")
     if action == "create":
         service_name = data.get("name", "").strip()
+    new_service_name = (data.get("name") or service_name or "").strip()
     description = data.get("description", "").strip()
     if not service_name:
+        return jsonify({"ok": False, "error": "Service name is required."}), 400
+    if action != "delete" and not new_service_name:
         return jsonify({"ok": False, "error": "Service name is required."}), 400
     try:
         price = float(data.get("price", 0))
@@ -4766,7 +4818,16 @@ def admin_service_action(service_name=None):
                 (service_name, price, description)
             )
     else:
-        update_service(service_name, price, description)
+        if new_service_name != service_name:
+            client = admin_db_client()
+            if client:
+                try:
+                    client.table("services").delete().eq("name", service_name).execute()
+                except Exception as exc:
+                    log_exception("admin service rename cleanup failed", exc, service_name=service_name)
+            with local_auth_conn() as conn:
+                conn.execute("DELETE FROM admin_services WHERE name = ?", (service_name,))
+        update_service(new_service_name, price, description)
     try:
         return jsonify({"ok": True, "data": build_admin_dashboard_payload()})
     except Exception as exc:
@@ -5014,13 +5075,14 @@ def admin_profile_photo_upload():
 @app.route("/services")
 @login_required
 def services():
-    return render_template("services_page.html", services=SERVICES, user=session["user"])
+    return render_template("services_page.html", services=current_services_map(), user=session["user"])
 
 
 @app.route("/booking", methods=["GET", "POST"])
 @login_required
 def booking():
     user = session["user"]
+    services_map = current_services_map()
     try:
         machines = [machine for machine in admin_dashboard_machines() if machine.get("effective_enabled", machine.get("enabled"))]
     except Exception as exc:
@@ -5057,7 +5119,7 @@ def booking():
         if not full_name:                errors.append("Full name is required.")
         if not phone:                    errors.append("Phone number is required.")
         if not address:                  errors.append("Address is required.")
-        if service_type not in SERVICES: errors.append("Invalid service selected.")
+        if service_type not in services_map: errors.append("Invalid service selected.")
         if not machine:                  errors.append("Please select a machine.")
         if not load_type:                errors.append("Load type is required.")
         if not pickup_date:              errors.append("Pickup date is required.")
@@ -5067,7 +5129,7 @@ def booking():
             errors.append("Invalid delivery option selected.")
         if payment_method not in VALID_PAYMENT_METHODS:
             errors.append("Invalid payment method selected.")
-        if payment_method in DIGITAL_PAYMENT_METHODS and not reference_number:
+        if payment_method in REFERENCE_REQUIRED_PAYMENT_METHODS and not reference_number:
             errors.append(f"{payment_method} reference number is required.")
 
         try:
@@ -5086,7 +5148,7 @@ def booking():
             errors.append("This machine is currently in use. Please select an available machine.")
         elif selected_machine and load_type and normalize_booking_load_type(selected_machine.get("load_type", "")) != load_type:
             errors.append("Selected machine does not match the chosen load type. Please choose another machine.")
-        elif selected_machine_status and selected_machine_status not in {"Available", "Disabled", "In Use"}:
+        elif selected_machine_status and selected_machine_status not in {"Available", "Disabled", "In Use", "Maintenance"}:
             errors.append("Invalid machine status supplied.")
 
         if selected_machine and not load_type:
@@ -5101,7 +5163,7 @@ def booking():
         delivery_type = delivery_option.strip().lower()
         delivery_fee = DEFAULT_DELIVERY_FEE if delivery_type == "delivery" else 0.0
         delivery_status = "Not Started"
-        laundry_total = round(float(SERVICES.get(service_type, {}).get("price", 0) or 0) * weight, 2)
+        laundry_total = round(float(services_map.get(service_type, {}).get("price", 0) or 0) * weight, 2)
         total_amount = round(laundry_total + delivery_fee, 2)
 
         payload = {
@@ -5125,6 +5187,7 @@ def booking():
             "status": "Pending",
             "payment_method": payment_method,
             "reference_number": reference_number,
+            "payment_reference": reference_number,
             "payment_proof": payment_proof,
             "payment_status": payment_status,
         }
@@ -5143,6 +5206,8 @@ def booking():
                     "payment_method": payment_method,
                     "payment_status": "Pending",
                     "amount": total_amount,
+                    "payment_reference": reference_number or None,
+                    "reference_number": reference_number or None,
                     "payment_proof": payment_proof or None,
                 }
                 try:
@@ -5368,6 +5433,7 @@ def home():
     active_auth_modal, auth_form_data = pop_auth_modal_state()
     recent = []
     bookings = []
+    services_map = current_services_map()
     try:
         machines = admin_dashboard_machines()
     except Exception as exc:
@@ -5389,7 +5455,7 @@ def home():
                 .order("created_at", desc=True).execute()
             bookings = bookings_res.data or []
             for booking in bookings:
-                price = SERVICES.get(booking.get("service_type", ""), {}).get("price", 0)
+                price = services_map.get(booking.get("service_type", ""), {}).get("price", 0)
                 booking["total_price"] = round(price * float(booking.get("weight", 0) or 0), 2)
         except Exception as exc:
             log_exception("homepage bookings fetch failed", exc, user=user.get("email", ""))
@@ -5401,7 +5467,7 @@ def home():
         bookings=bookings or [],
         machines=machines or [],
         machine_type_cards=build_home_machine_types(machines or []) if user else [],
-        services=SERVICES,
+        services=services_map,
         homepage_services=HOMEPAGE_SERVICES,
         active_auth_modal=active_auth_modal,
         auth_form_data=auth_form_data,

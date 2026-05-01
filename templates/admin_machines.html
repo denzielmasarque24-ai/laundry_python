@@ -30,7 +30,7 @@
 <script>
 (function () {
   /* ── Constants ─────────────────────────────────────────── */
-  const VALID_STATUSES   = ["Available", "In Use", "Disabled"];
+  const VALID_STATUSES   = ["Available", "In Use", "Maintenance"];
   const VALID_LOAD_TYPES = ["Light", "Medium", "Heavy"];
 
   /* ── Toast helper ──────────────────────────────────────── */
@@ -221,7 +221,7 @@
       }
       const card = document.getElementById(`machineCard-${machineKey}`);
       if (card) {
-        card.classList.toggle("is-disabled", selectedStatus === "Disabled");
+        card.classList.toggle("is-disabled", selectedStatus === "Maintenance");
       }
 
       /* Update local state so the grid stays consistent on next render */

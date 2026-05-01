@@ -1,3 +1,5 @@
+create extension if not exists pgcrypto;
+
 -- ============================================================
 -- FreshWash — Full Schema (bookings + profiles)
 -- Run this in: Supabase Dashboard → SQL Editor → New Query
@@ -10,7 +12,7 @@ create table if not exists public.profiles (
   full_name  text not null,
   phone      text,
   address    text,
-  role       text not null default 'user',
+  role       text not null default 'customer',
   created_at timestamptz default now()
 );
 
@@ -19,12 +21,18 @@ alter table public.profiles add column if not exists full_name text;
 alter table public.profiles add column if not exists phone text;
 alter table public.profiles add column if not exists address text;
 alter table public.profiles add column if not exists avatar text;
-alter table public.profiles add column if not exists role text not null default 'user';
+alter table public.profiles add column if not exists role text not null default 'customer';
 alter table public.profiles add column if not exists otp_code text;
 alter table public.profiles add column if not exists otp_expiry timestamptz;
 alter table public.profiles add column if not exists is_verified boolean not null default false;
 alter table public.profiles add column if not exists created_at timestamptz default now();
 alter table public.profiles alter column email set not null;
+alter table public.profiles alter column role set default 'customer';
+update public.profiles set role = 'customer' where role is null or role = '' or role = 'user';
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles
+  add constraint profiles_role_check
+  check (role in ('admin', 'customer'));
 
 -- Repair incorrect legacy FK where profiles.id points to public.users instead of auth.users.
 -- This is idempotent and safe to run multiple times.
@@ -94,11 +102,11 @@ alter table public.machines add column if not exists enabled boolean not null de
 alter table public.machines add column if not exists updated_at timestamptz default now();
 update public.machines
 set status = 'Available'
-where status not in ('Available', 'In Use', 'Disabled');
+where status not in ('Available', 'In Use', 'Maintenance');
 alter table public.machines drop constraint if exists machines_status_check;
 alter table public.machines
   add constraint machines_status_check
-  check (status in ('Available', 'In Use', 'Disabled'));
+  check (status in ('Available', 'In Use', 'Maintenance'));
 update public.machines
 set id = machine_number
 where id is null and machine_number is not null;
@@ -107,7 +115,7 @@ set name = coalesce(name, 'Machine ' || machine_number::text)
 where name is null;
 update public.machines
 set enabled = false
-where status = 'Disabled';
+where status = 'Maintenance';
 create unique index if not exists machines_id_unique on public.machines(id);
 
 
@@ -129,9 +137,10 @@ create table if not exists public.bookings (
   delivery_option text default 'Pickup',
   payment_method text,
   reference_number text,
+  payment_reference text,
   payment_proof text,
   proof_image text,
-  payment_status text default 'Pending Payment',
+  payment_status text default 'Pending',
   notes        text,
   status       text not null default 'Pending',
   created_at   timestamptz default now()
@@ -154,9 +163,13 @@ alter table public.bookings add column if not exists created_at timestamptz defa
 alter table public.bookings add column if not exists pickup_address text;
 alter table public.bookings add column if not exists payment_method text;
 alter table public.bookings add column if not exists reference_number text;
+alter table public.bookings add column if not exists payment_reference text;
 alter table public.bookings add column if not exists payment_proof text;
 alter table public.bookings add column if not exists proof_image text;
-alter table public.bookings add column if not exists payment_status text default 'Pending Payment';
+alter table public.bookings add column if not exists payment_status text default 'Pending';
+update public.bookings
+set payment_reference = reference_number
+where payment_reference is null and reference_number is not null;
 update public.bookings
 set pickup_address = address
 where pickup_address is null and address is not null;
@@ -189,13 +202,45 @@ create policy "Users can delete own bookings"
 
 -- ── Services table ─────────────────────────────────────────
 create table if not exists public.services (
+  id          uuid default gen_random_uuid(),
   name        text primary key,
   price       numeric(10,2) not null default 0,
   description text not null default ''
 );
 
+alter table public.services add column if not exists id uuid default gen_random_uuid();
+update public.services set id = gen_random_uuid() where id is null;
 alter table public.services add column if not exists price numeric(10,2) not null default 0;
 alter table public.services add column if not exists description text not null default '';
+create unique index if not exists services_id_unique on public.services(id);
+create unique index if not exists services_name_unique on public.services(name);
+
+create table if not exists public.payments (
+  id uuid primary key default gen_random_uuid(),
+  booking_id uuid,
+  user_id uuid,
+  customer_name text,
+  payment_method text,
+  payment_status text default 'Pending',
+  amount numeric(10,2) default 0,
+  payment_reference text,
+  reference_number text,
+  payment_proof text,
+  proof_image text,
+  created_at timestamptz default now()
+);
+
+alter table public.payments add column if not exists booking_id uuid;
+alter table public.payments add column if not exists user_id uuid;
+alter table public.payments add column if not exists customer_name text;
+alter table public.payments add column if not exists payment_method text;
+alter table public.payments add column if not exists payment_status text default 'Pending';
+alter table public.payments add column if not exists amount numeric(10,2) default 0;
+alter table public.payments add column if not exists payment_reference text;
+alter table public.payments add column if not exists reference_number text;
+alter table public.payments add column if not exists payment_proof text;
+alter table public.payments add column if not exists proof_image text;
+alter table public.payments add column if not exists created_at timestamptz default now();
 
 alter table public.services enable row level security;
 

@@ -243,7 +243,7 @@
 
   .payment-method-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1rem;
   }
 
@@ -795,6 +795,11 @@
                 <span class="payment-method-icon is-maya">maya</span>
                 <span>Maya</span>
               </button>
+              <button type="button" class="payment-method-option {% if selected_payment == 'Card' %}is-active{% endif %}" data-payment-method="Card" role="radio" aria-checked="{{ 'true' if selected_payment == 'Card' else 'false' }}">
+                <span class="payment-method-dot"></span>
+                <span class="payment-method-icon"><i class="fa-solid fa-credit-card"></i></span>
+                <span>Card</span>
+              </button>
               <button type="button" class="payment-method-option {% if selected_payment == 'Cash on Delivery' %}is-active{% endif %}" data-payment-method="Cash on Delivery" role="radio" aria-checked="{{ 'true' if selected_payment == 'Cash on Delivery' else 'false' }}">
                 <span class="payment-method-dot"></span>
                 <span class="payment-method-icon"><i class="fa-solid fa-wallet"></i></span>
@@ -862,6 +867,27 @@
                 <li>Enter exact amount</li>
                 <li>Complete payment</li>
               </ol>
+            </article>
+
+            <article class="payment-option-card {% if selected_payment == 'Card' %}is-active{% endif %}" data-payment-card="Card">
+              <h4 class="payment-card-title"><span class="payment-method-icon"><i class="fa-solid fa-credit-card"></i></span> Card</h4>
+              <div class="digital-payment-details">
+                <div class="booking-field">
+                  <label class="fw-label">Bank</label>
+                  <div class="fw-field">
+                    <span class="fw-field-icon"><i class="fa-solid fa-building-columns"></i></span>
+                    <select class="fw-input" id="cardBankSelect">
+                      <option value="BPI">BPI</option>
+                      <option value="BDO">BDO</option>
+                      <option value="Metrobank">Metrobank</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="digital-payment-detail-row is-highlight">
+                  <span>Total Amount</span>
+                  <strong class="digitalTotalAmount">&#8369;0.00</strong>
+                </div>
+              </div>
             </article>
 
             <article class="payment-option-card {% if selected_payment == 'Cash on Delivery' %}is-active{% endif %}" data-payment-card="Cash on Delivery">
@@ -933,6 +959,7 @@
   const paymentReferenceInput = document.getElementById('paymentReferenceInput');
   const paymentProofInput = document.getElementById('paymentProofInput');
   const paymentProofSuccess = document.getElementById('paymentProofSuccess');
+  const cardBankSelect = document.getElementById('cardBankSelect');
   const selectedMachineStatusInput = document.getElementById('selectedMachineStatus');
   const machineAvailabilityMessage = document.getElementById('machineAvailabilityMessage');
   const bookingForm = document.getElementById('bookingForm');
@@ -990,10 +1017,11 @@
   function updatePaymentMethodUi() {
     const selectedMethod = paymentMethodSelect?.value || 'Cash on Delivery';
     const paymentConfig = PAYMENT_METHOD_CONFIG[selectedMethod];
-    const isDigitalPayment = Boolean(paymentConfig);
-    paymentCard?.classList.toggle('is-digital-payment-active', isDigitalPayment);
-    paymentProofRow?.classList.toggle('is-hidden', !isDigitalPayment);
-    if (paymentReferenceInput) paymentReferenceInput.required = isDigitalPayment;
+    const requiresReference = Boolean(paymentConfig?.requires_reference);
+    const requiresProof = Boolean(paymentConfig?.requires_proof);
+    paymentCard?.classList.toggle('is-digital-payment-active', requiresProof);
+    paymentProofRow?.classList.toggle('is-hidden', !requiresProof);
+    if (paymentReferenceInput) paymentReferenceInput.required = requiresReference;
 
     paymentMethodOptions.forEach(option => {
       const isActive = option.dataset.paymentMethod === selectedMethod;
@@ -1005,10 +1033,13 @@
       card.classList.toggle('is-active', card.dataset.paymentCard === selectedMethod);
     });
 
-    if (!isDigitalPayment) {
+    if (!requiresProof) {
       if (paymentReferenceInput) paymentReferenceInput.value = '';
       if (paymentProofInput) paymentProofInput.value = '';
       paymentProofSuccess?.classList.remove('is-visible');
+    }
+    if (selectedMethod === 'Card' && cardBankSelect && paymentReferenceInput) {
+      paymentReferenceInput.value = cardBankSelect.value || 'Card';
     }
     return selectedMethod;
   }
@@ -1025,6 +1056,7 @@
     const compact = String(value || '').trim().toLowerCase();
     if (compact === 'available') return 'Available';
     if (compact === 'in use') return 'In Use';
+    if (compact === 'maintenance') return 'Maintenance';
     if (compact === 'disabled') return 'Disabled';
     if (compact === 'unavailable') return 'Unavailable';
     return '';
@@ -1176,6 +1208,14 @@
     });
   });
 
+  if (cardBankSelect) {
+    cardBankSelect.addEventListener('change', () => {
+      if (paymentMethodSelect?.value === 'Card' && paymentReferenceInput) {
+        paymentReferenceInput.value = cardBankSelect.value || 'Card';
+      }
+    });
+  }
+
   if (paymentProofInput) {
     paymentProofInput.addEventListener('change', () => {
       paymentProofSuccess?.classList.toggle('is-visible', Boolean(paymentProofInput.files?.length));
@@ -1199,7 +1239,7 @@
       }
 
       const selectedPaymentConfig = PAYMENT_METHOD_CONFIG[paymentMethodSelect?.value || ''];
-      if (selectedPaymentConfig && !paymentReferenceInput?.value.trim()) {
+      if (selectedPaymentConfig?.requires_reference && !paymentReferenceInput?.value.trim()) {
         event.preventDefault();
         window.alert(`Please enter your ${selectedPaymentConfig.label} reference number before confirming.`);
         paymentReferenceInput?.focus();

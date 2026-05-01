@@ -453,7 +453,8 @@
     }
 
     .admin-booking-status.status-pending,
-    .admin-user-role.role-user {
+    .admin-user-role.role-user,
+    .admin-user-role.role-customer {
       color: #8a224f;
       background: rgba(255, 196, 224, 0.5);
     }
@@ -479,7 +480,8 @@
       background: rgba(254, 215, 170, 0.8);
     }
 
-    .admin-machine-status-tag.status-disabled {
+    .admin-machine-status-tag.status-disabled,
+    .admin-machine-status-tag.status-maintenance {
       color: #667085;
       background: rgba(226, 232, 240, 0.95);
     }
@@ -1572,18 +1574,21 @@
 
     body.admin-dashboard-body.dark-mode .admin-booking-status.status-pending,
     body.admin-dashboard-body.dark-mode .admin-user-role.role-user,
+    body.admin-dashboard-body.dark-mode .admin-user-role.role-customer,
     body.admin-dashboard-body.dark-mode .admin-booking-status.status-in-progress,
     body.admin-dashboard-body.dark-mode .admin-booking-status.status-completed,
     body.admin-dashboard-body.dark-mode .admin-user-role.role-admin,
     body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-available,
     body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-in-use,
     body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-disabled,
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-maintenance,
     body.admin-dashboard-body.dark-mode .admin-service-price {
       border: 1px solid transparent;
     }
 
     body.admin-dashboard-body.dark-mode .admin-booking-status.status-pending,
-    body.admin-dashboard-body.dark-mode .admin-user-role.role-user {
+    body.admin-dashboard-body.dark-mode .admin-user-role.role-user,
+    body.admin-dashboard-body.dark-mode .admin-user-role.role-customer {
       color: #ffd2e5;
       background: rgba(255, 79, 163, 0.16);
       border-color: rgba(255, 110, 168, 0.22);
@@ -1988,7 +1993,7 @@
               <label class="admin-user-edit-field">
                 <span>Role</span>
                 <select id="editUserRole" required>
-                  <option value="user">user</option>
+                  <option value="customer">customer</option>
                   <option value="admin">admin</option>
                 </select>
               </label>
@@ -2292,7 +2297,7 @@ const DASHBOARD_CONFIG = {
         phone: user?.phone || "No phone",
         address: user?.address || "",
         avatar: user?.avatar || "",
-        role: String(user?.role || "user").toLowerCase(),
+        role: String(user?.role || "customer").toLowerCase() === "user" ? "customer" : String(user?.role || "customer").toLowerCase(),
         created_at: user?.created_at || ""
       };
     }
@@ -2324,14 +2329,14 @@ const DASHBOARD_CONFIG = {
 
     function normalizeMachine(machine) {
       const baseStatus = machine?.status || "Available";
-      const enabled = machine?.enabled !== false && baseStatus !== "Disabled";
+      const enabled = machine?.enabled !== false && baseStatus !== "Maintenance";
       const effectiveEnabled = machine?.effective_enabled !== false && enabled;
       return {
         id: machine?.id ?? machine?.machine_number ?? "",
         machine_number: machine?.machine_number ?? machine?.id ?? "",
         name: normalizeMachineName(machine),
         status: baseStatus,
-        status_display: effectiveEnabled && baseStatus !== "Disabled" ? baseStatus : "Disabled",
+        status_display: effectiveEnabled ? baseStatus : "Disabled",
         load_type: machine?.load_type || "Medium",
         enabled,
         effective_enabled: effectiveEnabled
@@ -2364,7 +2369,7 @@ const DASHBOARD_CONFIG = {
         amount: Number(payment?.amount ?? payment?.total ?? 0),
         status: normalizedStatus,
         method: method,
-        reference_number: payment?.reference_number || payment?.reference || "",
+        reference_number: payment?.reference_number || payment?.payment_reference || payment?.reference || "",
         payment_proof: payment?.payment_proof || payment?.proof_image || "",
         proof_image: payment?.payment_proof || payment?.proof_image || "",
         paid_at: payment?.paid_at || payment?.created_at || "",
@@ -2646,7 +2651,7 @@ const DASHBOARD_CONFIG = {
                 <select class="admin-inline-select" id="machineStatus-${escapeHtml(machineKey)}">
                 <option value="Available" ${controlStatus === "Available" ? "selected" : ""}>Available</option>
                 <option value="In Use" ${controlStatus === "In Use" ? "selected" : ""}>In Use</option>
-                <option value="Disabled" ${controlStatus === "Disabled" ? "selected" : ""}>Disabled</option>
+              <option value="Maintenance" ${controlStatus === "Maintenance" ? "selected" : ""}>Maintenance</option>
                 </select>
               </label>
               <label>
@@ -2698,6 +2703,9 @@ const DASHBOARD_CONFIG = {
       const completedRevenue = reports.completedRevenue || 0;
 
       statsInline.innerHTML = `
+        <article class="admin-inline-stat"><strong>${escapeHtml(reports.totalBookings || 0)}</strong><span>Total Bookings</span></article>
+        <article class="admin-inline-stat"><strong>${escapeHtml(reports.totalUsers || dashboardState.users.length || 0)}</strong><span>Total Users</span></article>
+        <article class="admin-inline-stat"><strong>${escapeHtml(formatCurrency(reports.totalIncome || 0))}</strong><span>Total Income</span></article>
         <article class="admin-inline-stat"><strong>${escapeHtml(breakdown.pending || 0)}</strong><span>Pending</span></article>
         <article class="admin-inline-stat"><strong>${escapeHtml(breakdown.completed || 0)}</strong><span>Completed</span></article>
         <article class="admin-inline-stat"><strong>${escapeHtml(formatCurrency(completedRevenue))}</strong><span>Completed Revenue</span></article>
@@ -2744,15 +2752,17 @@ const DASHBOARD_CONFIG = {
         if (methodKey === "gcash") acc.gcash += 1;
         if (methodKey === "maya") acc.maya += 1;
         if (methodKey === "cash on delivery") acc.cod += 1;
+        if (methodKey === "card") acc.card += 1;
         if (statusKey === "paid") acc.paid += 1;
         if (statusKey === "pending") acc.pending += 1;
         return acc;
-      }, { total: 0, gcash: 0, maya: 0, cod: 0, revenue: 0, pending: 0, paid: 0 });
+      }, { total: 0, gcash: 0, maya: 0, cod: 0, card: 0, revenue: 0, pending: 0, paid: 0 });
 
       paymentSummaryCards.innerHTML = `
         <article class="admin-inline-stat"><strong>${escapeHtml(totals.total)}</strong><span>Total Payments</span></article>
         <article class="admin-inline-stat"><strong>${escapeHtml(totals.gcash)}</strong><span>GCash Payments</span></article>
         <article class="admin-inline-stat"><strong>${escapeHtml(totals.maya)}</strong><span>Maya/PayMaya Payments</span></article>
+        <article class="admin-inline-stat"><strong>${escapeHtml(totals.card)}</strong><span>Card Payments</span></article>
         <article class="admin-inline-stat"><strong>${escapeHtml(totals.cod)}</strong><span>Cash on Delivery Payments</span></article>
         <article class="admin-inline-stat"><strong>${escapeHtml(formatCurrency(totals.revenue))}</strong><span>Total Revenue</span></article>
         <article class="admin-inline-stat"><strong>${escapeHtml(totals.pending)}</strong><span>Pending Payments</span></article>
@@ -2767,6 +2777,7 @@ const DASHBOARD_CONFIG = {
           if (filterValue === "all") return true;
           if (filterValue === "gcash") return method === "gcash";
           if (filterValue === "maya") return method === "maya";
+          if (filterValue === "card") return method === "card";
           if (filterValue === "cod") return method === "cash on delivery";
           if (filterValue === "paid") return status === "paid";
           if (filterValue === "pending") return status === "pending";
@@ -2892,7 +2903,7 @@ const DASHBOARD_CONFIG = {
       setValue("editUserEmail", user.email === "No email" ? "" : user.email);
       setValue("editUserPhone", user.phone === "No phone" ? "" : user.phone);
       setValue("editUserAddress", user.address);
-      setValue("editUserRole", user.role || "user");
+      setValue("editUserRole", user.role || "customer");
       const avatarInput = document.getElementById("editUserAvatarInput");
       if (avatarInput) avatarInput.value = "";
       setEditUserAvatarPreview(user.avatar || "");
@@ -2920,7 +2931,7 @@ const DASHBOARD_CONFIG = {
         const phone = window.prompt("Phone number", ""); if (phone === null) return;
         const address = window.prompt("Address", ""); if (address === null) return;
         const password = window.prompt("Temporary password (min 6 characters)"); if (!password) return;
-        const role = (window.prompt("Role (user/admin)", "user") || "user").trim().toLowerCase();
+        const role = (window.prompt("Role (customer/admin)", "customer") || "customer").trim().toLowerCase();
         await postAdminJson("/admin/api/users", { action: "create", name, email, phone, address, password, role });
         await refreshSectionData("users");
       } catch (error) { logSupabaseError("User create failed", error); }
@@ -2960,7 +2971,7 @@ const DASHBOARD_CONFIG = {
           email: document.getElementById("editUserEmail")?.value.trim() || "",
           phone: document.getElementById("editUserPhone")?.value.trim() || "",
           address: document.getElementById("editUserAddress")?.value.trim() || "",
-          role: document.getElementById("editUserRole")?.value || "user",
+          role: document.getElementById("editUserRole")?.value || "customer",
           avatar: document.getElementById("editUserAvatarData")?.value || ""
         });
         applyAdminPayload(result.data || {});
@@ -3029,9 +3040,10 @@ const DASHBOARD_CONFIG = {
 
     async function saveService(serviceName, serviceId) {
       try {
+        const currentName = document.getElementById(`serviceName-${serviceId}`)?.value.trim() || serviceName;
         const currentPrice = document.getElementById(`servicePrice-${serviceId}`)?.value || "0";
         const currentDescription = document.getElementById(`serviceDescription-${serviceId}`)?.value.trim() || "";
-        await postAdminJson(`/admin/api/services/${encodeURIComponent(serviceName)}`, { action: "save", price: currentPrice, description: currentDescription });
+        await postAdminJson(`/admin/api/services/${encodeURIComponent(serviceName)}`, { action: "save", name: currentName, price: currentPrice, description: currentDescription });
         await refreshSectionData("services");
       } catch (error) { logSupabaseError("Service save failed", error); }
     }
