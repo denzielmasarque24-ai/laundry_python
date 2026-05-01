@@ -2977,18 +2977,25 @@ const DASHBOARD_CONFIG = {
     }
 
     async function saveMachine(machineId) {
+      // Delegate to saveMachineCard defined in admin_machines.html (overrides this stub)
+      if (typeof window.saveMachineCard === "function") {
+        return window.saveMachineCard(String(machineId));
+      }
+      // Fallback (should not be reached when admin_machines.html is loaded)
       try {
         const statusField = document.getElementById(`machineStatus-${machineId}`);
-        const loadField = document.getElementById(`machineLoad-${machineId}`);
-        const machine = dashboardState.machines.find(m => String(m.id) === String(machineId) || String(m.machine_number) === String(machineId));
+        const loadField   = document.getElementById(`machineLoad-${machineId}`);
+        const machine     = dashboardState.machines.find(
+          m => String(m.id) === String(machineId) || String(m.machine_number) === String(machineId)
+        );
         if (!statusField || !loadField || !machine) return;
-        const selectedStatus = statusField.value;
         await patchAdminJson("/api/update-machine-status", {
-          id: machine.id ?? machine.machine_number,
-          status: selectedStatus,
-          load_type: loadField.value
+          id:        machine.id ?? machine.machine_number,
+          status:    statusField.value,
+          load_type: loadField.value,
         });
         await refreshSectionData("machines");
+        showSuccess("Machine updated successfully.");
       } catch (error) { logSupabaseError("Machine save failed", error); }
     }
 

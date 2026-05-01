@@ -2,16 +2,291 @@
 
 {% block content %}
 <!-- MACHINES -->
-      <section class="admin-panel {% if active_page == 'machines' %}is-active{% endif %}" data-panel="machines" aria-label="Machines">
-        <div class="admin-panel-tools">
-          <span class="admin-pill" id="machinesCountPill">0 machines</span>
-        </div>
-        <div class="admin-card">
-          <div id="machinesGrid" class="admin-machine-grid admin-machine-grid-panel"></div>
-        </div>
-      </section>
+<section class="admin-panel {% if active_page == 'machines' %}is-active{% endif %}" data-panel="machines" aria-label="Machines">
+  <div class="admin-panel-tools">
+    <span class="admin-pill" id="machinesCountPill">0 machines</span>
+    <button type="button" class="admin-button admin-button-ghost" id="machinesRefreshBtn" style="margin-left:auto;">
+      <i class="fa-solid fa-rotate-right"></i> Refresh
+    </button>
+  </div>
 
-      
+  <div id="machinesSaveToast" style="
+    display:none;
+    align-items:center;
+    gap:10px;
+    padding:12px 16px;
+    margin-bottom:12px;
+    border-radius:16px;
+    font-size:0.88rem;
+    font-weight:600;
+    border:1px solid transparent;
+  "></div>
+
+  <div class="admin-card">
+    <div id="machinesGrid" class="admin-machine-grid admin-machine-grid-panel"></div>
+  </div>
+</section>
+
+<script>
+(function () {
+  /* ── Constants ─────────────────────────────────────────── */
+  const VALID_STATUSES   = ["Available", "In Use", "Disabled"];
+  const VALID_LOAD_TYPES = ["Light", "Medium", "Heavy"];
+
+  /* ── Toast helper ──────────────────────────────────────── */
+  function showMachineToast(message, isError = false) {
+    const toast = document.getElementById("machinesSaveToast");
+    if (!toast) return;
+    toast.textContent = message;
+    toast.style.display = "flex";
+    toast.style.background = isError
+      ? "rgba(255, 235, 235, 0.96)"
+      : "rgba(240, 253, 244, 0.96)";
+    toast.style.color       = isError ? "#8a224f" : "#166534";
+    toast.style.borderColor = isError
+      ? "rgba(190, 74, 116, 0.22)"
+      : "rgba(34, 197, 94, 0.22)";
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => { toast.style.display = "none"; }, 4000);
+  }
+
+  /* ── Per-card feedback ─────────────────────────────────── */
+  function setCardFeedback(machineKey, message, isError) {
+    const el = document.getElementById(`machineFeedback-${machineKey}`);
+    if (!el) return;
+    el.textContent = message;
+    el.style.color = isError ? "#8a224f" : "#166534";
+    el.style.display = "block";
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => { el.style.display = "none"; }, 4000);
+  }
+
+  /* ── Render machines grid ──────────────────────────────── */
+  function renderMachinesGrid(machines) {
+    const grid      = document.getElementById("machinesGrid");
+    const countPill = document.getElementById("machinesCountPill");
+    if (!grid) return;
+
+    if (countPill) {
+      countPill.textContent = `${machines.length} machine${machines.length === 1 ? "" : "s"}`;
+    }
+
+    if (!machines.length) {
+      grid.innerHTML = '<p class="admin-empty">No machines found.</p>';
+      return;
+    }
+
+    /* Use load types from settings if available, fall back to defaults */
+    const loadOptions =
+      (typeof getMachineLoadTypeOptions === "function")
+        ? getMachineLoadTypeOptions()
+        : VALID_LOAD_TYPES;
+
+    grid.innerHTML = machines.map(machine => {
+      const machineKey   = String(machine.id ?? machine.machine_number ?? "");
+      const currentStatus =
+        machine.status_display && machine.status_display !== machine.status
+          ? machine.status          /* use raw status for the dropdown */
+          : (machine.status || "Available");
+      const displayStatus =
+        (typeof normalizeMachineStatus === "function")
+          ? normalizeMachineStatus(machine)
+          : currentStatus;
+      const loadType = machine.load_type || "Medium";
+
+      const statusOptions = VALID_STATUSES.map(s =>
+        `<option value="${s}" ${currentStatus === s ? "selected" : ""}>${s}</option>`
+      ).join("");
+
+      const loadTypeOptions = loadOptions.map(lt =>
+        `<option value="${lt}" ${loadType === lt ? "selected" : ""}>${lt}</option>`
+      ).join("");
+
+      return `
+        <article class="admin-machine-card ${displayStatus === "Disabled" ? "is-disabled" : ""}"
+                 id="machineCard-${machineKey}">
+          <div class="admin-machine-head">
+            <div class="admin-section-stack">
+              <h3>${escapeHtml(machine.name)}</h3>
+              <p>${escapeHtml(loadType)} Load</p>
+            </div>
+            <span class="admin-machine-status-tag ${escapeHtml(formatStatusClass(displayStatus))}"
+                  id="machineStatusTag-${machineKey}">
+              ${escapeHtml(displayStatus)}
+            </span>
+          </div>
+
+          <div class="admin-machine-controls">
+            <label>
+              <span>Status</span>
+              <select class="admin-inline-select" id="machineStatus-${machineKey}">
+                ${statusOptions}
+              </select>
+            </label>
+            <label>
+              <span>Load Type</span>
+              <select class="admin-inline-select" id="machineLoad-${machineKey}">
+                ${loadTypeOptions}
+              </select>
+            </label>
+          </div>
+
+          <small id="machineFeedback-${machineKey}"
+                 style="display:none;font-size:0.8rem;font-weight:600;margin-top:2px;"></small>
+
+          <div class="admin-action-buttons">
+            <button
+              type="button"
+              class="admin-button admin-button-primary"
+              id="machineBtn-${machineKey}"
+              onclick="saveMachineCard('${machineKey}')">
+              Save Machine
+            </button>
+          </div>
+        </article>`;
+    }).join("");
+  }
+
+  /* ── Save a single machine ─────────────────────────────── */
+  window.saveMachineCard = async function (machineKey) {
+    const statusEl  = document.getElementById(`machineStatus-${machineKey}`);
+    const loadEl    = document.getElementById(`machineLoad-${machineKey}`);
+    const btn       = document.getElementById(`machineBtn-${machineKey}`);
+
+    if (!statusEl || !loadEl) {
+      showMachineToast("Could not find machine controls.", true);
+      return;
+    }
+
+    const selectedStatus   = statusEl.value;
+    const selectedLoadType = loadEl.value;
+
+    /* Validate against exact DB values */
+    if (!VALID_STATUSES.includes(selectedStatus)) {
+      setCardFeedback(machineKey, `Invalid status: "${selectedStatus}"`, true);
+      showMachineToast(`Invalid status value: "${selectedStatus}"`, true);
+      return;
+    }
+
+    /* Find the machine record */
+    const machine = (dashboardState?.machines || []).find(
+      m => String(m.id) === machineKey || String(m.machine_number) === machineKey
+    );
+
+    if (!machine) {
+      setCardFeedback(machineKey, "Machine record not found.", true);
+      showMachineToast("Machine record not found in local state.", true);
+      return;
+    }
+
+    /* Disable button while saving */
+    if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+
+    try {
+      console.log("[FreshWash Machines] Saving machine", {
+        machineKey,
+        id: machine.id,
+        machine_number: machine.machine_number,
+        status: selectedStatus,
+        load_type: selectedLoadType,
+      });
+
+      const response = await fetch("/api/update-machine-status", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id:        machine.id ?? machine.machine_number,
+          status:    selectedStatus,
+          load_type: selectedLoadType,
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || result?.ok === false) {
+        const errMsg = result?.error || `Server error ${response.status}`;
+        console.error("[FreshWash Machines] Save failed:", errMsg, result);
+        setCardFeedback(machineKey, `Error: ${errMsg}`, true);
+        showMachineToast(`Save failed: ${errMsg}`, true);
+        return;
+      }
+
+      console.log("[FreshWash Machines] Save success:", result);
+
+      /* ── Optimistic UI update ── */
+      const tag = document.getElementById(`machineStatusTag-${machineKey}`);
+      if (tag) {
+        tag.textContent  = selectedStatus;
+        tag.className    = `admin-machine-status-tag ${formatStatusClass(selectedStatus)}`;
+      }
+      const card = document.getElementById(`machineCard-${machineKey}`);
+      if (card) {
+        card.classList.toggle("is-disabled", selectedStatus === "Disabled");
+      }
+
+      /* Update local state so the grid stays consistent on next render */
+      if (dashboardState?.machines) {
+        const idx = dashboardState.machines.findIndex(
+          m => String(m.id) === machineKey || String(m.machine_number) === machineKey
+        );
+        if (idx !== -1) {
+          dashboardState.machines[idx].status    = selectedStatus;
+          dashboardState.machines[idx].load_type = selectedLoadType;
+        }
+      }
+
+      setCardFeedback(machineKey, "Saved successfully!", false);
+      showMachineToast(`${machine.name} updated to "${selectedStatus}" / ${selectedLoadType}.`);
+
+      /* Re-fetch from server to confirm persistence, then re-render
+         while preserving the user's current dropdown selections */
+      const savedStatus   = selectedStatus;
+      const savedLoadType = selectedLoadType;
+
+      if (typeof refreshSectionData === "function") {
+        await refreshSectionData("machines");
+      }
+
+      /* Restore dropdown values after re-render (in case render reset them) */
+      const restoredStatus = document.getElementById(`machineStatus-${machineKey}`);
+      const restoredLoad   = document.getElementById(`machineLoad-${machineKey}`);
+      if (restoredStatus) restoredStatus.value = savedStatus;
+      if (restoredLoad)   restoredLoad.value   = savedLoadType;
+
+    } catch (err) {
+      const errMsg = err?.message || String(err);
+      console.error("[FreshWash Machines] Unexpected error:", err);
+      setCardFeedback(machineKey, `Error: ${errMsg}`, true);
+      showMachineToast(`Unexpected error: ${errMsg}`, true);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Save Machine"; }
+    }
+  };
+
+  /* ── Override the base renderMachinesPanel with this one ── */
+  window.renderMachinesPanel = renderMachinesGrid;
+
+  /* ── Refresh button ────────────────────────────────────── */
+  document.addEventListener("DOMContentLoaded", () => {
+    const refreshBtn = document.getElementById("machinesRefreshBtn");
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", async () => {
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<i class="fa-solid fa-rotate-right fa-spin"></i> Refreshing…';
+        try {
+          if (typeof refreshSectionData === "function") {
+            await refreshSectionData("machines");
+          }
+          showMachineToast("Machines refreshed.");
+        } catch (err) {
+          showMachineToast(`Refresh failed: ${err?.message || err}`, true);
+        } finally {
+          refreshBtn.disabled = false;
+          refreshBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Refresh';
+        }
+      });
+    }
+  });
+})();
+</script>
 {% endblock %}
-
-

@@ -2741,17 +2741,18 @@ def update_machine_status_by_id(machine_id, status, load_type=None):
         None,
     )
     if not machine:
-        raise ValueError("Machine not found.")
-    allowed_load_types = set(get_admin_settings()["machines"]["default_load_types"])
-    if load_type is not None and load_type not in allowed_load_types:
-        raise ValueError("Invalid load type.")
+        raise ValueError(f"Machine '{machine_id}' not found.")
+
+    # Accept any non-empty load_type — do not restrict to admin settings
+    # so Light/Medium/Heavy always work regardless of settings configuration.
+    resolved_load_type = (load_type or "").strip() or machine.get("load_type") or "Medium"
 
     update_machine(
         int(machine.get("machine_number") or machine.get("id")),
         name=machine.get("name"),
         status=status,
         enabled=status != "Disabled",
-        load_type=load_type if load_type is not None else machine.get("load_type"),
+        load_type=resolved_load_type,
     )
     return machine
 
@@ -4429,22 +4430,26 @@ def admin_booking_action(booking_id):
             client.table("bookings").update({"status": status}).eq("id", booking_id).execute()
         elif action == "edit":
             existing_booking = {}
-            try:
-                existing_res = client.table("bookings").select(
-                    "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,delivery_status,out_for_delivery_email_sent,delivered_email_sent,payment_method,payment_proof"
-                ).eq("id", booking_id).limit(1).execute()
-                existing_booking = (existing_res.data or [{}])[0] if existing_res else {}
-            except Exception as exc:
-                missing_column = extract_schema_cache_missing_column(exc, "bookings")
-                if missing_column in {"out_for_delivery_email_sent", "delivered_email_sent"}:
-                    existing_res = client.table("bookings").select(
-                        "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,delivery_status"
-                    ).eq("id", booking_id).limit(1).execute()
+            existing_booking = {}
+            for select_cols in [
+                "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,delivery_status,out_for_delivery_email_sent,delivered_email_sent,payment_method,payment_status,payment_reference,payment_proof",
+                "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,delivery_status,out_for_delivery_email_sent,delivered_email_sent,payment_method,payment_proof",
+                "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,delivery_status",
+            ]:
+                try:
+                    existing_res = client.table("bookings").select(select_cols).eq("id", booking_id).limit(1).execute()
                     existing_booking = (existing_res.data or [{}])[0] if existing_res else {}
-                    existing_booking.setdefault("out_for_delivery_email_sent", False)
-                    existing_booking.setdefault("delivered_email_sent", False)
-                else:
+                    break
+                except Exception as exc:
+                    missing_column = extract_schema_cache_missing_column(exc, "bookings")
+                    if missing_column:
+                        continue
                     raise
+            existing_booking.setdefault("out_for_delivery_email_sent", False)
+            existing_booking.setdefault("delivered_email_sent", False)
+            existing_booking.setdefault("payment_method", None)
+            existing_booking.setdefault("payment_status", "Pending")
+            existing_booking.setdefault("payment_reference", None)
 
             payload = {}
             maybe_status = (data.get("status", "") or "").strip()
@@ -4691,20 +4696,24 @@ def admin_machine_action(machine_number):
 @app.route("/api/update-machine-status", methods=["PATCH", "POST"])
 @admin_required
 def update_machine_status_api():
-    data = request.get_json() or {}
-    machine_id = data.get("id") or data.get("machine_id") or data.get("machine_number")
-    status = data.get("status")
-    load_type = data.get("load_type")
+    data = request.get_json(silent=True) or {}
+    machine_id = str(data.get("id") or data.get("machine_id") or data.get("machine_number") or "").strip()
+    status = (data.get("status") or "").strip()
+    load_type = (data.get("load_type") or "").strip() or None
+    if not machine_id:
+        return jsonify({"ok": False, "error": "Machine id is required."}), 400
     if status not in VALID_MACHINE_STATUSES:
-        return jsonify({"ok": False, "error": "Invalid machine status."}), 400
+        return jsonify({"ok": False, "error": f"Invalid status '{status}'. Must be: {', '.join(sorted(VALID_MACHINE_STATUSES))}."}), 400
     try:
-        update_machine_status_by_id(machine_id, status, load_type=load_type)
-        return jsonify({"ok": True, "data": build_admin_dashboard_payload()})
+        machine = update_machine_status_by_id(machine_id, status, load_type=load_type)
+        print(f"[FreshWash] machine updated: id={machine_id} status={status} load_type={load_type}")
+        return jsonify({"ok": True, "machine": machine})
     except ValueError as exc:
+        log_exception("machine status api validation failed", exc, machine_id=machine_id, status=status)
         return jsonify({"ok": False, "error": str(exc)}), 400
     except Exception as exc:
         log_exception("machine status api failed", exc, data=data)
-        return jsonify({"ok": False, "error": f"Machine status update failed: {exc}"}), 500
+        return jsonify({"ok": False, "error": str(exc)}), 500
 
 
 @app.route("/admin/api/services/<path:service_name>", methods=["POST"])
