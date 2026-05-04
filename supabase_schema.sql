@@ -102,11 +102,11 @@ alter table public.machines add column if not exists enabled boolean not null de
 alter table public.machines add column if not exists updated_at timestamptz default now();
 update public.machines
 set status = 'Available'
-where status not in ('Available', 'In Use', 'Maintenance');
+where status not in ('Available', 'In Use', 'Maintenance', 'Disabled', 'Unavailable');
 alter table public.machines drop constraint if exists machines_status_check;
 alter table public.machines
   add constraint machines_status_check
-  check (status in ('Available', 'In Use', 'Maintenance'));
+  check (status in ('Available', 'In Use', 'Maintenance', 'Disabled', 'Unavailable'));
 update public.machines
 set id = machine_number
 where id is null and machine_number is not null;
@@ -115,7 +115,7 @@ set name = coalesce(name, 'Machine ' || machine_number::text)
 where name is null;
 update public.machines
 set enabled = false
-where status = 'Maintenance';
+where status in ('Maintenance', 'Disabled', 'Unavailable');
 create unique index if not exists machines_id_unique on public.machines(id);
 
 
@@ -221,6 +221,7 @@ create table if not exists public.payments (
   user_id uuid,
   customer_name text,
   payment_method text,
+  status text default 'pending',
   payment_status text default 'Pending',
   amount numeric(10,2) default 0,
   payment_reference text,
@@ -234,6 +235,7 @@ alter table public.payments add column if not exists booking_id uuid;
 alter table public.payments add column if not exists user_id uuid;
 alter table public.payments add column if not exists customer_name text;
 alter table public.payments add column if not exists payment_method text;
+alter table public.payments add column if not exists status text default 'pending';
 alter table public.payments add column if not exists payment_status text default 'Pending';
 alter table public.payments add column if not exists amount numeric(10,2) default 0;
 alter table public.payments add column if not exists payment_reference text;
@@ -241,6 +243,15 @@ alter table public.payments add column if not exists reference_number text;
 alter table public.payments add column if not exists payment_proof text;
 alter table public.payments add column if not exists proof_image text;
 alter table public.payments add column if not exists created_at timestamptz default now();
+update public.payments
+set status = lower(replace(coalesce(nullif(status, ''), payment_status, 'pending'), ' ', '_'));
+update public.payments
+set status = 'paid'
+where status in ('completed', 'verified');
+alter table public.payments drop constraint if exists payments_status_check;
+alter table public.payments
+  add constraint payments_status_check
+  check (status in ('pending', 'paid', 'cancelled'));
 
 alter table public.services enable row level security;
 

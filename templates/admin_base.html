@@ -480,10 +480,19 @@
       background: rgba(254, 215, 170, 0.8);
     }
 
-    .admin-machine-status-tag.status-disabled,
     .admin-machine-status-tag.status-maintenance {
+      color: #854d0e;
+      background: rgba(254, 240, 138, 0.9);
+    }
+
+    .admin-machine-status-tag.status-disabled {
       color: #667085;
       background: rgba(226, 232, 240, 0.95);
+    }
+
+    .admin-machine-status-tag.status-unavailable {
+      color: #991b1b;
+      background: rgba(254, 202, 202, 0.9);
     }
 
     .admin-service-price {
@@ -754,6 +763,21 @@
     .admin-live-machine-card .admin-machine-status-tag.status-in-use {
       background: #fed7aa;
       color: #9a3412;
+    }
+
+    .admin-live-machine-card .admin-machine-status-tag.status-maintenance {
+      background: #fef08a;
+      color: #854d0e;
+    }
+
+    .admin-live-machine-card .admin-machine-status-tag.status-disabled {
+      background: #e2e8f0;
+      color: #667085;
+    }
+
+    .admin-live-machine-card .admin-machine-status-tag.status-unavailable {
+      background: #fecaca;
+      color: #991b1b;
     }
 
     .admin-action-buttons {
@@ -1582,6 +1606,7 @@
     body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-in-use,
     body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-disabled,
     body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-maintenance,
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-unavailable,
     body.admin-dashboard-body.dark-mode .admin-service-price {
       border: 1px solid transparent;
     }
@@ -1609,10 +1634,22 @@
       border-color: rgba(52, 211, 153, 0.2);
     }
 
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-maintenance {
+      color: #fef3c7;
+      background: rgba(250, 204, 21, 0.16);
+      border-color: rgba(250, 204, 21, 0.24);
+    }
+
     body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-disabled {
       color: #ebe1ee;
       background: rgba(255, 255, 255, 0.08);
       border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-unavailable {
+      color: #fecaca;
+      background: rgba(248, 113, 113, 0.16);
+      border-color: rgba(248, 113, 113, 0.24);
     }
 
     body.admin-dashboard-body.dark-mode .admin-service-price {
@@ -1652,6 +1689,27 @@
     body.admin-dashboard-body.dark-mode .admin-live-machine-card .admin-machine-status-tag.status-in-use {
       background: #fed7aa;
       color: #9a3412;
+      border-color: transparent;
+      text-shadow: none;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-live-machine-card .admin-machine-status-tag.status-maintenance {
+      background: #fef08a;
+      color: #854d0e;
+      border-color: transparent;
+      text-shadow: none;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-live-machine-card .admin-machine-status-tag.status-disabled {
+      background: #e2e8f0;
+      color: #667085;
+      border-color: transparent;
+      text-shadow: none;
+    }
+
+    body.admin-dashboard-body.dark-mode .admin-live-machine-card .admin-machine-status-tag.status-unavailable {
+      background: #fecaca;
+      color: #991b1b;
       border-color: transparent;
       text-shadow: none;
     }
@@ -2284,9 +2342,7 @@ const DASHBOARD_CONFIG = {
 
     function normalizeMachineStatus(machine) {
       if (!machine) return "Disabled";
-      const baseStatus = machine.status_display || machine.status || "Available";
-      if (machine.enabled === false || machine.effective_enabled === false) return "Disabled";
-      return baseStatus;
+      return machine.status_display || machine.status || "Available";
     }
 
     function normalizeUser(user) {
@@ -2305,11 +2361,12 @@ const DASHBOARD_CONFIG = {
     function normalizeBooking(booking, index = 0) {
       const serviceType = booking?.service_type || booking?.service || "No service type";
       const machineName = booking?.machine || booking?.machine_name || `Machine ${((index % 8) + 1)}`;
-      const rawPrice = Number(booking?.total_price ?? 0);
+      const rawPrice = Number(booking?.price ?? booking?.total_price ?? booking?.total_amount ?? booking?.amount ?? booking?.total ?? 0);
       const weight = Number(booking?.weight ?? 0);
       const deliveryOption = String(booking?.delivery_option || "Pickup").trim() || "Pickup";
       return {
         id: booking?.id || `booking-${index}`,
+        user_id: booking?.user_id || "",
         full_name: booking?.full_name || booking?.name || booking?.user_name || "Unknown user",
         phone: booking?.phone || "",
         address: booking?.address || booking?.pickup_address || "",
@@ -2319,24 +2376,37 @@ const DASHBOARD_CONFIG = {
         pickup_time: booking?.pickup_time || "",
         status: booking?.status || "Pending",
         total_price: Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 0,
+        price: Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 0,
+        total_amount: Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 0,
+        amount: Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 0,
         weight: Number.isFinite(weight) ? weight : 0,
         load_type: booking?.load_type || "",
         delivery_option: deliveryOption === "Delivery" ? "Delivery" : "Pickup",
+        delivery_type: booking?.delivery_type || "",
         delivery_status: booking?.delivery_status || "Not Started",
-        notes: booking?.notes || ""
+        notes: booking?.notes || "",
+        payment_method: booking?.payment_method || booking?.method || booking?.payment_option || booking?.delivery_option || booking?.delivery_type || "",
+        payment_option: booking?.payment_option || "",
+        payment_status: booking?.payment_status || booking?.status_payment || "Pending",
+        payment_reference: booking?.payment_reference || booking?.reference_number || "",
+        reference_number: booking?.reference_number || booking?.payment_reference || "",
+        payment_proof: booking?.payment_proof || booking?.proof_image || "",
+        proof_image: booking?.payment_proof || booking?.proof_image || "",
+        created_at: booking?.created_at || ""
       };
     }
 
     function normalizeMachine(machine) {
       const baseStatus = machine?.status || "Available";
-      const enabled = machine?.enabled !== false && baseStatus !== "Maintenance";
+      const inactiveStatuses = ["Maintenance", "Disabled", "Unavailable"];
+      const enabled = machine?.enabled !== false && !inactiveStatuses.includes(baseStatus);
       const effectiveEnabled = machine?.effective_enabled !== false && enabled;
       return {
         id: machine?.id ?? machine?.machine_number ?? "",
         machine_number: machine?.machine_number ?? machine?.id ?? "",
         name: normalizeMachineName(machine),
         status: baseStatus,
-        status_display: effectiveEnabled ? baseStatus : "Disabled",
+        status_display: baseStatus,
         load_type: machine?.load_type || "Medium",
         enabled,
         effective_enabled: effectiveEnabled
@@ -2353,26 +2423,36 @@ const DASHBOARD_CONFIG = {
     }
 
     function normalizePayment(payment, index = 0) {
-      const rawMethod = String(payment?.method || payment?.payment_method || "Unspecified").trim();
+      const rawMethod = String(
+        payment?.method ||
+        payment?.payment_method ||
+        payment?.payment_option ||
+        payment?.delivery_option ||
+        payment?.delivery_type ||
+        "Unspecified"
+      ).trim();
       const loweredMethod = rawMethod.toLowerCase();
       const method = loweredMethod.includes("paymaya") || loweredMethod === "maya"
         ? "Maya"
-        : (loweredMethod.includes("cash") ? "Cash on Delivery" : (rawMethod || "Unspecified"));
-      const rawStatus = String(payment?.status || payment?.payment_status || "Pending").trim();
+        : (loweredMethod === "cod" || loweredMethod.includes("cash") ? "Cash on Delivery" : (rawMethod || "Unspecified"));
+      const rawStatus = String(payment?.payment_status || payment?.status || "Pending").trim();
       const loweredStatus = rawStatus.toLowerCase();
-      const normalizedStatus = loweredStatus.includes("paid") || loweredStatus.includes("verified") || loweredStatus.includes("completed")
+      const normalizedStatus = loweredStatus === "paid" || loweredStatus === "verified" || loweredStatus === "completed"
         ? "Paid"
         : "Pending";
+      const rawAmount = Number(payment?.amount ?? payment?.total ?? payment?.total_amount ?? payment?.total_price ?? payment?.price ?? 0);
       return {
         id: payment?.id || `payment-${index}`,
         booking_id: payment?.booking_id || payment?.booking || "No booking linked",
-        amount: Number(payment?.amount ?? payment?.total ?? 0),
+        amount: Number.isFinite(rawAmount) ? rawAmount : 0,
+        price: Number.isFinite(rawAmount) ? rawAmount : 0,
         status: normalizedStatus,
         method: method,
         reference_number: payment?.reference_number || payment?.payment_reference || payment?.reference || "",
         payment_proof: payment?.payment_proof || payment?.proof_image || "",
         proof_image: payment?.payment_proof || payment?.proof_image || "",
-        paid_at: payment?.paid_at || payment?.created_at || "",
+        paid_at: payment?.paid_at || payment?.created_at || payment?.pickup_date || "",
+        created_at: payment?.created_at || payment?.pickup_date || "",
         customer_name: payment?.full_name || payment?.customer_name || payment?.name || "FreshWash Customer"
       };
     }
@@ -2431,7 +2511,7 @@ const DASHBOARD_CONFIG = {
         const status = String(booking.status || "").toLowerCase();
         if (status === "pending") statusBreakdown.pending += 1;
         else if (status === "in progress") statusBreakdown.inProgress += 1;
-        else if (status === "completed") { statusBreakdown.completed += 1; completedRevenue += Number(booking.total_price || 0); }
+        else if (status === "completed") { statusBreakdown.completed += 1; completedRevenue += Number(booking.price || booking.total_price || 0); }
         else if (status === "cancelled") statusBreakdown.cancelled += 1;
         serviceCounter.set(booking.service_type, (serviceCounter.get(booking.service_type) || 0) + 1);
         machineCounter.set(booking.machine, (machineCounter.get(booking.machine) || 0) + 1);
@@ -2455,7 +2535,12 @@ const DASHBOARD_CONFIG = {
 
     async function fetchAdminData() {
       try {
-        return await fetchAdminDashboardPayload();
+        const payload = await fetchAdminDashboardPayload();
+        console.debug("[FreshWash Admin] dashboard payload synced", {
+          bookings: Array.isArray(payload?.bookings) ? payload.bookings.length : 0,
+          payments: Array.isArray(payload?.payments) ? payload.payments.length : 0,
+        });
+        return payload;
       } catch (error) {
         logSupabaseError("Failed to fetch admin dashboard data", error);
         return null;
@@ -2515,9 +2600,10 @@ const DASHBOARD_CONFIG = {
       if (!panel) return;
       if (!machines.length) { panel.innerHTML = '<p class="admin-empty">No data available</p>'; return; }
       panel.innerHTML = machines.map(machine => {
-        const status = normalizeMachineStatus(machine);
+        const status = machine.status || normalizeMachineStatus(machine);
+        const inactiveStatuses = ["Maintenance", "Disabled", "Unavailable"];
         return `
-          <article class="admin-machine-card admin-live-machine-card ${status === "Disabled" ? "is-disabled" : ""}">
+          <article class="admin-machine-card admin-live-machine-card ${inactiveStatuses.includes(status) ? "is-disabled" : ""}">
             <div class="admin-machine-head">
               <div class="admin-section-stack">
                 <h3>${escapeHtml(machine.name)}</h3>
@@ -2632,26 +2718,26 @@ const DASHBOARD_CONFIG = {
       if (countPill) countPill.textContent = `${machines.length} machine${machines.length === 1 ? "" : "s"}`;
       if (!machines.length) { grid.innerHTML = '<p class="admin-empty">No data available</p>'; return; }
       const loadOptions = getMachineLoadTypeOptions();
+      const statusOptions = ["Available", "In Use", "Maintenance"];
       grid.innerHTML = machines.map(machine => {
-        const machineStatus = normalizeMachineStatus(machine);
-        const controlStatus = machineStatus === "Disabled" ? "Disabled" : machine.status;
+        const machineStatus = machine.status || normalizeMachineStatus(machine);
+        const controlStatus = statusOptions.includes(machineStatus) ? machineStatus : "Available";
         const machineKey = machine.id ?? machine.machine_number;
+        const inactiveStatuses = ["Maintenance", "Disabled", "Unavailable"];
         return `
-          <article class="admin-machine-card ${machineStatus === "Disabled" ? "is-disabled" : ""}">
+          <article class="admin-machine-card ${inactiveStatuses.includes(machineStatus) ? "is-disabled" : ""}" id="machineCard-${escapeHtml(machineKey)}">
             <div class="admin-machine-head">
               <div class="admin-section-stack">
                 <h3>${escapeHtml(machine.name)}</h3>
                 <p>${escapeHtml(machine.load_type || "Medium")} Load</p>
               </div>
-              <span class="admin-machine-status-tag ${escapeHtml(formatStatusClass(machineStatus))}">${escapeHtml(machineStatus)}</span>
+              <span class="admin-machine-status-tag ${escapeHtml(formatStatusClass(machineStatus))}" id="machineStatusTag-${escapeHtml(machineKey)}">${escapeHtml(machineStatus)}</span>
             </div>
             <div class="admin-machine-controls">
               <label>
                 <span>Status</span>
                 <select class="admin-inline-select" id="machineStatus-${escapeHtml(machineKey)}">
-                <option value="Available" ${controlStatus === "Available" ? "selected" : ""}>Available</option>
-                <option value="In Use" ${controlStatus === "In Use" ? "selected" : ""}>In Use</option>
-              <option value="Maintenance" ${controlStatus === "Maintenance" ? "selected" : ""}>Maintenance</option>
+                ${statusOptions.map(status => `<option value="${escapeHtml(status)}" ${controlStatus === status ? "selected" : ""}>${escapeHtml(status)}</option>`).join("")}
                 </select>
               </label>
               <label>
@@ -2662,7 +2748,7 @@ const DASHBOARD_CONFIG = {
               </label>
             </div>
             <div class="admin-action-buttons">
-              <button type="button" class="admin-button admin-button-primary" onclick="saveMachine(${JSON.stringify(String(machineKey)).replace(/"/g,'&quot;')})">Save Machine</button>
+              <button type="button" class="admin-button admin-button-primary" id="machineBtn-${escapeHtml(machineKey)}" onclick="saveMachine(${JSON.stringify(String(machineKey)).replace(/"/g,'&quot;')})">Save Machine</button>
             </div>
           </article>`;
       }).join("");
@@ -2741,17 +2827,20 @@ const DASHBOARD_CONFIG = {
         `).join("");
       }
 
-      const payments = Array.isArray(dashboardState.payments)
-        ? dashboardState.payments.map((payment, index) => normalizePayment(payment, index))
-        : [];
+      const paymentSource = Array.isArray(dashboardState.payments) && dashboardState.payments.length
+        ? dashboardState.payments
+        : (dashboardState.bookings || []).filter(booking => Number(booking.amount || booking.total_amount || booking.total_price || booking.price || 0) > 0 || booking.payment_method || booking.payment_reference || booking.reference_number || booking.payment_proof || booking.proof_image);
+      const payments = paymentSource
+        .map((payment, index) => normalizePayment(payment, index))
+        .filter(payment => Number(payment.amount || 0) > 0);
       const totals = payments.reduce((acc, payment) => {
         const methodKey = String(payment.method || "").toLowerCase();
         const statusKey = String(payment.status || "").toLowerCase();
         acc.total += 1;
-        acc.revenue += Number(payment.amount || 0);
+        if (statusKey === "paid") acc.revenue += Number(payment.amount || 0);
         if (methodKey === "gcash") acc.gcash += 1;
-        if (methodKey === "maya") acc.maya += 1;
-        if (methodKey === "cash on delivery") acc.cod += 1;
+        if (methodKey === "maya" || methodKey === "paymaya") acc.maya += 1;
+        if (methodKey === "cash on delivery" || methodKey === "cod" || methodKey === "cash_on_delivery") acc.cod += 1;
         if (methodKey === "card") acc.card += 1;
         if (statusKey === "paid") acc.paid += 1;
         if (statusKey === "pending") acc.pending += 1;
@@ -2776,9 +2865,9 @@ const DASHBOARD_CONFIG = {
           const status = String(payment.status || "").toLowerCase();
           if (filterValue === "all") return true;
           if (filterValue === "gcash") return method === "gcash";
-          if (filterValue === "maya") return method === "maya";
+          if (filterValue === "maya") return method === "maya" || method === "paymaya";
           if (filterValue === "card") return method === "card";
-          if (filterValue === "cod") return method === "cash on delivery";
+          if (filterValue === "cod") return method === "cash on delivery" || method === "cod" || method === "cash_on_delivery";
           if (filterValue === "paid") return status === "paid";
           if (filterValue === "pending") return status === "pending";
           return true;
@@ -2792,10 +2881,13 @@ const DASHBOARD_CONFIG = {
           const proofValue = String(payment.payment_proof || "").trim();
           const method = String(payment.method || "");
           let proofCell = "No proof uploaded";
+          const referenceValue = String(payment.reference_number || "").trim();
           if (method === "Cash on Delivery") {
             proofCell = "No proof required";
           } else if (proofValue) {
             proofCell = `<a href="${escapeHtml(proofValue)}" target="_blank" rel="noopener noreferrer">View Proof</a>`;
+          } else if (referenceValue) {
+            proofCell = `Ref: ${escapeHtml(referenceValue)}`;
           }
           return `
             <tr>
@@ -2817,6 +2909,17 @@ const DASHBOARD_CONFIG = {
       }
       applyPaymentsFilter();
 
+    }
+
+    function setPaymentsLoadingState() {
+      const paymentSummaryCards = document.getElementById("paymentSummaryCards");
+      const paymentsTableBody = document.getElementById("paymentsTableBody");
+      if (paymentSummaryCards) {
+        paymentSummaryCards.innerHTML = '<article class="admin-inline-stat"><strong>Loading...</strong><span>Payments</span></article>';
+      }
+      if (paymentsTableBody) {
+        paymentsTableBody.innerHTML = '<tr><td colspan="7" class="admin-empty-cell">Loading payment records...</td></tr>';
+      }
     }
 
     function renderSettings(settings = {}) {
@@ -2854,6 +2957,10 @@ const DASHBOARD_CONFIG = {
 
     function renderAllSections(dataSourceLabel = "Dashboard updated") {
       const reports = computeReports(dashboardState.bookings, dashboardState.machines, dashboardState.services);
+      reports.totalIncome = dashboardState.payments
+        .map((payment, index) => normalizePayment(payment, index))
+        .filter(payment => String(payment.status || "").toLowerCase() === "paid")
+        .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
       dashboardState.reports = reports;
       renderDashboardStats(dashboardState.users, dashboardState.bookings, dashboardState.machines);
       renderRecentBookings(dashboardState.bookings);
@@ -2872,6 +2979,7 @@ const DASHBOARD_CONFIG = {
       if (Array.isArray(payload.bookings)) dashboardState.bookings = payload.bookings.map((b, i) => normalizeBooking(b, i));
       if (Array.isArray(payload.machines)) dashboardState.machines = payload.machines.map(normalizeMachine);
       if (Array.isArray(payload.services)) dashboardState.services = payload.services.map((s, i) => normalizeService(s, i));
+      if (Array.isArray(payload.payments)) dashboardState.payments = payload.payments.map((p, i) => normalizePayment(p, i));
       if (payload.settings) dashboardState.settings = payload.settings;
       if (payload.reports) dashboardState.reports = payload.reports;
       renderAllSections("FreshWash admin updated");
@@ -2988,26 +3096,57 @@ const DASHBOARD_CONFIG = {
     }
 
     async function saveMachine(machineId) {
-      // Delegate to saveMachineCard defined in admin_machines.html (overrides this stub)
-      if (typeof window.saveMachineCard === "function") {
-        return window.saveMachineCard(String(machineId));
-      }
-      // Fallback (should not be reached when admin_machines.html is loaded)
+      const validStatuses = ["Available", "In Use", "Maintenance"];
       try {
         const statusField = document.getElementById(`machineStatus-${machineId}`);
         const loadField   = document.getElementById(`machineLoad-${machineId}`);
+        const saveButton = document.getElementById(`machineBtn-${machineId}`);
         const machine     = dashboardState.machines.find(
           m => String(m.id) === String(machineId) || String(m.machine_number) === String(machineId)
         );
-        if (!statusField || !loadField || !machine) return;
-        await patchAdminJson("/api/update-machine-status", {
-          id:        machine.id ?? machine.machine_number,
-          status:    statusField.value,
-          load_type: loadField.value,
+        if (!statusField || !loadField || !machine) throw new Error("Machine controls or record not found.");
+
+        const selectedMachineId = machine.id ?? machine.machine_number;
+        const selectedStatus = statusField.value;
+        const selectedLoadType = loadField.value;
+        console.log("[FreshWash Machines] selected machine id:", selectedMachineId);
+        console.log("[FreshWash Machines] selected status:", selectedStatus);
+
+        if (!validStatuses.includes(selectedStatus)) {
+          throw new Error(`Invalid status value: ${selectedStatus}`);
+        }
+
+        if (saveButton) {
+          saveButton.disabled = true;
+          saveButton.textContent = "Saving...";
+        }
+
+        const result = await patchAdminJson("/api/update-machine-status", {
+          id: selectedMachineId,
+          status: selectedStatus,
+          load_type: selectedLoadType,
         });
+        console.log("[FreshWash Machines] Supabase update result:", result);
+
+        const tag = document.getElementById(`machineStatusTag-${machineId}`);
+        if (tag) {
+          tag.textContent = selectedStatus;
+          tag.className = `admin-machine-status-tag ${formatStatusClass(selectedStatus)}`;
+        }
+        const card = document.getElementById(`machineCard-${machineId}`);
+        if (card) card.classList.toggle("is-disabled", selectedStatus === "Maintenance");
+
         await refreshSectionData("machines");
         showSuccess("Machine updated successfully.");
-      } catch (error) { logSupabaseError("Machine save failed", error); }
+      } catch (error) {
+        logSupabaseError("Machine save failed", error);
+      } finally {
+        const saveButton = document.getElementById(`machineBtn-${machineId}`);
+        if (saveButton) {
+          saveButton.disabled = false;
+          saveButton.textContent = "Save Machine";
+        }
+      }
     }
 
     async function toggleMachineEnabled(machineNumber, currentlyEnabled) {
@@ -3108,7 +3247,7 @@ const DASHBOARD_CONFIG = {
         });
         showSuccess("Booking updated successfully.");
         if (typeof showToast === "function") showToast("Booking updated");
-        await refreshSectionData("bookings");
+        await refreshSectionData("reports");
       } catch (error) {
         if (typeof showToast === "function") showToast("Booking update failed", true);
         logSupabaseError("Booking update failed", error);
@@ -3200,6 +3339,7 @@ const DASHBOARD_CONFIG = {
 
     async function refreshSectionData(section) {
       resetFetchErrors();
+      if ((section || activeSection) === "reports") setPaymentsLoadingState();
       const payload = await fetchAdminData();
       if (payload) applyAdminPayload(payload);
       if (fetchErrors.length === 0) clearError();
@@ -3227,7 +3367,7 @@ const DASHBOARD_CONFIG = {
     }
 
     async function loadDashboardData() {
-      await refreshSectionData("dashboard");
+      await refreshSectionData(activeSection);
     }
 
     function initializeRealtime() {

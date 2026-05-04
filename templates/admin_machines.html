@@ -29,9 +29,21 @@
 
 <script>
 (function () {
-  /* ── Constants ─────────────────────────────────────────── */
-  const VALID_STATUSES   = ["Available", "In Use", "Maintenance"];
-  const VALID_LOAD_TYPES = ["Light", "Medium", "Heavy"];
+  const VALID_STATUSES    = ["Available", "In Use", "Maintenance"];
+  const INACTIVE_STATUSES  = new Set(["Maintenance"]);
+  const VALID_LOAD_TYPES   = ["Light", "Medium", "Heavy"];
+
+  /* ── Badge colour map ──────────────────────────────────── */
+  const STATUS_CLASS = {
+    "Available":   "status-available",
+    "In Use":      "status-in-use",
+    "Maintenance": "status-maintenance",
+    "Disabled":    "status-disabled",
+    "Unavailable": "status-unavailable",
+  };
+  function statusClass(s) {
+    return STATUS_CLASS[s] || `status-${String(s).toLowerCase().replace(/\s+/g, "-")}`;
+  }
 
   /* ── Toast helper ──────────────────────────────────────── */
   function showMachineToast(message, isError = false) {
@@ -83,19 +95,14 @@
         : VALID_LOAD_TYPES;
 
     grid.innerHTML = machines.map(machine => {
-      const machineKey   = String(machine.id ?? machine.machine_number ?? "");
-      const currentStatus =
-        machine.status_display && machine.status_display !== machine.status
-          ? machine.status          /* use raw status for the dropdown */
-          : (machine.status || "Available");
-      const displayStatus =
-        (typeof normalizeMachineStatus === "function")
-          ? normalizeMachineStatus(machine)
-          : currentStatus;
-      const loadType = machine.load_type || "Medium";
+      const machineKey  = String(machine.id ?? machine.machine_number ?? "");
+      // Always use the raw status from the DB — never override with normalizeMachineStatus
+      const rawStatus   = (machine.status || "Available");
+      const loadType    = machine.load_type || "Medium";
+      const isInactive  = INACTIVE_STATUSES.has(rawStatus);
 
       const statusOptions = VALID_STATUSES.map(s =>
-        `<option value="${s}" ${currentStatus === s ? "selected" : ""}>${s}</option>`
+        `<option value="${s}" ${rawStatus === s ? "selected" : ""}>${s}</option>`
       ).join("");
 
       const loadTypeOptions = loadOptions.map(lt =>
@@ -103,16 +110,16 @@
       ).join("");
 
       return `
-        <article class="admin-machine-card ${displayStatus === "Disabled" ? "is-disabled" : ""}"
+        <article class="admin-machine-card ${isInactive ? "is-disabled" : ""}"
                  id="machineCard-${machineKey}">
           <div class="admin-machine-head">
             <div class="admin-section-stack">
               <h3>${escapeHtml(machine.name)}</h3>
               <p>${escapeHtml(loadType)} Load</p>
             </div>
-            <span class="admin-machine-status-tag ${escapeHtml(formatStatusClass(displayStatus))}"
+            <span class="admin-machine-status-tag ${statusClass(rawStatus)}"
                   id="machineStatusTag-${machineKey}">
-              ${escapeHtml(displayStatus)}
+              ${escapeHtml(rawStatus)}
             </span>
           </div>
 
@@ -190,6 +197,8 @@
         status: selectedStatus,
         load_type: selectedLoadType,
       });
+      console.log("[FreshWash Machines] selected machine id:", machine.id ?? machine.machine_number);
+      console.log("[FreshWash Machines] selected status:", selectedStatus);
 
       const response = await fetch("/api/update-machine-status", {
         method: "PATCH",
@@ -211,17 +220,17 @@
         return;
       }
 
-      console.log("[FreshWash Machines] Save success:", result);
+      console.log("[FreshWash Machines] Supabase update result:", result);
 
       /* ── Optimistic UI update ── */
       const tag = document.getElementById(`machineStatusTag-${machineKey}`);
       if (tag) {
-        tag.textContent  = selectedStatus;
-        tag.className    = `admin-machine-status-tag ${formatStatusClass(selectedStatus)}`;
+        tag.textContent = selectedStatus;
+        tag.className   = `admin-machine-status-tag ${statusClass(selectedStatus)}`;
       }
       const card = document.getElementById(`machineCard-${machineKey}`);
       if (card) {
-        card.classList.toggle("is-disabled", selectedStatus === "Maintenance");
+        card.classList.toggle("is-disabled", INACTIVE_STATUSES.has(selectedStatus));
       }
 
       /* Update local state so the grid stays consistent on next render */
@@ -230,8 +239,11 @@
           m => String(m.id) === machineKey || String(m.machine_number) === machineKey
         );
         if (idx !== -1) {
-          dashboardState.machines[idx].status    = selectedStatus;
-          dashboardState.machines[idx].load_type = selectedLoadType;
+          dashboardState.machines[idx].status         = selectedStatus;
+          dashboardState.machines[idx].status_display = selectedStatus;
+          dashboardState.machines[idx].load_type      = selectedLoadType;
+          dashboardState.machines[idx].enabled        = !INACTIVE_STATUSES.has(selectedStatus);
+          dashboardState.machines[idx].effective_enabled = !INACTIVE_STATUSES.has(selectedStatus);
         }
       }
 

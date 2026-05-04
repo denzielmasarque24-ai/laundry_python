@@ -194,7 +194,9 @@ DEFAULT_MACHINE_ROWS = [
     for number in range(1, 9)
 ]
 
-VALID_MACHINE_STATUSES = {"Available", "In Use", "Maintenance"}
+VALID_MACHINE_STATUSES = {"Available", "In Use", "Maintenance", "Disabled", "Unavailable"}
+ADMIN_MACHINE_STATUS_OPTIONS = {"Available", "In Use", "Maintenance"}
+INACTIVE_MACHINE_STATUSES = {"Maintenance", "Disabled", "Unavailable"}
 
 EMAIL_RE = re.compile(r"^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$", re.IGNORECASE)
 PHONE_E164_RE = re.compile(r"^\+[1-9]\d{7,14}$")
@@ -2033,10 +2035,18 @@ def booking_insert_payload_variants(payload):
 
     delivery_payload = {
         key: payload[key]
-        for key in ("delivery_type", "delivery_fee", "total_amount")
+        for key in ("delivery_type", "delivery_fee", "total_amount", "amount", "price")
         if key in payload and payload[key] not in (None, "")
     }
-    delivery_variants = [delivery_payload, {}] if delivery_payload else [{}]
+    delivery_variants = [{}]
+    if delivery_payload:
+        delivery_variants = [
+            delivery_payload,
+            {k: v for k, v in delivery_payload.items() if k != "amount"},
+            {k: v for k, v in delivery_payload.items() if k != "price"},
+            {k: v for k, v in delivery_payload.items() if k not in {"amount", "price"}},
+            {},
+        ]
 
     variants = []
     seen = set()
@@ -2132,25 +2142,229 @@ def insert_payment_record(client, payment_payload):
     client.table("payments").insert(payment_payload).execute()
 
 
+def normalize_payment_status_for_record(status):
+    normalized = str(status or "").strip().lower().replace(" ", "_")
+    if normalized in {"completed", "paid", "verified"}:
+        return "paid"
+    if normalized in {"cancelled", "canceled"}:
+        return "cancelled"
+    return "pending"
+
+
+def payment_amount_from_row(row):
+    for key in ("amount", "total", "total_amount", "total_price", "price"):
+        try:
+            value = row.get(key)
+            if value not in (None, ""):
+                return float(value or 0)
+        except (TypeError, ValueError):
+            continue
+    return 0.0
+
+
+def row_has_payment_amount(row):
+    return any(row.get(key) not in (None, "") for key in ("amount", "total", "total_amount", "total_price", "price"))
+
+
 def build_payment_record_from_booking(booking, index=0):
+    amount = payment_amount_from_row(booking)
+    payment_method = (
+        booking.get("payment_method")
+        or booking.get("payment_option")
+        or booking.get("delivery_option")
+        or booking.get("delivery_type")
+        or "Unspecified"
+    )
+    if payment_method == "Cash on Pickup":
+        payment_method = "Cash on Delivery"
+    payment_status = normalize_payment_status_for_record(booking.get("payment_status") or booking.get("status") or "pending")
     return {
-        "id": booking.get("id") or f"payment-{index}",
+        "id": booking.get("id") or f"booking-payment-{index}",
         "booking_id": booking.get("id") or "No booking linked",
         "user_id": booking.get("user_id") or "",
-        "amount": float(booking.get("total_price", 0) or booking.get("total_amount", 0) or 0),
-        "status": booking.get("payment_status") or "Pending",
-        "payment_status": booking.get("payment_status") or "Pending",
-        "method": booking.get("payment_method") or "Unspecified",
-        "payment_method": booking.get("payment_method") or "Unspecified",
+        "amount": amount,
+        "price": amount,
+        "status": payment_status,
+        "payment_status": payment_status,
+        "method": payment_method,
+        "payment_method": payment_method,
         "reference_number": booking.get("reference_number") or booking.get("payment_reference") or "",
         "payment_reference": booking.get("payment_reference") or booking.get("reference_number") or "",
         "payment_proof": booking.get("payment_proof") or booking.get("proof_image") or "",
         "proof_image": booking.get("payment_proof") or booking.get("proof_image") or "",
         "paid_at": booking.get("created_at") or booking.get("pickup_date") or "",
         "created_at": booking.get("created_at") or booking.get("pickup_date") or "",
-        "customer_name": booking.get("full_name") or "FreshWash Customer",
-        "full_name": booking.get("full_name") or "FreshWash Customer",
+        "customer_name": booking.get("full_name") or booking.get("customer_name") or booking.get("name") or "FreshWash Customer",
+        "full_name": booking.get("full_name") or booking.get("customer_name") or booking.get("name") or "FreshWash Customer",
     }
+
+
+def build_payment_record_from_payment(payment, index=0):
+    amount = payment_amount_from_row(payment)
+    payment_method = payment.get("payment_method") or payment.get("method") or "Unspecified"
+    if payment_method == "Cash on Pickup":
+        payment_method = "Cash on Delivery"
+    payment_status = normalize_payment_status_for_record(
+        payment.get("status") or payment.get("payment_status") or "pending"
+    )
+    return {
+        "id": payment.get("id") or f"payment-{index}",
+        "booking_id": payment.get("booking_id") or "No booking linked",
+        "user_id": payment.get("user_id") or "",
+        "amount": amount,
+        "price": amount,
+        "status": payment_status,
+        "payment_status": payment_status,
+        "method": payment_method,
+        "payment_method": payment_method,
+        "reference_number": payment.get("reference_number") or payment.get("payment_reference") or "",
+        "payment_reference": payment.get("payment_reference") or payment.get("reference_number") or "",
+        "payment_proof": payment.get("payment_proof") or payment.get("proof_image") or "",
+        "proof_image": payment.get("payment_proof") or payment.get("proof_image") or "",
+        "paid_at": payment.get("paid_at") or payment.get("created_at") or "",
+        "created_at": payment.get("created_at") or "",
+        "customer_name": payment.get("customer_name") or payment.get("full_name") or "FreshWash Customer",
+        "full_name": payment.get("customer_name") or payment.get("full_name") or "FreshWash Customer",
+    }
+
+
+def fetch_booking_for_payment(client, booking_id):
+    select_variants = [
+        "id,user_id,full_name,customer_name,name,payment_method,payment_option,delivery_option,delivery_type,price,amount,total_amount,total_price,payment_status,status,payment_reference,reference_number,payment_proof,proof_image,created_at,pickup_date",
+        "id,user_id,full_name,payment_method,delivery_option,price,amount,total_amount,total_price,payment_status,status,payment_reference,reference_number,payment_proof,created_at,pickup_date",
+        "id,user_id,full_name,payment_method,total_amount,total_price,payment_status,status,created_at,pickup_date",
+        "*",
+    ]
+    last_error = None
+    for select_columns in select_variants:
+        try:
+            result = client.table("bookings").select(select_columns).eq("id", booking_id).limit(1).execute()
+            rows = result.data or []
+            return rows[0] if rows else {}
+        except Exception as exc:
+            missing_column = extract_schema_cache_missing_column(exc, "bookings")
+            if missing_column:
+                last_error = exc
+                continue
+            raise
+    if last_error:
+        raise last_error
+    return {}
+
+
+def payment_payload_variants(payload):
+    ordered_keys = [
+        "booking_id",
+        "user_id",
+        "customer_name",
+        "payment_method",
+        "amount",
+        "status",
+        "payment_status",
+        "payment_reference",
+        "reference_number",
+        "payment_proof",
+        "proof_image",
+        "created_at",
+    ]
+    base = {
+        key: payload[key]
+        for key in ordered_keys
+        if key in payload and payload[key] not in (None, "")
+    }
+    variants = [
+        base,
+        {k: v for k, v in base.items() if k != "status"},
+        {k: v for k, v in base.items() if k != "payment_status"},
+        {k: v for k, v in base.items() if k not in {"status", "proof_image", "payment_reference", "reference_number"}},
+        {k: v for k, v in base.items() if k not in {"status", "payment_status", "proof_image", "payment_reference", "reference_number"}},
+    ]
+    unique = []
+    seen = set()
+    for variant in variants:
+        key = tuple(sorted(variant.keys()))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(variant)
+    return unique
+
+
+def upsert_completed_booking_payment(client, booking_id, booking=None):
+    if not client:
+        raise RuntimeError("Payment upsert requires an available database connection.")
+    booking = booking or fetch_booking_for_payment(client, booking_id)
+    if not booking:
+        raise RuntimeError(f"Booking {booking_id} was not found for payment recording.")
+
+    status = str(booking.get("status") or "").strip()
+    payment_status = normalize_payment_status_for_record(booking.get("payment_status") or status)
+    if status != "Completed" and payment_status != "paid":
+        return None
+
+    amount = payment_amount_from_row(booking)
+    payment_method = (
+        booking.get("payment_method")
+        or booking.get("payment_option")
+        or booking.get("delivery_option")
+        or booking.get("delivery_type")
+        or "Unspecified"
+    )
+    if payment_method == "Cash on Pickup":
+        payment_method = "Cash on Delivery"
+    proof_of_payment = booking.get("payment_proof") or booking.get("proof_image") or ""
+    customer_name = (
+        booking.get("full_name")
+        or booking.get("customer_name")
+        or booking.get("name")
+        or "FreshWash Customer"
+    )
+    payload = {
+        "booking_id": booking_id,
+        "user_id": booking.get("user_id") or "00000000-0000-0000-0000-000000000000",
+        "customer_name": customer_name,
+        "payment_method": payment_method,
+        "amount": amount,
+        "status": "paid",
+        "payment_status": "paid",
+        "payment_reference": booking.get("payment_reference") or booking.get("reference_number") or "",
+        "reference_number": booking.get("reference_number") or booking.get("payment_reference") or "",
+        "payment_proof": proof_of_payment,
+        "proof_image": proof_of_payment,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    existing_payment_id = ""
+    try:
+        existing_payment_res = (
+            client.table("payments")
+            .select("id")
+            .eq("booking_id", booking_id)
+            .limit(1)
+            .execute()
+        )
+        existing_payment = (existing_payment_res.data or [{}])[0] if existing_payment_res else {}
+        existing_payment_id = existing_payment.get("id") or ""
+    except Exception as exc:
+        log_exception("completed payment lookup failed", exc, booking_id=booking_id)
+
+    last_error = None
+    for variant in payment_payload_variants(payload):
+        try:
+            if existing_payment_id:
+                client.table("payments").update(variant).eq("booking_id", booking_id).execute()
+            else:
+                client.table("payments").insert(variant).execute()
+            return variant
+        except Exception as exc:
+            missing_column = extract_schema_cache_missing_column(exc, "payments")
+            if missing_column:
+                last_error = exc
+                continue
+            raise
+    if last_error:
+        raise last_error
+    raise RuntimeError("Could not record completed booking payment.")
 
 
 def normalize_booking_load_type(value):
@@ -2423,9 +2637,14 @@ def admin_dashboard_bookings():
             result = client.table("bookings").select("*").order("created_at", desc=True).execute()
             bookings = result.data or []
             for booking in bookings:
+                if booking.get("total_price") in (None, "") and booking.get("price") not in (None, ""):
+                    booking["total_price"] = booking.get("price")
+                if booking.get("price") in (None, "") and booking.get("total_price") not in (None, ""):
+                    booking["price"] = booking.get("total_price")
                 if booking.get("total_price") in (None, ""):
                     price = SERVICES.get(booking.get("service_type", ""), {}).get("price", 0)
                     booking["total_price"] = round(price * float(booking.get("weight", 0) or 0), 2)
+                    booking["price"] = booking["total_price"]
             return bookings
         except Exception as exc:
             log_exception("admin bookings query failed", exc)
@@ -2510,12 +2729,12 @@ def admin_dashboard_machines():
         status = row.get("status", "Available")
         if status not in VALID_MACHINE_STATUSES:
             status = "Available"
-        enabled = bool(row.get("enabled", status != "Maintenance")) and status != "Maintenance"
+        enabled = bool(row.get("enabled", status not in INACTIVE_MACHINE_STATUSES)) and status not in INACTIVE_MACHINE_STATUSES
         effective_enabled = enabled and machines_globally_enabled
         load_type = row.get("load_type", "Medium")
         if load_type not in allowed_load_types and allowed_load_types:
             load_type = allowed_load_types[min(1, len(allowed_load_types) - 1)]
-        status_display = status if effective_enabled else "Disabled"
+        status_display = status if (effective_enabled or status in INACTIVE_MACHINE_STATUSES) else "Disabled"
         return {
             "id": machine_id,
             "machine_number": machine_number,
@@ -2545,12 +2764,11 @@ def admin_dashboard_machines():
                         client.table("machines").upsert(
                             [
                                 {
-                                    "id": row.get("id") or row.get("machine_number"),
                                     "machine_number": row.get("machine_number"),
                                     "name": row.get("name") or f"Machine {row.get('machine_number')}",
                                     "status": row.get("status", "Available"),
                                     "load_type": row.get("load_type", "Medium"),
-                                    "enabled": bool(row.get("enabled", True)) and row.get("status", "Available") != "Maintenance",
+                                    "enabled": bool(row.get("enabled", True)) and row.get("status", "Available") not in INACTIVE_MACHINE_STATUSES,
                                 }
                                 for row in seed_rows
                             ],
@@ -2703,22 +2921,43 @@ def update_machine(machine_number, name=None, status=None, enabled=None, load_ty
         raise ValueError("Invalid machine status.")
     machine_load_type = load_type if load_type is not None else (current_machine or {}).get("load_type", base_machine["load_type"])
     machine_enabled = bool(enabled) if enabled is not None else bool((current_machine or {}).get("enabled", base_machine["enabled"]))
-    if machine_status == "Maintenance":
+    if machine_status in INACTIVE_MACHINE_STATUSES:
         machine_enabled = False
     client = admin_db_client()
     if client:
-        payload = {
-            "id": (current_machine or {}).get("id") or machine_number,
-            "machine_number": machine_number,
-            "name": machine_name,
+        supabase_id = (current_machine or {}).get("id")
+        update_payload = {
             "status": machine_status,
             "load_type": machine_load_type,
             "enabled": machine_enabled,
+            "name": machine_name,
         }
-        try:
-            client.table("machines").upsert(payload, on_conflict="machine_number").execute()
-        except Exception as exc:
-            log_exception("admin machine upsert failed", exc, machine_number=machine_number)
+        # Raise on failure so the API route returns a real error instead of silent ok:true.
+        # Prefer the real Supabase id because machine_number is only a display/business key.
+        if supabase_id:
+            result = client.table("machines").update(update_payload).eq("id", supabase_id).execute()
+            print(
+                "[FreshWash] Supabase machines update result:",
+                {
+                    "id": supabase_id,
+                    "machine_number": machine_number,
+                    "status": machine_status,
+                    "data": getattr(result, "data", None),
+                    "count": getattr(result, "count", None),
+                },
+            )
+        else:
+            upsert_payload = {"machine_number": machine_number, **update_payload}
+            result = client.table("machines").upsert(upsert_payload, on_conflict="machine_number").execute()
+            print(
+                "[FreshWash] Supabase machines upsert result:",
+                {
+                    "machine_number": machine_number,
+                    "status": machine_status,
+                    "data": getattr(result, "data", None),
+                    "count": getattr(result, "count", None),
+                },
+            )
 
     fields = []
     values = []
@@ -2775,15 +3014,24 @@ def update_machine_status_by_id(machine_id, status, load_type=None):
     # Accept any non-empty load_type — do not restrict to admin settings
     # so Light/Medium/Heavy always work regardless of settings configuration.
     resolved_load_type = (load_type or "").strip() or machine.get("load_type") or "Medium"
+    machine_number = machine.get("machine_number")
+    if machine_number in (None, ""):
+        raise ValueError(f"Machine '{machine_id}' is missing a machine_number.")
 
     update_machine(
-        int(machine.get("machine_number") or machine.get("id")),
+        int(machine_number),
         name=machine.get("name"),
         status=status,
-        enabled=status != "Maintenance",
+        enabled=status not in INACTIVE_MACHINE_STATUSES,
         load_type=resolved_load_type,
     )
-    return machine
+    updated = dict(machine)
+    updated["status"] = status
+    updated["status_display"] = status
+    updated["load_type"] = resolved_load_type
+    updated["enabled"] = status not in INACTIVE_MACHINE_STATUSES
+    updated["effective_enabled"] = status not in INACTIVE_MACHINE_STATUSES
+    return updated
 
 
 def update_service(name, price, description):
@@ -3060,12 +3308,12 @@ def build_admin_reports(bookings, machines):
     status_counter = Counter((booking.get("status") or "Pending") for booking in bookings)
 
     completed_revenue = sum(
-        float(booking.get("total_price", 0) or 0)
+        float(booking.get("price", 0) or booking.get("total_price", 0) or booking.get("total_amount", 0) or 0)
         for booking in bookings
         if (booking.get("status") or "").lower() == "completed"
     )
     total_income = sum(
-        float(booking.get("total_price", 0) or booking.get("total_amount", 0) or 0)
+        float(booking.get("price", 0) or booking.get("total_price", 0) or booking.get("total_amount", 0) or 0)
         for booking in bookings
         if (booking.get("payment_status") or "").strip().lower() == "paid"
     )
@@ -3099,51 +3347,53 @@ def build_admin_reports(bookings, machines):
 
 
 def admin_dashboard_payments(bookings_fallback=None):
+    bookings = bookings_fallback or []
     client = admin_db_client()
-    if not client:
-        return []
-    try:
-        result = (
-            client.table("payments")
-            .select("id,booking_id,user_id,customer_name,payment_method,payment_status,amount,payment_reference,reference_number,payment_proof,created_at")
-            .order("created_at", desc=True)
-            .execute()
-        )
-        rows = result.data or []
-        return [
-            {
-                "id": row.get("id") or f"payment-{index}",
-                "booking_id": row.get("booking_id") or "No booking linked",
-                "user_id": row.get("user_id") or "",
-                "amount": float(row.get("amount", 0) or 0),
-                "status": row.get("payment_status") or "Pending",
-                "payment_status": row.get("payment_status") or "Pending",
-                "method": row.get("payment_method") or "Unspecified",
-                "payment_method": row.get("payment_method") or "Unspecified",
-                "payment_reference": row.get("payment_reference") or row.get("reference_number") or "",
-                "reference_number": row.get("reference_number") or row.get("payment_reference") or "",
-                "payment_proof": row.get("payment_proof") or "",
-                "proof_image": row.get("payment_proof") or "",
-                "paid_at": row.get("created_at") or "",
-                "created_at": row.get("created_at") or "",
-                "customer_name": row.get("customer_name") or "FreshWash Customer",
-                "full_name": row.get("customer_name") or "FreshWash Customer",
-            }
-            for index, row in enumerate(rows)
+    if client:
+        payment_select_variants = [
+            "id,booking_id,user_id,customer_name,payment_method,status,payment_status,amount,payment_reference,reference_number,payment_proof,proof_image,created_at",
+            "id,booking_id,user_id,customer_name,payment_method,status,payment_status,amount,payment_reference,reference_number,payment_proof,created_at",
+            "id,booking_id,user_id,customer_name,payment_method,payment_status,amount,payment_proof,created_at",
+            "id,booking_id,customer_name,payment_method,payment_status,amount,created_at",
+            "*",
         ]
-    except Exception as exc:
-        missing_column = extract_schema_cache_missing_column(exc, "payments")
-        if missing_column:
-            log_exception("admin payments query missing column", exc, missing_column=missing_column)
-        else:
-            log_exception("admin payments query failed", exc)
-        # Backward fallback: synthesize from bookings if payments table isn't available yet.
-        fallback_records = []
-        for index, booking in enumerate(bookings_fallback or []):
-            if not (booking.get("payment_method") or ""):
-                continue
-            fallback_records.append(build_payment_record_from_booking(booking, index=index))
-        return fallback_records
+        last_payment_error = None
+        for select_columns in payment_select_variants:
+            try:
+                result = client.table("payments").select(select_columns).order("created_at", desc=True).execute()
+                payment_rows = result.data or []
+                if payment_rows:
+                    return [
+                        build_payment_record_from_payment(payment, index=index)
+                        for index, payment in enumerate(payment_rows)
+                        if payment.get("payment_method") or payment.get("method")
+                    ]
+                break
+            except Exception as exc:
+                last_payment_error = exc
+                missing_column = extract_schema_cache_missing_column(exc, "payments")
+                if missing_column:
+                    continue
+                message = str(exc).lower()
+                if "could not find the table" in message or "relation" in message or "payments" in message:
+                    break
+                break
+        if last_payment_error:
+            log_exception("admin payments query failed; falling back to bookings", last_payment_error)
+
+    records = []
+    for index, booking in enumerate(bookings):
+        if not (
+            row_has_payment_amount(booking)
+            or booking.get("payment_method")
+            or booking.get("payment_reference")
+            or booking.get("reference_number")
+            or booking.get("payment_proof")
+            or booking.get("proof_image")
+        ):
+            continue
+        records.append(build_payment_record_from_booking(booking, index=index))
+    return records
 
 
 def build_admin_dashboard_payload():
@@ -3158,7 +3408,7 @@ def build_admin_dashboard_payload():
     cancelled_orders = sum(1 for booking in bookings if booking.get("status") == "Cancelled")
     active_machines = sum(1 for machine in machines if machine["enabled"] and machine["status"] == "In Use")
     available_machines = sum(1 for machine in machines if machine["enabled"] and machine["status"] == "Available")
-    revenue = sum(float(booking.get("total_price", 0) or 0) for booking in bookings if booking.get("status") == "Completed")
+    revenue = sum(float(booking.get("price", 0) or booking.get("total_price", 0) or 0) for booking in bookings if booking.get("status") == "Completed")
     reports = build_admin_reports(bookings, machines)
     reports["totalUsers"] = len(users)
     reports["totalIncome"] = round(
@@ -4476,14 +4726,25 @@ def admin_booking_action(booking_id):
             status = data.get("status", "").strip()
             if status not in {"Pending", "In Progress", "Completed", "Cancelled"}:
                 return jsonify({"ok": False, "error": "Invalid status value."}), 400
-            client.table("bookings").update({"status": status}).eq("id", booking_id).execute()
+            client.table("bookings").update({
+                "status": status,
+                "payment_status": "paid" if status == "Completed" else "pending",
+            }).eq("id", booking_id).execute()
+            if status == "Completed":
+                try:
+                    completed_booking = fetch_booking_for_payment(client, booking_id)
+                    completed_booking["status"] = "Completed"
+                    completed_booking["payment_status"] = "paid"
+                    upsert_completed_booking_payment(client, booking_id, completed_booking)
+                except Exception as pay_exc:
+                    log_exception("completed payment upsert after booking status failed", pay_exc, booking_id=booking_id)
         elif action == "edit":
             existing_booking = {}
             existing_booking = {}
             for select_cols in [
-                "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,delivery_status,out_for_delivery_email_sent,delivered_email_sent,payment_method,payment_status,payment_reference,payment_proof",
-                "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,delivery_status,out_for_delivery_email_sent,delivered_email_sent,payment_method,payment_proof",
-                "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,delivery_status",
+                "id,user_id,full_name,service_type,machine,delivery_option,price,amount,total_amount,total_price,status,delivery_status,out_for_delivery_email_sent,delivered_email_sent,payment_method,payment_status,payment_reference,payment_proof,proof_image,reference_number",
+                "id,user_id,full_name,service_type,machine,delivery_option,price,total_amount,total_price,status,delivery_status,out_for_delivery_email_sent,delivered_email_sent,payment_method,payment_status,payment_reference,payment_proof",
+                "id,user_id,full_name,service_type,machine,delivery_option,total_amount,total_price,status,delivery_status",
             ]:
                 try:
                     existing_res = client.table("bookings").select(select_cols).eq("id", booking_id).limit(1).execute()
@@ -4506,6 +4767,7 @@ def admin_booking_action(booking_id):
                 if maybe_status not in {"Pending", "In Progress", "Completed", "Cancelled"}:
                     return jsonify({"ok": False, "error": "Invalid status value."}), 400
                 payload["status"] = maybe_status
+                payload["payment_status"] = "paid" if maybe_status == "Completed" else "pending"
 
             maybe_delivery = (data.get("delivery_option", "") or "").strip().title()
             if maybe_delivery:
@@ -4535,30 +4797,33 @@ def admin_booking_action(booking_id):
 
             if "delivery_option" in payload:
                 try:
-                    existing_res = client.table("bookings").select("total_price,delivery_fee").eq("id", booking_id).limit(1).execute()
+                    existing_res = client.table("bookings").select("price,total_price,total_amount,delivery_fee").eq("id", booking_id).limit(1).execute()
                     existing = (existing_res.data or [{}])[0] if existing_res else {}
                 except Exception as exc:
                     missing_column = extract_schema_cache_missing_column(exc, "bookings")
                     if missing_column in {"delivery_fee"}:
-                        existing_res = client.table("bookings").select("total_price").eq("id", booking_id).limit(1).execute()
+                        existing_res = client.table("bookings").select("price,total_price,total_amount").eq("id", booking_id).limit(1).execute()
                         existing = (existing_res.data or [{}])[0] if existing_res else {}
                         existing["delivery_fee"] = 0
                     else:
                         raise
                 previous_delivery_fee = float(existing.get("delivery_fee", 0) or 0)
-                current_total = float(existing.get("total_price", 0) or 0)
+                current_total = float(existing.get("price", 0) or existing.get("total_price", 0) or existing.get("total_amount", 0) or 0)
                 base_amount = max(current_total - previous_delivery_fee, 0)
                 new_delivery_fee = float(payload.get("delivery_fee", 0) or 0)
                 new_total = round(base_amount + new_delivery_fee, 2)
                 payload["total_price"] = new_total
                 payload["total_amount"] = new_total
+                payload["price"] = new_total
+                payload["amount"] = new_total
 
             if payload.get("status") and payload["status"] not in {"Pending", "In Progress", "Completed", "Cancelled"}:
                 return jsonify({"ok": False, "error": "Invalid status value."}), 400
             update_variants = [
                 payload,
-                {k: v for k, v in payload.items() if k not in {"delivery_fee", "delivery_type", "total_amount"}},
-                {k: v for k, v in payload.items() if k not in {"delivery_fee", "delivery_type", "total_amount", "delivery_option"}},
+                {k: v for k, v in payload.items() if k not in {"delivery_fee", "delivery_type", "total_amount", "amount"}},
+                {k: v for k, v in payload.items() if k not in {"delivery_fee", "delivery_type", "total_amount", "amount", "price"}},
+                {k: v for k, v in payload.items() if k not in {"delivery_fee", "delivery_type", "total_amount", "amount", "price", "delivery_option"}},
             ]
             tried = set()
             last_error = None
@@ -4585,61 +4850,17 @@ def admin_booking_action(booking_id):
                     raise last_error
                 raise RuntimeError("Booking update failed because no compatible bookings schema variant was found.")
 
-            # --- Payment upsert after booking update ---
+            # Record a payment only when the booking is completed.
             try:
                 final_status = payload.get("status") or existing_booking.get("status", "Pending")
-                payment_status_map = {
-                    "Completed": "Paid",
-                    "Cancelled": "Cancelled",
-                    "Pending": "Pending",
-                    "In Progress": "Pending",
-                }
-                payment_status = payment_status_map.get(final_status, "Pending")
-                amount = float(
-                    payload.get("total_price")
-                    or existing_booking.get("total_price")
-                    or existing_booking.get("total_amount")
-                    or 0
-                )
-                customer_name = (
-                    payload.get("full_name")
-                    or existing_booking.get("full_name")
-                    or "FreshWash Customer"
-                )
-                payment_method = existing_booking.get("payment_method") or "Unspecified"
-                proof_of_payment = (
-                    existing_booking.get("payment_proof")
-                    or existing_booking.get("proof_of_payment")
-                    or ""
-                )
-                payment_payload = {
-                    "booking_id": booking_id,
-                    "customer_name": customer_name,
-                    "payment_method": payment_method,
-                    "amount": amount,
-                    "payment_status": payment_status,
-                    "payment_proof": proof_of_payment,
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                }
-                existing_payment_res = (
-                    client.table("payments")
-                    .select("id")
-                    .eq("booking_id", booking_id)
-                    .limit(1)
-                    .execute()
-                )
-                existing_payment = (
-                    (existing_payment_res.data or [{}])[0]
-                    if existing_payment_res
-                    else {}
-                )
-                if existing_payment.get("id"):
-                    client.table("payments").update(payment_payload).eq("booking_id", booking_id).execute()
-                else:
-                    client.table("payments").insert(payment_payload).execute()
+                if final_status == "Completed":
+                    upsert_completed_booking_payment(
+                        client,
+                        booking_id,
+                        {**existing_booking, **payload, "id": booking_id, "payment_status": "paid"},
+                    )
             except Exception as pay_exc:
-                log_exception("payment upsert after booking edit failed", pay_exc, booking_id=booking_id)
-            # --- End payment upsert ---
+                log_exception("completed payment upsert after booking edit failed", pay_exc, booking_id=booking_id)
 
             new_delivery_status = payload.get("delivery_status")
             previous_delivery_status = str(existing_booking.get("delivery_status", "") or "")
@@ -4708,7 +4929,7 @@ def admin_booking_action(booking_id):
                             delivery_status=new_delivery_status,
                         )
         elif action == "cancel":
-            client.table("bookings").update({"status": "Cancelled"}).eq("id", booking_id).execute()
+            client.table("bookings").update({"status": "Cancelled", "payment_status": "Pending"}).eq("id", booking_id).execute()
         elif action == "delete":
             client.table("bookings").delete().eq("id", booking_id).execute()
         else:
@@ -4751,8 +4972,8 @@ def update_machine_status_api():
     load_type = (data.get("load_type") or "").strip() or None
     if not machine_id:
         return jsonify({"ok": False, "error": "Machine id is required."}), 400
-    if status not in VALID_MACHINE_STATUSES:
-        return jsonify({"ok": False, "error": f"Invalid status '{status}'. Must be: {', '.join(sorted(VALID_MACHINE_STATUSES))}."}), 400
+    if status not in ADMIN_MACHINE_STATUS_OPTIONS:
+        return jsonify({"ok": False, "error": f"Invalid status '{status}'. Must be: {', '.join(sorted(ADMIN_MACHINE_STATUS_OPTIONS))}."}), 400
     try:
         machine = update_machine_status_by_id(machine_id, status, load_type=load_type)
         print(f"[FreshWash] machine updated: id={machine_id} status={status} load_type={load_type}")
@@ -5084,7 +5305,12 @@ def booking():
     user = session["user"]
     services_map = current_services_map()
     try:
-        machines = [machine for machine in admin_dashboard_machines() if machine.get("effective_enabled", machine.get("enabled"))]
+        machines = [
+            machine
+            for machine in admin_dashboard_machines()
+            if machine.get("effective_enabled", machine.get("enabled"))
+            and machine.get("status") == "Available"
+        ]
     except Exception as exc:
         log_exception("booking machines fetch failed", exc, user=user.get("email", ""))
         machines = []
@@ -5159,7 +5385,7 @@ def booking():
                 flash(e, "error")
             return render_template("booking.html", **booking_template_context(user, request.form, machines))
 
-        payment_status = "Pending Verification" if payment_method in DIGITAL_PAYMENT_METHODS else "Pending Payment"
+        payment_status = "Pending"
         delivery_type = delivery_option.strip().lower()
         delivery_fee = DEFAULT_DELIVERY_FEE if delivery_type == "delivery" else 0.0
         delivery_status = "Not Started"
@@ -5177,6 +5403,8 @@ def booking():
             "pickup_date": pickup_date,
             "pickup_time": pickup_time,
             "weight": weight,
+            "price": total_amount,
+            "amount": total_amount,
             "total_price": total_amount,
             "total_amount": total_amount,
             "delivery_fee": round(delivery_fee, 2),
@@ -5255,8 +5483,14 @@ def my_bookings():
             .order("created_at", desc=True).execute()
         bookings = res.data or []
         for b in bookings:
-            price = SERVICES.get(b.get("service_type", ""), {}).get("price", 0)
-            b["total_price"] = round(price * float(b.get("weight", 0) or 0), 2)
+            if b.get("price") in (None, "") and b.get("total_price") not in (None, ""):
+                b["price"] = b.get("total_price")
+            if b.get("total_price") in (None, "") and b.get("price") not in (None, ""):
+                b["total_price"] = b.get("price")
+            if b.get("total_price") in (None, ""):
+                price = SERVICES.get(b.get("service_type", ""), {}).get("price", 0)
+                b["total_price"] = round(price * float(b.get("weight", 0) or 0), 2)
+                b["price"] = b["total_price"]
     except Exception as exc:
         log_exception("my bookings fetch failed", exc, user=user.get("email", ""))
         flash(f"Could not load bookings: {str(exc)}", "error")
@@ -5277,8 +5511,14 @@ def booking_detail(booking_id):
         if not rows:
             return jsonify({"ok": False, "error": "Booking not found."}), 404
         b = rows[0]
-        price = SERVICES.get(b.get("service_type", ""), {}).get("price", 0)
-        b["total_price"] = round(price * float(b.get("weight", 0) or 0), 2)
+        if b.get("price") in (None, "") and b.get("total_price") not in (None, ""):
+            b["price"] = b.get("total_price")
+        if b.get("total_price") in (None, "") and b.get("price") not in (None, ""):
+            b["total_price"] = b.get("price")
+        if b.get("total_price") in (None, ""):
+            price = SERVICES.get(b.get("service_type", ""), {}).get("price", 0)
+            b["total_price"] = round(price * float(b.get("weight", 0) or 0), 2)
+            b["price"] = b["total_price"]
         return jsonify({"ok": True, "booking": b})
     except Exception as exc:
         log_exception("booking detail fetch failed", exc, booking_id=booking_id)
@@ -5455,8 +5695,14 @@ def home():
                 .order("created_at", desc=True).execute()
             bookings = bookings_res.data or []
             for booking in bookings:
-                price = services_map.get(booking.get("service_type", ""), {}).get("price", 0)
-                booking["total_price"] = round(price * float(booking.get("weight", 0) or 0), 2)
+                if booking.get("price") in (None, "") and booking.get("total_price") not in (None, ""):
+                    booking["price"] = booking.get("total_price")
+                if booking.get("total_price") in (None, "") and booking.get("price") not in (None, ""):
+                    booking["total_price"] = booking.get("price")
+                if booking.get("total_price") in (None, ""):
+                    price = services_map.get(booking.get("service_type", ""), {}).get("price", 0)
+                    booking["total_price"] = round(price * float(booking.get("weight", 0) or 0), 2)
+                    booking["price"] = booking["total_price"]
         except Exception as exc:
             log_exception("homepage bookings fetch failed", exc, user=user.get("email", ""))
             bookings = []

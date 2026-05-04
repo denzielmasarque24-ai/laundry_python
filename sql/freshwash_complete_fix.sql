@@ -33,13 +33,13 @@ ALTER TABLE public.machines ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFA
 -- Normalise any bad status values before adding the constraint
 UPDATE public.machines
 SET status = 'Available'
-WHERE status NOT IN ('Available', 'In Use', 'Disabled');
+WHERE status NOT IN ('Available', 'In Use', 'Maintenance', 'Disabled', 'Unavailable');
 
 -- Drop old constraint if it exists, then re-add cleanly
 ALTER TABLE public.machines DROP CONSTRAINT IF EXISTS machines_status_check;
 ALTER TABLE public.machines
   ADD CONSTRAINT machines_status_check
-  CHECK (status IN ('Available', 'In Use', 'Disabled'));
+  CHECK (status IN ('Available', 'In Use', 'Maintenance', 'Disabled', 'Unavailable'));
 
 -- Sync id = machine_number for rows that have no id yet
 UPDATE public.machines SET id = machine_number
@@ -49,7 +49,7 @@ UPDATE public.machines
 SET name = COALESCE(NULLIF(name, ''), 'Machine ' || machine_number::text)
 WHERE name IS NULL OR name = '';
 
-UPDATE public.machines SET enabled = false WHERE status = 'Disabled';
+UPDATE public.machines SET enabled = false WHERE status IN ('Maintenance', 'Disabled', 'Unavailable');
 
 CREATE UNIQUE INDEX IF NOT EXISTS machines_id_unique ON public.machines(id);
 
