@@ -490,7 +490,8 @@
       background: rgba(226, 232, 240, 0.95);
     }
 
-    .admin-machine-status-tag.status-unavailable {
+    .admin-machine-status-tag.status-unavailable,
+    .admin-machine-status-tag.status-not-available {
       color: #991b1b;
       background: rgba(254, 202, 202, 0.9);
     }
@@ -570,38 +571,6 @@
     .admin-settings-readonly input,
     .admin-settings-readonly textarea {
       cursor: default;
-    }
-
-    .admin-report-bars {
-      margin-top: 8px;
-    }
-
-    .admin-report-empty {
-      min-height: 180px;
-      display: grid;
-      place-items: center;
-    }
-
-    .admin-report-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .admin-report-item {
-      display: grid;
-      gap: 6px;
-      padding: 14px 16px;
-      border-radius: 18px;
-      background: rgba(255, 247, 251, 0.9);
-      border: 1px solid rgba(242, 122, 178, 0.16);
-    }
-
-    .admin-report-item-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
     }
 
     .admin-rating {
@@ -1322,8 +1291,7 @@
     body.admin-dashboard-body.dark-mode .admin-profile-photo-panel small,
     body.admin-dashboard-body.dark-mode .admin-settings-card-title p,
     body.admin-dashboard-body.dark-mode .admin-profile-summary-copy p,
-    body.admin-dashboard-body.dark-mode .admin-settings-group-head p,
-    body.admin-dashboard-body.dark-mode .admin-inline-stat span {
+    body.admin-dashboard-body.dark-mode .admin-settings-group-head p {
       color: #d8c7d8;
     }
 
@@ -1339,10 +1307,7 @@
     body.admin-dashboard-body.dark-mode .admin-settings-hero h2,
     body.admin-dashboard-body.dark-mode .admin-settings-card-title h2,
     body.admin-dashboard-body.dark-mode .admin-profile-summary-copy h3,
-    body.admin-dashboard-body.dark-mode .admin-settings-group-head h3,
-    body.admin-dashboard-body.dark-mode .admin-inline-stat strong,
-    body.admin-dashboard-body.dark-mode .admin-highlight-stat,
-    body.admin-dashboard-body.dark-mode .admin-report-item strong {
+    body.admin-dashboard-body.dark-mode .admin-settings-group-head h3 {
       color: #ffffff;
     }
 
@@ -1356,8 +1321,6 @@
     body.admin-dashboard-body.dark-mode .admin-settings-profile-card,
     body.admin-dashboard-body.dark-mode .admin-settings-form-card,
     body.admin-dashboard-body.dark-mode .admin-user-edit-card,
-    body.admin-dashboard-body.dark-mode .admin-report-item,
-    body.admin-dashboard-body.dark-mode .admin-inline-stat,
     body.admin-dashboard-body.dark-mode .admin-service-create,
     body.admin-dashboard-body.dark-mode .admin-user-avatar-panel,
     body.admin-dashboard-body.dark-mode .admin-profile-pill,
@@ -1386,12 +1349,10 @@
 
     body.admin-dashboard-body.dark-mode .admin-timeline-item,
     body.admin-dashboard-body.dark-mode .admin-mini-machine,
-    body.admin-dashboard-body.dark-mode .admin-usage-item,
     body.admin-dashboard-body.dark-mode .admin-settings-card-title > span,
     body.admin-dashboard-body.dark-mode .admin-card-accent .admin-mini-machine,
     body.admin-dashboard-body.dark-mode .admin-live-machines-card .admin-pill,
-    body.admin-dashboard-body.dark-mode .admin-profile-summary-badge,
-    body.admin-dashboard-body.dark-mode .admin-inline-stat {
+    body.admin-dashboard-body.dark-mode .admin-profile-summary-badge {
       background: rgba(255, 255, 255, 0.08);
       border-color: rgba(255, 255, 255, 0.1);
       color: #ffe8f4;
@@ -1607,6 +1568,7 @@
     body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-disabled,
     body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-maintenance,
     body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-unavailable,
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-not-available,
     body.admin-dashboard-body.dark-mode .admin-service-price {
       border: 1px solid transparent;
     }
@@ -1646,7 +1608,8 @@
       border-color: rgba(255, 255, 255, 0.12);
     }
 
-    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-unavailable {
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-unavailable,
+    body.admin-dashboard-body.dark-mode .admin-machine-status-tag.status-not-available {
       color: #fecaca;
       background: rgba(248, 113, 113, 0.16);
       border-color: rgba(248, 113, 113, 0.24);
@@ -1747,8 +1710,7 @@
     body.admin-dashboard-body.dark-mode .admin-booking-meta p,
     body.admin-dashboard-body.dark-mode .admin-header-subtitle,
     body.admin-dashboard-body.dark-mode .admin-section-subtitle,
-    body.admin-dashboard-body.dark-mode .admin-timeline-item p,
-    body.admin-dashboard-body.dark-mode .admin-report-item p {
+    body.admin-dashboard-body.dark-mode .admin-timeline-item p {
       color: #fbcfe8;
       letter-spacing: 0.3px;
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -1947,10 +1909,6 @@
           <i class="fa-solid fa-basket-shopping"></i>
           <span>Services</span>
         </a>
-        <a class="admin-nav-link {% if active_page == 'reports' %}is-active{% endif %}" href="{{ url_for('admin_reports') }}" data-section="reports">
-          <i class="fa-solid fa-chart-line"></i>
-          <span>Reports</span>
-        </a>
         <a class="admin-nav-link {% if active_page == 'messages' %}is-active{% endif %}" href="{{ url_for('admin_messages') }}" data-section="messages">
           <i class="fa-solid fa-comments"></i>
           <span>Contact Messages</span>
@@ -1976,7 +1934,7 @@
             <small class="admin-kicker">FreshWash Control Center</small>
             <h1 id="adminPageTitle">{{ 'Settings' if active_page == 'settings' else 'Admin Dashboard' }}</h1>
             <p class="admin-header-subtitle" id="adminPageSubtitle">
-              {{ 'Manage your admin account information and password' if active_page == 'settings' else 'Monitor bookings, customers, machines, and reports in one place.' }}
+              {{ 'Manage your admin account information and password' if active_page == 'settings' else 'Monitor bookings, customers, machines, and services in one place.' }}
             </p>
           </div>
         </div>
@@ -2096,7 +2054,6 @@ const DASHBOARD_CONFIG = {
     bookings: {{ url_for('admin_bookings') | tojson }},
     machines: {{ url_for('admin_machines') | tojson }},
     services: {{ url_for('admin_services') | tojson }},
-    reports: {{ url_for('admin_reports') | tojson }},
     settings: {{ url_for('admin_settings') | tojson }}
   },
   initialData: {{ (admin_data or {}) | tojson }}
@@ -2108,18 +2065,16 @@ const DASHBOARD_CONFIG = {
       bookings: "Bookings",
       machines: "Machines",
       services: "Services",
-      reports: "Reports",
       messages: "Contact Messages",
       settings: "Settings"
     };
 
     const SECTION_DESCRIPTIONS = {
-      dashboard: "Monitor bookings, customers, machines, and reports in one place.",
+      dashboard: "Monitor bookings, customers, machines, and services in one place.",
       users: "Manage customer records and admin access for FreshWash.",
       bookings: "Review laundry bookings, update statuses, and keep operations moving.",
       machines: "Track machine availability, load types, and operational status.",
       services: "Maintain service offerings, pricing, and customer-facing descriptions.",
-      reports: "Review booking trends, machine usage, and performance insights.",
       settings: "Manage your admin account information and password"
     };
 
@@ -2129,7 +2084,6 @@ const DASHBOARD_CONFIG = {
       bookings: "fa-calendar-days",
       machines: "fa-gear",
       services: "fa-toolbox",
-      reports: "fa-chart-column",
       settings: "fa-gear"
     };
 
@@ -2145,7 +2099,6 @@ const DASHBOARD_CONFIG = {
       services: Array.isArray(DASHBOARD_CONFIG.initialData?.services) ? DASHBOARD_CONFIG.initialData.services : [],
       payments: Array.isArray(DASHBOARD_CONFIG.initialData?.payments) ? DASHBOARD_CONFIG.initialData.payments : [],
       reviews: Array.isArray(DASHBOARD_CONFIG.initialData?.reviews) ? DASHBOARD_CONFIG.initialData.reviews : [],
-      reports: DASHBOARD_CONFIG.initialData?.reports || {},
       settings: DASHBOARD_CONFIG.initialData?.settings || {}
     };
     let fetchErrors = [];
@@ -2342,7 +2295,8 @@ const DASHBOARD_CONFIG = {
 
     function normalizeMachineStatus(machine) {
       if (!machine) return "Disabled";
-      return machine.status_display || machine.status || "Available";
+      const status = machine.status_display || machine.status || "Available";
+      return status === "Unavailable" ? "Not Available" : status;
     }
 
     function normalizeUser(user) {
@@ -2397,9 +2351,9 @@ const DASHBOARD_CONFIG = {
     }
 
     function normalizeMachine(machine) {
-      const baseStatus = machine?.status || "Available";
-      const inactiveStatuses = ["Maintenance", "Disabled", "Unavailable"];
-      const enabled = machine?.enabled !== false && !inactiveStatuses.includes(baseStatus);
+      const baseStatus = (machine?.status || "Available") === "Unavailable" ? "Not Available" : (machine?.status || "Available");
+      const inactiveStatuses = ["In Use", "Maintenance", "Not Available", "Disabled", "Unavailable"];
+      const enabled = machine?.enabled !== false && baseStatus === "Available";
       const effectiveEnabled = machine?.effective_enabled !== false && enabled;
       return {
         id: machine?.id ?? machine?.machine_number ?? "",
@@ -2498,41 +2452,6 @@ const DASHBOARD_CONFIG = {
       };
     }
 
-    function computeReports(bookings = [], machines = [], services = []) {
-      const countsPerDay = new Map();
-      const statusBreakdown = { pending: 0, inProgress: 0, completed: 0, cancelled: 0 };
-      const serviceCounter = new Map();
-      const machineCounter = new Map();
-      let completedRevenue = 0;
-
-      bookings.forEach((booking) => {
-        const bookingDate = formatDate(booking.pickup_date);
-        countsPerDay.set(bookingDate, (countsPerDay.get(bookingDate) || 0) + 1);
-        const status = String(booking.status || "").toLowerCase();
-        if (status === "pending") statusBreakdown.pending += 1;
-        else if (status === "in progress") statusBreakdown.inProgress += 1;
-        else if (status === "completed") { statusBreakdown.completed += 1; completedRevenue += Number(booking.price || booking.total_price || 0); }
-        else if (status === "cancelled") statusBreakdown.cancelled += 1;
-        serviceCounter.set(booking.service_type, (serviceCounter.get(booking.service_type) || 0) + 1);
-        machineCounter.set(booking.machine, (machineCounter.get(booking.machine) || 0) + 1);
-      });
-
-      const bookingsPerDay = Array.from(countsPerDay.entries())
-        .sort((a, b) => String(a[0]).localeCompare(String(b[0]))).slice(-7)
-        .map(([label, count]) => ({ label, count }));
-
-      const machineUsage = machines.map((machine) => ({
-        label: machine.name,
-        count: machineCounter.get(machine.name) || 0,
-        status: machine.status_display || machine.status || "Available"
-      }));
-
-      const mostUsedService = Array.from(serviceCounter.entries()).sort((a, b) => b[1] - a[1])[0]?.[0]
-        || services[0]?.name || "No data available";
-
-      return { bookingsPerDay, machineUsage, mostUsedService, statusBreakdown, completedRevenue };
-    }
-
     async function fetchAdminData() {
       try {
         const payload = await fetchAdminDashboardPayload();
@@ -2601,7 +2520,7 @@ const DASHBOARD_CONFIG = {
       if (!machines.length) { panel.innerHTML = '<p class="admin-empty">No data available</p>'; return; }
       panel.innerHTML = machines.map(machine => {
         const status = machine.status || normalizeMachineStatus(machine);
-        const inactiveStatuses = ["Maintenance", "Disabled", "Unavailable"];
+        const inactiveStatuses = ["In Use", "Maintenance", "Not Available", "Disabled", "Unavailable"];
         return `
           <article class="admin-machine-card admin-live-machine-card ${inactiveStatuses.includes(status) ? "is-disabled" : ""}">
             <div class="admin-machine-head">
@@ -2718,12 +2637,12 @@ const DASHBOARD_CONFIG = {
       if (countPill) countPill.textContent = `${machines.length} machine${machines.length === 1 ? "" : "s"}`;
       if (!machines.length) { grid.innerHTML = '<p class="admin-empty">No data available</p>'; return; }
       const loadOptions = getMachineLoadTypeOptions();
-      const statusOptions = ["Available", "In Use", "Maintenance"];
+      const statusOptions = ["Available", "In Use", "Maintenance", "Not Available"];
       grid.innerHTML = machines.map(machine => {
         const machineStatus = machine.status || normalizeMachineStatus(machine);
         const controlStatus = statusOptions.includes(machineStatus) ? machineStatus : "Available";
         const machineKey = machine.id ?? machine.machine_number;
-        const inactiveStatuses = ["Maintenance", "Disabled", "Unavailable"];
+        const inactiveStatuses = ["In Use", "Maintenance", "Not Available", "Disabled", "Unavailable"];
         return `
           <article class="admin-machine-card ${inactiveStatuses.includes(machineStatus) ? "is-disabled" : ""}" id="machineCard-${escapeHtml(machineKey)}">
             <div class="admin-machine-head">
@@ -2775,153 +2694,6 @@ const DASHBOARD_CONFIG = {
       `).join("");
     }
 
-    function renderReports(reports = {}) {
-      const statsInline = document.getElementById("reportsStatsInline");
-      const mostUsedServiceCard = document.getElementById("mostUsedServiceCard");
-      const bookingsPerDayBars = document.getElementById("bookingsPerDayBars");
-      const machineUsageList = document.getElementById("machineUsageList");
-      const paymentSummaryCards = document.getElementById("paymentSummaryCards");
-      const paymentsTableBody = document.getElementById("paymentsTableBody");
-      const paymentsFilter = document.getElementById("paymentsFilter");
-      if (!statsInline || !mostUsedServiceCard || !bookingsPerDayBars || !machineUsageList || !paymentSummaryCards || !paymentsTableBody || !paymentsFilter) return;
-
-      const breakdown = reports.statusBreakdown || {};
-      const completedRevenue = reports.completedRevenue || 0;
-
-      statsInline.innerHTML = `
-        <article class="admin-inline-stat"><strong>${escapeHtml(reports.totalBookings || 0)}</strong><span>Total Bookings</span></article>
-        <article class="admin-inline-stat"><strong>${escapeHtml(reports.totalUsers || dashboardState.users.length || 0)}</strong><span>Total Users</span></article>
-        <article class="admin-inline-stat"><strong>${escapeHtml(formatCurrency(reports.totalIncome || 0))}</strong><span>Total Income</span></article>
-        <article class="admin-inline-stat"><strong>${escapeHtml(breakdown.pending || 0)}</strong><span>Pending</span></article>
-        <article class="admin-inline-stat"><strong>${escapeHtml(breakdown.completed || 0)}</strong><span>Completed</span></article>
-        <article class="admin-inline-stat"><strong>${escapeHtml(formatCurrency(completedRevenue))}</strong><span>Completed Revenue</span></article>
-      `;
-
-      mostUsedServiceCard.classList.remove("admin-report-empty");
-      mostUsedServiceCard.innerHTML = `
-        <strong>${escapeHtml(reports.mostUsedService || "No data available")}</strong>
-        <p class="admin-section-copy">Most booked service based on the current bookings list.</p>
-      `;
-
-      if (!Array.isArray(reports.bookingsPerDay) || !reports.bookingsPerDay.length) {
-        bookingsPerDayBars.innerHTML = '<p class="admin-empty">No data available</p>';
-      } else {
-        const maxDayCount = Math.max(...reports.bookingsPerDay.map(item => item.count), 1);
-        bookingsPerDayBars.innerHTML = reports.bookingsPerDay.map(item => `
-          <div class="admin-bar-row">
-            <strong>${escapeHtml(item.label)}</strong>
-            <div class="admin-bar-track"><div class="admin-bar-fill" style="width:${Math.max((item.count / maxDayCount) * 100, 6)}%"></div></div>
-            <span>${escapeHtml(item.count)}</span>
-          </div>
-        `).join("");
-      }
-
-      if (!Array.isArray(reports.machineUsage) || !reports.machineUsage.length) {
-        machineUsageList.innerHTML = '<p class="admin-empty">No data available</p>';
-      } else {
-        machineUsageList.innerHTML = reports.machineUsage.map(item => `
-          <article class="admin-usage-item">
-            <div class="admin-section-stack"><strong>${escapeHtml(item.label)}</strong><p>${escapeHtml(item.status)}</p></div>
-            <span>${escapeHtml(item.count)} bookings</span>
-          </article>
-        `).join("");
-      }
-
-      const paymentSource = Array.isArray(dashboardState.payments) && dashboardState.payments.length
-        ? dashboardState.payments
-        : (dashboardState.bookings || []).filter(booking => Number(booking.amount || booking.total_amount || booking.total_price || booking.price || 0) > 0 || booking.payment_method || booking.payment_reference || booking.reference_number || booking.payment_proof || booking.proof_image);
-      const payments = paymentSource
-        .map((payment, index) => normalizePayment(payment, index))
-        .filter(payment => Number(payment.amount || 0) > 0);
-      const totals = payments.reduce((acc, payment) => {
-        const methodKey = String(payment.method || "").toLowerCase();
-        const statusKey = String(payment.status || "").toLowerCase();
-        acc.total += 1;
-        if (statusKey === "paid") acc.revenue += Number(payment.amount || 0);
-        if (methodKey === "gcash") acc.gcash += 1;
-        if (methodKey === "maya" || methodKey === "paymaya") acc.maya += 1;
-        if (methodKey === "cash on delivery" || methodKey === "cod" || methodKey === "cash_on_delivery") acc.cod += 1;
-        if (methodKey === "card") acc.card += 1;
-        if (statusKey === "paid") acc.paid += 1;
-        if (statusKey === "pending") acc.pending += 1;
-        return acc;
-      }, { total: 0, gcash: 0, maya: 0, cod: 0, card: 0, revenue: 0, pending: 0, paid: 0 });
-
-      paymentSummaryCards.innerHTML = `
-        <article class="admin-inline-stat"><strong>${escapeHtml(totals.total)}</strong><span>Total Payments</span></article>
-        <article class="admin-inline-stat"><strong>${escapeHtml(totals.gcash)}</strong><span>GCash Payments</span></article>
-        <article class="admin-inline-stat"><strong>${escapeHtml(totals.maya)}</strong><span>Maya/PayMaya Payments</span></article>
-        <article class="admin-inline-stat"><strong>${escapeHtml(totals.card)}</strong><span>Card Payments</span></article>
-        <article class="admin-inline-stat"><strong>${escapeHtml(totals.cod)}</strong><span>Cash on Delivery Payments</span></article>
-        <article class="admin-inline-stat"><strong>${escapeHtml(formatCurrency(totals.revenue))}</strong><span>Total Revenue</span></article>
-        <article class="admin-inline-stat"><strong>${escapeHtml(totals.pending)}</strong><span>Pending Payments</span></article>
-        <article class="admin-inline-stat"><strong>${escapeHtml(totals.paid)}</strong><span>Paid Payments</span></article>
-      `;
-
-      const applyPaymentsFilter = () => {
-        const filterValue = String(paymentsFilter.value || "all").toLowerCase();
-        const filteredPayments = payments.filter((payment) => {
-          const method = String(payment.method || "").toLowerCase();
-          const status = String(payment.status || "").toLowerCase();
-          if (filterValue === "all") return true;
-          if (filterValue === "gcash") return method === "gcash";
-          if (filterValue === "maya") return method === "maya" || method === "paymaya";
-          if (filterValue === "card") return method === "card";
-          if (filterValue === "cod") return method === "cash on delivery" || method === "cod" || method === "cash_on_delivery";
-          if (filterValue === "paid") return status === "paid";
-          if (filterValue === "pending") return status === "pending";
-          return true;
-        });
-
-        if (!filteredPayments.length) {
-          paymentsTableBody.innerHTML = '<tr><td colspan="7" class="admin-empty-cell">No data available</td></tr>';
-          return;
-        }
-        paymentsTableBody.innerHTML = filteredPayments.map((payment) => {
-          const proofValue = String(payment.payment_proof || "").trim();
-          const method = String(payment.method || "");
-          let proofCell = "No proof uploaded";
-          const referenceValue = String(payment.reference_number || "").trim();
-          if (method === "Cash on Delivery") {
-            proofCell = "No proof required";
-          } else if (proofValue) {
-            proofCell = `<a href="${escapeHtml(proofValue)}" target="_blank" rel="noopener noreferrer">View Proof</a>`;
-          } else if (referenceValue) {
-            proofCell = `Ref: ${escapeHtml(referenceValue)}`;
-          }
-          return `
-            <tr>
-              <td><strong>${escapeHtml(payment.customer_name || "FreshWash Customer")}</strong></td>
-              <td>${escapeHtml(payment.booking_id || "No booking linked")}</td>
-              <td>${escapeHtml(method || "Unspecified")}</td>
-              <td>${escapeHtml(formatCurrency(payment.amount || 0))}</td>
-              <td><span class="admin-user-role ${escapeHtml(formatStatusClass(payment.status || "Pending"))}">${escapeHtml(payment.status || "Pending")}</span></td>
-              <td>${escapeHtml(formatDate(payment.paid_at || payment.created_at || ""))}</td>
-              <td>${proofCell}</td>
-            </tr>
-          `;
-        }).join("");
-      };
-
-      if (paymentsFilter.dataset.bound !== "true") {
-        paymentsFilter.dataset.bound = "true";
-        paymentsFilter.addEventListener("change", applyPaymentsFilter);
-      }
-      applyPaymentsFilter();
-
-    }
-
-    function setPaymentsLoadingState() {
-      const paymentSummaryCards = document.getElementById("paymentSummaryCards");
-      const paymentsTableBody = document.getElementById("paymentsTableBody");
-      if (paymentSummaryCards) {
-        paymentSummaryCards.innerHTML = '<article class="admin-inline-stat"><strong>Loading...</strong><span>Payments</span></article>';
-      }
-      if (paymentsTableBody) {
-        paymentsTableBody.innerHTML = '<tr><td colspan="7" class="admin-empty-cell">Loading payment records...</td></tr>';
-      }
-    }
-
     function renderSettings(settings = {}) {
       const profile = settings.profile || {};
       const system = settings.system || {};
@@ -2956,12 +2728,6 @@ const DASHBOARD_CONFIG = {
     }
 
     function renderAllSections(dataSourceLabel = "Dashboard updated") {
-      const reports = computeReports(dashboardState.bookings, dashboardState.machines, dashboardState.services);
-      reports.totalIncome = dashboardState.payments
-        .map((payment, index) => normalizePayment(payment, index))
-        .filter(payment => String(payment.status || "").toLowerCase() === "paid")
-        .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-      dashboardState.reports = reports;
       renderDashboardStats(dashboardState.users, dashboardState.bookings, dashboardState.machines);
       renderRecentBookings(dashboardState.bookings);
       renderMachineStatus(dashboardState.machines, "machineStatusPanel");
@@ -2969,7 +2735,6 @@ const DASHBOARD_CONFIG = {
       renderBookingsTable(dashboardState.bookings);
       renderMachinesPanel(dashboardState.machines);
       renderServices(dashboardState.services);
-      renderReports(reports);
       renderSettings(dashboardState.settings);
       updateLastUpdatedLabel(dataSourceLabel);
     }
@@ -2981,7 +2746,6 @@ const DASHBOARD_CONFIG = {
       if (Array.isArray(payload.services)) dashboardState.services = payload.services.map((s, i) => normalizeService(s, i));
       if (Array.isArray(payload.payments)) dashboardState.payments = payload.payments.map((p, i) => normalizePayment(p, i));
       if (payload.settings) dashboardState.settings = payload.settings;
-      if (payload.reports) dashboardState.reports = payload.reports;
       renderAllSections("FreshWash admin updated");
     }
 
@@ -3096,7 +2860,7 @@ const DASHBOARD_CONFIG = {
     }
 
     async function saveMachine(machineId) {
-      const validStatuses = ["Available", "In Use", "Maintenance"];
+      const validStatuses = ["Available", "In Use", "Maintenance", "Not Available"];
       try {
         const statusField = document.getElementById(`machineStatus-${machineId}`);
         const loadField   = document.getElementById(`machineLoad-${machineId}`);
@@ -3109,6 +2873,8 @@ const DASHBOARD_CONFIG = {
         const selectedMachineId = machine.id ?? machine.machine_number;
         const selectedStatus = statusField.value;
         const selectedLoadType = loadField.value;
+        console.log("[FreshWash Machines] machineId:", selectedMachineId);
+        console.log("[FreshWash Machines] selectedStatus:", selectedStatus);
         console.log("[FreshWash Machines] selected machine id:", selectedMachineId);
         console.log("[FreshWash Machines] selected status:", selectedStatus);
 
@@ -3126,6 +2892,7 @@ const DASHBOARD_CONFIG = {
           status: selectedStatus,
           load_type: selectedLoadType,
         });
+        console.log("[FreshWash Machines] update response:", result);
         console.log("[FreshWash Machines] Supabase update result:", result);
 
         const tag = document.getElementById(`machineStatusTag-${machineId}`);
@@ -3134,7 +2901,7 @@ const DASHBOARD_CONFIG = {
           tag.className = `admin-machine-status-tag ${formatStatusClass(selectedStatus)}`;
         }
         const card = document.getElementById(`machineCard-${machineId}`);
-        if (card) card.classList.toggle("is-disabled", selectedStatus === "Maintenance");
+        if (card) card.classList.toggle("is-disabled", selectedStatus !== "Available");
 
         await refreshSectionData("machines");
         showSuccess("Machine updated successfully.");
@@ -3247,7 +3014,7 @@ const DASHBOARD_CONFIG = {
         });
         showSuccess("Booking updated successfully.");
         if (typeof showToast === "function") showToast("Booking updated");
-        await refreshSectionData("reports");
+        await refreshSectionData("bookings");
       } catch (error) {
         if (typeof showToast === "function") showToast("Booking update failed", true);
         logSupabaseError("Booking update failed", error);
@@ -3339,7 +3106,6 @@ const DASHBOARD_CONFIG = {
 
     async function refreshSectionData(section) {
       resetFetchErrors();
-      if ((section || activeSection) === "reports") setPaymentsLoadingState();
       const payload = await fetchAdminData();
       if (payload) applyAdminPayload(payload);
       if (fetchErrors.length === 0) clearError();

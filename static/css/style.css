@@ -1348,6 +1348,12 @@ textarea {
   background: rgba(226, 232, 240, 0.92);
 }
 
+.spa-machine-card .status-not-available,
+.spa-machine-card .status-unavailable {
+  color: #991b1b;
+  background: rgba(254, 202, 202, 0.9);
+}
+
 .spa-feature-card,
 .spa-service-card {
   border-radius: 26px;
@@ -5152,8 +5158,7 @@ body.admin-dashboard-body {
 }
 
 .admin-overview-grid,
-.admin-dashboard-grid,
-.admin-reports-grid {
+.admin-dashboard-grid {
   display: grid;
   gap: 18px;
 }
@@ -5172,14 +5177,6 @@ body.admin-dashboard-body {
   grid-column: 1 / -1;
   width: 100%;
 }
-}
-
-.admin-reports-grid {
-  grid-template-columns: 1.2fr 0.8fr;
-}
-
-.admin-reports-grid .admin-card:last-child {
-  grid-column: 1 / -1;
 }
 
 .admin-summary-card,
@@ -5288,16 +5285,13 @@ body.admin-dashboard-body {
 .admin-timeline,
 .admin-machine-mini-grid,
 .admin-machine-grid,
-.admin-service-grid,
-.admin-report-bars,
-.admin-usage-list {
+.admin-service-grid {
   display: grid;
   gap: 14px;
 }
 
 .admin-timeline-item,
-.admin-mini-machine,
-.admin-usage-item {
+.admin-mini-machine {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6092,68 +6086,6 @@ body.admin-dashboard-body[data-admin-mode="dark"] .admin-checkbox-row {
   align-items: stretch;
 }
 
-.admin-stats-inline {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.admin-inline-stat {
-  padding: 18px 16px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(242, 122, 178, 0.16);
-  text-align: center;
-}
-
-.admin-inline-stat strong {
-  display: block;
-  font-size: 1.6rem;
-  color: var(--text);
-}
-
-.admin-inline-stat span {
-  color: var(--muted);
-}
-
-.admin-highlight-stat {
-  display: grid;
-  gap: 10px;
-  align-content: center;
-  min-height: 220px;
-  padding: 12px 0;
-}
-
-.admin-highlight-stat strong {
-  font-size: clamp(1.8rem, 4vw, 3rem);
-  color: var(--accent-strong);
-}
-
-.admin-bar-row {
-  display: grid;
-  grid-template-columns: 120px 1fr 48px;
-  gap: 12px;
-  align-items: center;
-}
-
-.admin-bar-track {
-  height: 12px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(242, 122, 178, 0.14);
-}
-
-.admin-bar-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #ff8cc4, #eb4d98);
-}
-
-.admin-usage-item span {
-  font-weight: 600;
-  color: var(--accent-strong);
-}
-
 .admin-danger {
   background: linear-gradient(135deg, #ff8cb9, #ff5f93);
 }
@@ -6211,12 +6143,10 @@ body.admin-dashboard-body[data-admin-mode="dark"] .admin-checkbox-row {
   .admin-overview-grid,
   .admin-overview-grid-extended,
   .admin-dashboard-grid,
-  .admin-reports-grid,
   .admin-settings-grid,
   .admin-service-grid,
   .admin-machine-grid,
-  .admin-machine-mini-grid,
-  .admin-stats-inline {
+  .admin-machine-mini-grid {
     grid-template-columns: 1fr;
   }
 
@@ -6276,10 +6206,6 @@ body.admin-dashboard-body[data-admin-mode="dark"] .admin-checkbox-row {
 
   .admin-sidebar {
     padding: 18px 16px;
-  }
-
-  .admin-bar-row {
-    grid-template-columns: 1fr;
   }
 
   .admin-action-row {
@@ -11247,133 +11173,9 @@ body.otp-modal-open {
 
 /* ── End Admin Sidebar Compact Overrides ─────────────────────────────────── */
 
-/* ── Reports Dashboard Compact Overrides ─────────────────────────────────── */
+/* ── Admin Compact Metric Overrides ──────────────────────────────────────── */
 
-/* Scoped to the reports panel only */
-.admin-panel[data-panel="reports"] {
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
-  width: 100%;
-}
-
-/* Reports grid: tighter gap */
-.admin-reports-grid {
-  gap: 16px !important;
-}
-
-/* All cards inside reports: tighter padding + smaller radius */
-.admin-panel[data-panel="reports"] .admin-card {
-  padding: 18px 20px !important;
-  border-radius: 20px !important;
-}
-
-/* Card head: less bottom margin */
-.admin-panel[data-panel="reports"] .admin-card-head {
-  margin-bottom: 12px !important;
-}
-
-/* Metric stat cards (Pending / Completed / Revenue) */
-.admin-stats-inline {
-  gap: 10px !important;
-}
-
-.admin-inline-stat {
-  padding: 14px 12px !important;
-  border-radius: 16px !important;
-}
-
-.admin-inline-stat strong {
-  font-size: 1.5rem !important;
-  margin-bottom: 2px;
-}
-
-.admin-inline-stat span {
-  font-size: 0.8rem !important;
-}
-
-/* Most Used Service — "Premium Wash" headline */
-.admin-highlight-stat {
-  min-height: 120px !important;
-  padding: 8px 0 !important;
-  gap: 6px !important;
-}
-
-.admin-highlight-stat strong {
-  font-size: clamp(1.5rem, 2.8vw, 2rem) !important;
-}
-
-.admin-highlight-stat p,
-.admin-highlight-stat small,
-.admin-highlight-stat span {
-  font-size: 0.82rem !important;
-  line-height: 1.5 !important;
-}
-
-/* Bookings Per Day bars */
-.admin-report-bars {
-  margin-top: 4px !important;
-}
-
-.admin-bar-row {
-  grid-template-columns: 100px 1fr 36px !important;
-  gap: 8px !important;
-}
-
-.admin-bar-row span {
-  font-size: 0.8rem !important;
-}
-
-.admin-bar-track {
-  height: 8px !important;
-}
-
-/* Machine Activity rows */
-.admin-usage-list {
-  gap: 8px !important;
-}
-
-.admin-usage-item {
-  padding: 10px 14px !important;
-  border-radius: 14px !important;
-  min-height: 0 !important;
-}
-
-.admin-usage-item span,
-.admin-usage-item p,
-.admin-usage-item small {
-  font-size: 0.82rem !important;
-}
-
-/* Report list items (Payments / Reviews) */
-.admin-report-list {
-  gap: 8px !important;
-}
-
-.admin-report-item {
-  padding: 10px 14px !important;
-  border-radius: 14px !important;
-  gap: 4px !important;
-}
-
-.admin-report-item strong,
-.admin-report-item span,
-.admin-report-item small,
-.admin-report-item p {
-  font-size: 0.82rem !important;
-}
-
-/* Kicker labels inside reports */
-.admin-panel[data-panel="reports"] .admin-kicker {
-  font-size: 0.7rem !important;
-}
-
-.admin-panel[data-panel="reports"] .admin-card h2 {
-  font-size: 1rem !important;
-  margin: 2px 0 0 !important;
-}
-
-/* ── End Reports Dashboard Compact Overrides ─────────────────────────────── */
+/* ── End Admin Compact Metric Overrides ──────────────────────────────────── */
 
 /* FreshWash premium About/Services refresh */
 body.landing-body .freshwash-home-page .home-services-section,

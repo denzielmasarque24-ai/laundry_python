@@ -30,16 +30,21 @@ ALTER TABLE public.machines ADD COLUMN IF NOT EXISTS load_type  text    NOT NULL
 ALTER TABLE public.machines ADD COLUMN IF NOT EXISTS enabled    boolean NOT NULL DEFAULT true;
 ALTER TABLE public.machines ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
--- Normalise any bad status values before adding the constraint
+-- Drop old constraint if it exists, then normalise statuses before re-adding it
+ALTER TABLE public.machines DROP CONSTRAINT IF EXISTS machines_status_check;
+
+UPDATE public.machines
+SET status = 'Not Available'
+WHERE status = 'Unavailable';
+
 UPDATE public.machines
 SET status = 'Available'
-WHERE status NOT IN ('Available', 'In Use', 'Maintenance', 'Disabled', 'Unavailable');
+WHERE status IS NULL
+   OR status NOT IN ('Available', 'In Use', 'Maintenance', 'Not Available', 'Disabled');
 
--- Drop old constraint if it exists, then re-add cleanly
-ALTER TABLE public.machines DROP CONSTRAINT IF EXISTS machines_status_check;
 ALTER TABLE public.machines
   ADD CONSTRAINT machines_status_check
-  CHECK (status IN ('Available', 'In Use', 'Maintenance', 'Disabled', 'Unavailable'));
+  CHECK (status IN ('Available', 'In Use', 'Maintenance', 'Not Available', 'Disabled'));
 
 -- Sync id = machine_number for rows that have no id yet
 UPDATE public.machines SET id = machine_number
@@ -49,7 +54,7 @@ UPDATE public.machines
 SET name = COALESCE(NULLIF(name, ''), 'Machine ' || machine_number::text)
 WHERE name IS NULL OR name = '';
 
-UPDATE public.machines SET enabled = false WHERE status IN ('Maintenance', 'Disabled', 'Unavailable');
+UPDATE public.machines SET enabled = false WHERE status IN ('In Use', 'Maintenance', 'Not Available', 'Disabled');
 
 CREATE UNIQUE INDEX IF NOT EXISTS machines_id_unique ON public.machines(id);
 

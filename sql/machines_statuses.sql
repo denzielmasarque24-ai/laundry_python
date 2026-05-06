@@ -1,23 +1,27 @@
 -- Allow all admin machine availability statuses.
 -- Safe to run multiple times.
 
-UPDATE public.machines
-SET status = 'Available'
-WHERE status IS NULL
-   OR status NOT IN ('Available', 'In Use', 'Maintenance', 'Disabled', 'Unavailable');
-
 ALTER TABLE public.machines
 DROP CONSTRAINT IF EXISTS machines_status_check;
 
+UPDATE public.machines
+SET status = 'Not Available'
+WHERE status = 'Unavailable';
+
+UPDATE public.machines
+SET status = 'Available'
+WHERE status IS NULL
+   OR status NOT IN ('Available', 'In Use', 'Maintenance', 'Not Available', 'Disabled');
+
 ALTER TABLE public.machines
 ADD CONSTRAINT machines_status_check
-CHECK (status IN ('Available', 'In Use', 'Maintenance', 'Disabled', 'Unavailable'));
+CHECK (status IN ('Available', 'In Use', 'Maintenance', 'Not Available', 'Disabled'));
 
 UPDATE public.machines
 SET enabled = false
-WHERE status IN ('Maintenance', 'Disabled', 'Unavailable');
+WHERE status IN ('In Use', 'Maintenance', 'Not Available', 'Disabled');
 
 UPDATE public.machines
 SET enabled = true
-WHERE status IN ('Available', 'In Use')
+WHERE status = 'Available'
   AND enabled IS DISTINCT FROM true;

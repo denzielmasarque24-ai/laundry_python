@@ -21,7 +21,6 @@ import html
 import tempfile
 import random
 import smtplib
-from collections import Counter
 from datetime import datetime, timezone, timedelta
 from itertools import product
 from email.message import EmailMessage
@@ -194,9 +193,9 @@ DEFAULT_MACHINE_ROWS = [
     for number in range(1, 9)
 ]
 
-VALID_MACHINE_STATUSES = {"Available", "In Use", "Maintenance", "Disabled", "Unavailable"}
-ADMIN_MACHINE_STATUS_OPTIONS = {"Available", "In Use", "Maintenance"}
-INACTIVE_MACHINE_STATUSES = {"Maintenance", "Disabled", "Unavailable"}
+VALID_MACHINE_STATUSES = {"Available", "In Use", "Maintenance", "Not Available", "Disabled", "Unavailable"}
+ADMIN_MACHINE_STATUS_OPTIONS = {"Available", "In Use", "Maintenance", "Not Available"}
+INACTIVE_MACHINE_STATUSES = {"In Use", "Maintenance", "Not Available", "Disabled", "Unavailable"}
 
 EMAIL_RE = re.compile(r"^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$", re.IGNORECASE)
 PHONE_E164_RE = re.compile(r"^\+[1-9]\d{7,14}$")
@@ -2727,9 +2726,11 @@ def admin_dashboard_machines():
         machine_id = row.get("id") or machine_number
         name = row.get("name") or f"Machine {machine_number}"
         status = row.get("status", "Available")
+        if status == "Unavailable":
+            status = "Not Available"
         if status not in VALID_MACHINE_STATUSES:
             status = "Available"
-        enabled = bool(row.get("enabled", status not in INACTIVE_MACHINE_STATUSES)) and status not in INACTIVE_MACHINE_STATUSES
+        enabled = bool(row.get("enabled", status == "Available")) and status == "Available"
         effective_enabled = enabled and machines_globally_enabled
         load_type = row.get("load_type", "Medium")
         if load_type not in allowed_load_types and allowed_load_types:
@@ -2768,7 +2769,7 @@ def admin_dashboard_machines():
                                     "name": row.get("name") or f"Machine {row.get('machine_number')}",
                                     "status": row.get("status", "Available"),
                                     "load_type": row.get("load_type", "Medium"),
-                                    "enabled": bool(row.get("enabled", True)) and row.get("status", "Available") not in INACTIVE_MACHINE_STATUSES,
+                                    "enabled": bool(row.get("enabled", True)) and row.get("status", "Available") == "Available",
                                 }
                                 for row in seed_rows
                             ],
@@ -2917,11 +2918,13 @@ def update_machine(machine_number, name=None, status=None, enabled=None, load_ty
     )
     machine_name = (name if name is not None else (current_machine or {}).get("name", base_machine["name"])).strip()
     machine_status = status if status is not None else (current_machine or {}).get("status", base_machine["status"])
+    if machine_status == "Unavailable":
+        machine_status = "Not Available"
     if machine_status not in VALID_MACHINE_STATUSES:
         raise ValueError("Invalid machine status.")
     machine_load_type = load_type if load_type is not None else (current_machine or {}).get("load_type", base_machine["load_type"])
     machine_enabled = bool(enabled) if enabled is not None else bool((current_machine or {}).get("enabled", base_machine["enabled"]))
-    if machine_status in INACTIVE_MACHINE_STATUSES:
+    if machine_status != "Available":
         machine_enabled = False
     client = admin_db_client()
     if client:
@@ -2996,6 +2999,8 @@ def update_machine_status_by_id(machine_id, status, load_type=None):
     machine_id = str(machine_id or "").strip()
     if not machine_id:
         raise ValueError("Machine id is required.")
+    if status == "Unavailable":
+        status = "Not Available"
     if status not in VALID_MACHINE_STATUSES:
         raise ValueError("Invalid machine status.")
 
@@ -3022,15 +3027,15 @@ def update_machine_status_by_id(machine_id, status, load_type=None):
         int(machine_number),
         name=machine.get("name"),
         status=status,
-        enabled=status not in INACTIVE_MACHINE_STATUSES,
+        enabled=status == "Available",
         load_type=resolved_load_type,
     )
     updated = dict(machine)
     updated["status"] = status
     updated["status_display"] = status
     updated["load_type"] = resolved_load_type
-    updated["enabled"] = status not in INACTIVE_MACHINE_STATUSES
-    updated["effective_enabled"] = status not in INACTIVE_MACHINE_STATUSES
+    updated["enabled"] = status == "Available"
+    updated["effective_enabled"] = status == "Available"
     return updated
 
 
@@ -3211,7 +3216,6 @@ def update_admin_profile_settings(user_id, name, email, phone="", password="", a
         raise ValueError(f"Could not update admin profile: {exc}")
 
 
-# â”€â”€ FIXED: build_admin_reports now uses camelCase keys to match the JS frontend â”€â”€
 def upload_admin_avatar_to_storage(user_id, image_bytes, content_type):
     if not is_supabase_enabled():
         raise ValueError("Supabase is not configured.")
@@ -3298,54 +3302,6 @@ def update_admin_avatar(user_id, avatar):
         raise ValueError(f"Profile update failed: {exc}")
 
 
-def build_admin_reports(bookings, machines):
-    per_day_counter = Counter(
-        (booking.get("pickup_date") or booking.get("date") or "Unscheduled")
-        for booking in bookings
-    )
-    service_counter = Counter(booking.get("service_type", "Unknown") for booking in bookings)
-    machine_counter = Counter(booking.get("machine", "Unassigned") for booking in bookings)
-    status_counter = Counter((booking.get("status") or "Pending") for booking in bookings)
-
-    completed_revenue = sum(
-        float(booking.get("price", 0) or booking.get("total_price", 0) or booking.get("total_amount", 0) or 0)
-        for booking in bookings
-        if (booking.get("status") or "").lower() == "completed"
-    )
-    total_income = sum(
-        float(booking.get("price", 0) or booking.get("total_price", 0) or booking.get("total_amount", 0) or 0)
-        for booking in bookings
-        if (booking.get("payment_status") or "").strip().lower() == "paid"
-    )
-
-    return {
-        "bookingsPerDay": [
-            {"label": day, "count": count}
-            for day, count in sorted(per_day_counter.items())[-7:]
-        ],
-        "mostUsedService": (
-            service_counter.most_common(1)[0][0] if service_counter else "No data yet"
-        ),
-        "machineUsage": [
-            {
-                "label": machine["name"],
-                "count": machine_counter.get(machine["name"], 0),
-                "status": machine.get("status_display") or machine.get("status", "Available"),
-            }
-            for machine in machines
-        ],
-        "statusBreakdown": {
-            "pending": status_counter.get("Pending", 0),
-            "inProgress": status_counter.get("In Progress", 0),
-            "completed": status_counter.get("Completed", 0),
-            "cancelled": status_counter.get("Cancelled", 0),
-        },
-        "completedRevenue": round(completed_revenue, 2),
-        "totalBookings": len(bookings),
-        "totalIncome": round(total_income, 2),
-    }
-
-
 def admin_dashboard_payments(bookings_fallback=None):
     bookings = bookings_fallback or []
     client = admin_db_client()
@@ -3406,20 +3362,9 @@ def build_admin_dashboard_payload():
     completed_orders = sum(1 for booking in bookings if booking.get("status") == "Completed")
     pending_orders = sum(1 for booking in bookings if booking.get("status") == "Pending")
     cancelled_orders = sum(1 for booking in bookings if booking.get("status") == "Cancelled")
-    active_machines = sum(1 for machine in machines if machine["enabled"] and machine["status"] == "In Use")
+    active_machines = sum(1 for machine in machines if machine["status"] == "In Use")
     available_machines = sum(1 for machine in machines if machine["enabled"] and machine["status"] == "Available")
     revenue = sum(float(booking.get("price", 0) or booking.get("total_price", 0) or 0) for booking in bookings if booking.get("status") == "Completed")
-    reports = build_admin_reports(bookings, machines)
-    reports["totalUsers"] = len(users)
-    reports["totalIncome"] = round(
-        sum(
-            float(payment.get("amount", 0) or 0)
-            for payment in payments
-            if (payment.get("payment_status") or payment.get("status") or "").strip().lower() == "paid"
-        ),
-        2,
-    )
-
     return {
         "summary": {
             "total_users": len(users),
@@ -3436,12 +3381,10 @@ def build_admin_dashboard_payload():
         "payments": payments,
         "machines": machines,
         "services": services,
-        "reports": reports,
         "settings": settings,
     }
 
 
-# â”€â”€ FIXED: empty_admin_dashboard_payload now uses camelCase keys to match JS â”€â”€
 def empty_admin_dashboard_payload():
     return {
         "summary": {
@@ -3459,18 +3402,6 @@ def empty_admin_dashboard_payload():
         "payments": [],
         "machines": [],
         "services": [],
-        "reports": {
-            "bookingsPerDay": [],
-            "mostUsedService": "No data yet",
-            "machineUsage": [],
-            "statusBreakdown": {
-                "pending": 0,
-                "inProgress": 0,
-                "completed": 0,
-                "cancelled": 0,
-            },
-            "completedRevenue": 0.0,
-        },
         "settings": {
             "profile": {
                 "name": session.get("user", {}).get("name", ""),
@@ -4611,14 +4542,6 @@ def admin_services():
     return render_admin_dashboard_view("services")
 
 
-@app.route("/admin/reports")
-@app.route("/admin-reports")
-@app.route("/admin_reports")
-@admin_required
-def admin_reports():
-    return render_admin_dashboard_view("reports")
-
-
 @app.route("/admin/settings")
 @app.route("/admin-settings")
 @app.route("/admin_settings")
@@ -5374,7 +5297,7 @@ def booking():
             errors.append("This machine is currently in use. Please select an available machine.")
         elif selected_machine and load_type and normalize_booking_load_type(selected_machine.get("load_type", "")) != load_type:
             errors.append("Selected machine does not match the chosen load type. Please choose another machine.")
-        elif selected_machine_status and selected_machine_status not in {"Available", "Disabled", "In Use", "Maintenance"}:
+        elif selected_machine_status and selected_machine_status not in {"Available", "Disabled", "In Use", "Maintenance", "Not Available", "Unavailable"}:
             errors.append("Invalid machine status supplied.")
 
         if selected_machine and not load_type:

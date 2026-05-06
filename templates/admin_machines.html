@@ -29,8 +29,8 @@
 
 <script>
 (function () {
-  const VALID_STATUSES    = ["Available", "In Use", "Maintenance"];
-  const INACTIVE_STATUSES  = new Set(["Maintenance"]);
+  const VALID_STATUSES    = ["Available", "In Use", "Maintenance", "Not Available"];
+  const INACTIVE_STATUSES  = new Set(["In Use", "Maintenance", "Not Available", "Unavailable", "Disabled"]);
   const VALID_LOAD_TYPES   = ["Light", "Medium", "Heavy"];
 
   /* ── Badge colour map ──────────────────────────────────── */
@@ -38,6 +38,7 @@
     "Available":   "status-available",
     "In Use":      "status-in-use",
     "Maintenance": "status-maintenance",
+    "Not Available": "status-not-available",
     "Disabled":    "status-disabled",
     "Unavailable": "status-unavailable",
   };
@@ -97,7 +98,7 @@
     grid.innerHTML = machines.map(machine => {
       const machineKey  = String(machine.id ?? machine.machine_number ?? "");
       // Always use the raw status from the DB — never override with normalizeMachineStatus
-      const rawStatus   = (machine.status || "Available");
+      const rawStatus   = (machine.status || "Available") === "Unavailable" ? "Not Available" : (machine.status || "Available");
       const loadType    = machine.load_type || "Medium";
       const isInactive  = INACTIVE_STATUSES.has(rawStatus);
 
@@ -197,6 +198,8 @@
         status: selectedStatus,
         load_type: selectedLoadType,
       });
+      console.log("[FreshWash Machines] machineId:", machine.id ?? machine.machine_number);
+      console.log("[FreshWash Machines] selectedStatus:", selectedStatus);
       console.log("[FreshWash Machines] selected machine id:", machine.id ?? machine.machine_number);
       console.log("[FreshWash Machines] selected status:", selectedStatus);
 
@@ -221,6 +224,7 @@
       }
 
       console.log("[FreshWash Machines] Supabase update result:", result);
+      console.log("[FreshWash Machines] update response:", result);
 
       /* ── Optimistic UI update ── */
       const tag = document.getElementById(`machineStatusTag-${machineKey}`);
@@ -242,8 +246,8 @@
           dashboardState.machines[idx].status         = selectedStatus;
           dashboardState.machines[idx].status_display = selectedStatus;
           dashboardState.machines[idx].load_type      = selectedLoadType;
-          dashboardState.machines[idx].enabled        = !INACTIVE_STATUSES.has(selectedStatus);
-          dashboardState.machines[idx].effective_enabled = !INACTIVE_STATUSES.has(selectedStatus);
+          dashboardState.machines[idx].enabled        = selectedStatus === "Available";
+          dashboardState.machines[idx].effective_enabled = selectedStatus === "Available";
         }
       }
 
