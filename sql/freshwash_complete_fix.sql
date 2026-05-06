@@ -215,13 +215,20 @@ CREATE POLICY "Admin full access payments"
 
 -- ── 5. SERVICES ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.services (
-  name        text PRIMARY KEY,
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        text NOT NULL,
   price       numeric(10,2) NOT NULL DEFAULT 0,
-  description text          NOT NULL DEFAULT ''
+  description text          NOT NULL DEFAULT '',
+  created_at  timestamptz   DEFAULT now()
 );
 
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS id          uuid DEFAULT gen_random_uuid();
+UPDATE public.services SET id = gen_random_uuid() WHERE id IS NULL;
 ALTER TABLE public.services ADD COLUMN IF NOT EXISTS price       numeric(10,2) NOT NULL DEFAULT 0;
 ALTER TABLE public.services ADD COLUMN IF NOT EXISTS description text          NOT NULL DEFAULT '';
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS created_at  timestamptz DEFAULT now();
+CREATE UNIQUE INDEX IF NOT EXISTS services_id_unique ON public.services(id);
+CREATE UNIQUE INDEX IF NOT EXISTS services_name_unique ON public.services(name);
 
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public can view services"    ON public.services;

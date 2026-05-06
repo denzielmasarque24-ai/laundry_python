@@ -202,16 +202,18 @@ create policy "Users can delete own bookings"
 
 -- ── Services table ─────────────────────────────────────────
 create table if not exists public.services (
-  id          uuid default gen_random_uuid(),
-  name        text primary key,
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
   price       numeric(10,2) not null default 0,
-  description text not null default ''
+  description text not null default '',
+  created_at  timestamptz default now()
 );
 
 alter table public.services add column if not exists id uuid default gen_random_uuid();
 update public.services set id = gen_random_uuid() where id is null;
 alter table public.services add column if not exists price numeric(10,2) not null default 0;
 alter table public.services add column if not exists description text not null default '';
+alter table public.services add column if not exists created_at timestamptz default now();
 create unique index if not exists services_id_unique on public.services(id);
 create unique index if not exists services_name_unique on public.services(name);
 

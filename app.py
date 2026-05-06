@@ -2853,19 +2853,23 @@ def admin_dashboard_services():
     client = admin_db_client()
     if client:
         try:
-            rows = client.table("services").select("*").order("name").execute().data or []
-            if rows:
-                return [
-                    {
-                        "id": row.get("id") or row.get("name", ""),
-                        "name": row.get("name", ""),
-                        "price": float(row.get("price", 0) or 0),
-                        "description": row.get("description", ""),
-                    }
-                    for row in rows
-                ]
-        except Exception:
-            pass
+            try:
+                result = client.table("services").select("id,name,price,description,created_at").order("name").execute()
+            except Exception:
+                result = client.table("services").select("*").order("name").execute()
+            rows = result.data or []
+            return [
+                {
+                    "id": row.get("id") or row.get("name", ""),
+                    "name": row.get("name", ""),
+                    "price": float(row.get("price", 0) or 0),
+                    "description": row.get("description", ""),
+                    "created_at": row.get("created_at", ""),
+                }
+                for row in rows
+            ]
+        except Exception as exc:
+            log_exception("admin services fetch failed", exc)
 
     try:
         with local_auth_conn() as conn:
@@ -3039,28 +3043,20 @@ def update_machine_status_by_id(machine_id, status, load_type=None):
     return updated
 
 
-def update_service(name, price, description):
-    client = admin_db_client()
-    if client:
-        try:
-            client.table("services").upsert(
-                {"name": name, "price": price, "description": description},
-                on_conflict="name"
-            ).execute()
-        except Exception as exc:
-            log_exception("admin service upsert failed", exc, service_name=name)
-
-    with local_auth_conn() as conn:
-        conn.execute(
-            """
-            INSERT INTO admin_services (name, price, description)
-            VALUES (?, ?, ?)
-            ON CONFLICT(name) DO UPDATE SET
-              price = excluded.price,
-              description = excluded.description
-            """,
-            (name, price, description)
-        )
+def service_payload_from_request(data):
+    name = (data.get("name") or "").strip()
+    description = (data.get("description") or "").strip()
+    try:
+        price = float(data.get("price", 0))
+    except (TypeError, ValueError):
+        raise ValueError("Enter a valid numeric price.")
+    if not name:
+        raise ValueError("Service name is required.")
+    if price < 0:
+        raise ValueError("Service price cannot be negative.")
+    if not description:
+        raise ValueError("Service description is required.")
+    return {"name": name, "price": price, "description": description}
 
 
 def parse_bool_setting(value, default=False):
@@ -4909,73 +4905,97 @@ def update_machine_status_api():
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 
-@app.route("/admin/api/services/<path:service_name>", methods=["POST"])
+@app.route("/admin/api/services/<path:service_ref>", methods=["POST"])
 @app.route("/admin/api/services", methods=["POST"])
 @admin_required
-def admin_service_action(service_name=None):
+def admin_service_action(service_ref=None):
     data = request.get_json() or {}
-    action = data.get("action", "save")
-    if action == "create":
-        service_name = data.get("name", "").strip()
-    new_service_name = (data.get("name") or service_name or "").strip()
-    description = data.get("description", "").strip()
-    if not service_name:
-        return jsonify({"ok": False, "error": "Service name is required."}), 400
-    if action != "delete" and not new_service_name:
-        return jsonify({"ok": False, "error": "Service name is required."}), 400
     try:
-        price = float(data.get("price", 0))
-    except (TypeError, ValueError):
-        return jsonify({"ok": False, "error": "Enter a valid numeric price."}), 400
-
-    if action != "delete" and not description:
-        return jsonify({"ok": False, "error": "Service description is required."}), 400
-
-    if action == "delete":
+        action = (data.get("action") or "save").strip().lower()
+        service_id = str(data.get("id") or data.get("service_id") or service_ref or "").strip()
+        service_name_fallback = str(data.get("old_name") or service_ref or "").strip()
         client = admin_db_client()
-        if client:
-            try:
-                client.table("services").delete().eq("name", service_name).execute()
-            except Exception as exc:
-                log_exception("admin service delete failed", exc, service_name=service_name)
-        with local_auth_conn() as conn:
-            conn.execute("DELETE FROM admin_services WHERE name = ?", (service_name,))
-    elif action == "create":
-        client = admin_db_client()
-        if client:
-            try:
-                client.table("services").upsert(
-                    {"name": service_name, "price": price, "description": description},
-                    on_conflict="name"
-                ).execute()
-            except Exception as exc:
-                log_exception("admin service create failed", exc, service_name=service_name)
-        with local_auth_conn() as conn:
-            conn.execute(
-                """
-                INSERT INTO admin_services (name, price, description)
-                VALUES (?, ?, ?)
-                ON CONFLICT(name) DO UPDATE SET
-                  price = excluded.price,
-                  description = excluded.description
-                """,
-                (service_name, price, description)
-            )
-    else:
-        if new_service_name != service_name:
-            client = admin_db_client()
+
+        if action == "create":
+            payload = service_payload_from_request(data)
+            print("[FreshWash Services] add payload:", payload)
             if client:
                 try:
-                    client.table("services").delete().eq("name", service_name).execute()
+                    result = client.table("services").insert(payload).execute()
+                    result_data = getattr(result, "data", None)
+                    print("[FreshWash Services] add Supabase response:", result_data)
                 except Exception as exc:
-                    log_exception("admin service rename cleanup failed", exc, service_name=service_name)
-            with local_auth_conn() as conn:
-                conn.execute("DELETE FROM admin_services WHERE name = ?", (service_name,))
-        update_service(new_service_name, price, description)
-    try:
+                    print("[FreshWash Services] add Supabase error:", exc)
+                    raise
+            else:
+                with local_auth_conn() as conn:
+                    conn.execute(
+                        """
+                        INSERT INTO admin_services (name, price, description)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(name) DO UPDATE SET
+                          price = excluded.price,
+                          description = excluded.description
+                        """,
+                        (payload["name"], payload["price"], payload["description"]),
+                    )
+
+        elif action == "delete":
+            if not service_id:
+                return jsonify({"ok": False, "error": "Service id is required."}), 400
+            print("[FreshWash Services] delete id:", service_id)
+            if client:
+                try:
+                    result = client.table("services").delete().eq("id", service_id).execute()
+                    result_data = getattr(result, "data", None)
+                    print("[FreshWash Services] delete Supabase response:", result_data)
+                    if result_data == []:
+                        raise ValueError(f"Service '{service_id}' was not found.")
+                except Exception as exc:
+                    print("[FreshWash Services] delete Supabase error:", exc)
+                    raise
+            else:
+                with local_auth_conn() as conn:
+                    conn.execute("DELETE FROM admin_services WHERE name = ?", (service_id,))
+
+        elif action == "save":
+            if not service_id:
+                return jsonify({"ok": False, "error": "Service id is required."}), 400
+            payload = service_payload_from_request(data)
+            print("[FreshWash Services] update payload:", {"id": service_id, **payload})
+            if client:
+                try:
+                    result = client.table("services").update(payload).eq("id", service_id).execute()
+                    result_data = getattr(result, "data", None)
+                    print("[FreshWash Services] update Supabase response:", result_data)
+                    if result_data == []:
+                        raise ValueError(f"Service '{service_id}' was not found.")
+                except Exception as exc:
+                    print("[FreshWash Services] update Supabase error:", exc)
+                    raise
+            else:
+                old_name = service_name_fallback or service_id
+                with local_auth_conn() as conn:
+                    if payload["name"] != old_name:
+                        conn.execute("DELETE FROM admin_services WHERE name = ?", (old_name,))
+                    conn.execute(
+                        """
+                        INSERT INTO admin_services (name, price, description)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(name) DO UPDATE SET
+                          price = excluded.price,
+                          description = excluded.description
+                        """,
+                        (payload["name"], payload["price"], payload["description"]),
+                    )
+        else:
+            return jsonify({"ok": False, "error": "Unsupported service action."}), 400
+
         return jsonify({"ok": True, "data": build_admin_dashboard_payload()})
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
     except Exception as exc:
-        log_exception("admin service payload refresh failed", exc, action=action, service_name=service_name)
+        log_exception("admin service action failed", exc, action=data.get("action"), service_ref=service_ref, data=data)
         return jsonify({"ok": False, "error": f"Service update failed: {exc}"}), 500
 
 

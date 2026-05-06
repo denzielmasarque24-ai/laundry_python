@@ -2679,19 +2679,22 @@ const DASHBOARD_CONFIG = {
       if (!grid) return;
       if (countPill) countPill.textContent = `${services.length} service${services.length === 1 ? "" : "s"}`;
       if (!services.length) { grid.innerHTML = '<p class="admin-empty">No data available</p>'; return; }
-      grid.innerHTML = services.map(service => `
-        <article class="admin-service-card">
+      grid.innerHTML = services.map(service => {
+        const serviceId = String(service.id || service.name || "");
+        return `
+        <article class="admin-service-card" id="serviceCard-${escapeHtml(serviceId)}">
           <div class="admin-service-form">
-            <input class="admin-inline-input" id="serviceName-${escapeHtml(service.id)}" type="text" value="${escapeHtml(service.name)}" />
-            <input class="admin-inline-input" id="servicePrice-${escapeHtml(service.id)}" type="number" min="0" step="0.01" value="${escapeHtml(service.price)}" />
-            <textarea id="serviceDescription-${escapeHtml(service.id)}">${escapeHtml(service.description)}</textarea>
+            <input class="admin-inline-input" id="serviceName-${escapeHtml(serviceId)}" type="text" value="${escapeHtml(service.name)}" />
+            <input class="admin-inline-input" id="servicePrice-${escapeHtml(serviceId)}" type="number" min="0" step="0.01" value="${escapeHtml(service.price)}" />
+            <textarea id="serviceDescription-${escapeHtml(serviceId)}">${escapeHtml(service.description)}</textarea>
             <div class="admin-service-actions">
-              <button type="button" class="admin-button admin-button-primary" onclick="saveService(${JSON.stringify(String(service.name)).replace(/"/g,'&quot;')}, ${JSON.stringify(String(service.id)).replace(/"/g,'&quot;')})">Save Service</button>
-              <button type="button" class="admin-button admin-button-danger" onclick="deleteService(${JSON.stringify(String(service.name)).replace(/"/g,'&quot;')})">Delete Service</button>
+              <button type="button" class="admin-button admin-button-primary" id="serviceSaveBtn-${escapeHtml(serviceId)}" onclick="saveService(${JSON.stringify(serviceId).replace(/"/g,'&quot;')}, ${JSON.stringify(String(service.name || "")).replace(/"/g,'&quot;')})">Save Service</button>
+              <button type="button" class="admin-button admin-button-danger" id="serviceDeleteBtn-${escapeHtml(serviceId)}" onclick="deleteService(${JSON.stringify(serviceId).replace(/"/g,'&quot;')})">Delete Service</button>
             </div>
           </div>
         </article>
-      `).join("");
+      `;
+      }).join("");
     }
 
     function renderSettings(settings = {}) {
@@ -2931,35 +2934,91 @@ const DASHBOARD_CONFIG = {
     }
 
     async function addService() {
+      const addButton = document.getElementById("addServiceButton");
       try {
         const name = document.getElementById("newServiceName")?.value.trim() || "";
         const price = document.getElementById("newServicePrice")?.value || "0";
         const description = document.getElementById("newServiceDescription")?.value.trim() || "";
         if (!name || !description) throw new Error("Service name and description are required.");
-        await postAdminJson("/admin/api/services", { action: "create", name, price, description });
+        const payload = { action: "create", name, price, description };
+        console.log("[FreshWash Services] add payload:", payload);
+        if (addButton) {
+          addButton.disabled = true;
+          addButton.textContent = "Adding...";
+        }
+        const result = await postAdminJson("/admin/api/services", payload);
+        console.log("[FreshWash Services] Supabase response:", result);
         document.getElementById("newServiceName").value = "";
         document.getElementById("newServicePrice").value = "";
         document.getElementById("newServiceDescription").value = "";
+        if (result.data) applyAdminPayload(result.data);
         await refreshSectionData("services");
-      } catch (error) { logSupabaseError("Service create failed", error); }
+        showSuccess("Service added successfully.");
+      } catch (error) {
+        console.error("[FreshWash Services] Supabase error:", error);
+        logSupabaseError("Service create failed", error);
+      } finally {
+        if (addButton) {
+          addButton.disabled = false;
+          addButton.textContent = "Add Service";
+        }
+      }
     }
 
-    async function saveService(serviceName, serviceId) {
+    async function saveService(serviceId, oldName = "") {
+      const saveButton = document.getElementById(`serviceSaveBtn-${serviceId}`);
       try {
-        const currentName = document.getElementById(`serviceName-${serviceId}`)?.value.trim() || serviceName;
+        const currentName = document.getElementById(`serviceName-${serviceId}`)?.value.trim() || oldName;
         const currentPrice = document.getElementById(`servicePrice-${serviceId}`)?.value || "0";
         const currentDescription = document.getElementById(`serviceDescription-${serviceId}`)?.value.trim() || "";
-        await postAdminJson(`/admin/api/services/${encodeURIComponent(serviceName)}`, { action: "save", name: currentName, price: currentPrice, description: currentDescription });
+        const payload = { action: "save", id: serviceId, old_name: oldName, name: currentName, price: currentPrice, description: currentDescription };
+        console.log("[FreshWash Services] update payload:", payload);
+        if (saveButton) {
+          saveButton.disabled = true;
+          saveButton.textContent = "Saving...";
+        }
+        const result = await postAdminJson(`/admin/api/services/${encodeURIComponent(serviceId)}`, payload);
+        console.log("[FreshWash Services] Supabase response:", result);
+        if (result.data) applyAdminPayload(result.data);
         await refreshSectionData("services");
-      } catch (error) { logSupabaseError("Service save failed", error); }
+        showSuccess("Service saved successfully.");
+      } catch (error) {
+        console.error("[FreshWash Services] Supabase error:", error);
+        logSupabaseError("Service save failed", error);
+      } finally {
+        if (saveButton) {
+          saveButton.disabled = false;
+          saveButton.textContent = "Save Service";
+        }
+      }
     }
 
-    async function deleteService(serviceName) {
+    async function deleteService(serviceId) {
       if (!window.confirm("Are you sure you want to delete this?")) return;
+      const deleteButton = document.getElementById(`serviceDeleteBtn-${serviceId}`);
       try {
-        await postAdminJson(`/admin/api/services/${encodeURIComponent(serviceName)}`, { action: "delete", price: 0, description: "delete" });
+        const payload = { action: "delete", id: serviceId };
+        console.log("[FreshWash Services] delete id:", serviceId);
+        if (deleteButton) {
+          deleteButton.disabled = true;
+          deleteButton.textContent = "Deleting...";
+        }
+        const result = await postAdminJson(`/admin/api/services/${encodeURIComponent(serviceId)}`, payload);
+        console.log("[FreshWash Services] Supabase response:", result);
+        dashboardState.services = dashboardState.services.filter(service => String(service.id || service.name) !== String(serviceId));
+        renderServices(dashboardState.services);
+        if (result.data) applyAdminPayload(result.data);
         await refreshSectionData("services");
-      } catch (error) { logSupabaseError("Service delete failed", error); }
+        showSuccess("Service deleted successfully.");
+      } catch (error) {
+        console.error("[FreshWash Services] Supabase error:", error);
+        logSupabaseError("Service delete failed", error);
+      } finally {
+        if (deleteButton) {
+          deleteButton.disabled = false;
+          deleteButton.textContent = "Delete Service";
+        }
+      }
     }
 
     function viewBookingRow(bookingId) {
