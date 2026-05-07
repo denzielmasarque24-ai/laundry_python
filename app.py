@@ -5499,6 +5499,94 @@ def contact_us():
     return render_template("contact_us.html", user=user)
 
 
+CONTACT_MESSAGE_TABLE_CANDIDATES = ("contact_messages", "messages", "contact_us")
+
+
+def select_contact_message_table(client):
+    errors = []
+    first_available = None
+    for table_name in CONTACT_MESSAGE_TABLE_CANDIDATES:
+        try:
+            result = client.table(table_name).select("id").limit(1).execute()
+            if first_available is None:
+                first_available = table_name
+            if result.data:
+                return table_name
+        except Exception as exc:
+            errors.append(f"{table_name}: {exc}")
+    if first_available:
+        return first_available
+    raise RuntimeError("No contact messages table is available. " + " / ".join(errors))
+
+
+def fetch_contact_message_rows(client):
+    rows = []
+    table_names = []
+    errors = []
+    for table_name in CONTACT_MESSAGE_TABLE_CANDIDATES:
+        try:
+            table_rows = (
+                client.table(table_name)
+                .select("id,user_id,name,email,subject,message,admin_reply,created_at")
+                .order("created_at", desc=True)
+                .execute()
+                .data
+                or []
+            )
+        except Exception as exc:
+            missing_column = extract_schema_cache_missing_column(exc, table_name)
+            if missing_column:
+                try:
+                    table_rows = (
+                        client.table(table_name)
+                        .select("*")
+                        .order("created_at", desc=True)
+                        .execute()
+                        .data
+                        or []
+                    )
+                except Exception as fallback_exc:
+                    errors.append(f"{table_name}: {fallback_exc}")
+                    continue
+            else:
+                errors.append(f"{table_name}: {exc}")
+                continue
+        table_names.append(table_name)
+        for row in table_rows:
+            if isinstance(row, dict):
+                row["_table"] = table_name
+                rows.append(row)
+    if not table_names and errors:
+        raise RuntimeError("No contact messages table is available. " + " / ".join(errors))
+    rows.sort(key=lambda row: row.get("created_at") or "", reverse=True)
+    return (table_names[0] if table_names else ""), rows
+
+
+def insert_contact_message(client, payload):
+    errors = []
+    for table_name in CONTACT_MESSAGE_TABLE_CANDIDATES:
+        variants = [
+            payload,
+            {key: value for key, value in payload.items() if key != "user_id"},
+            {key: value for key, value in payload.items() if key not in ("user_id", "subject")},
+        ]
+        for variant in variants:
+            try:
+                data = client.table(table_name).insert(variant).execute().data or [{}]
+                return data[0]
+            except Exception as exc:
+                missing_column = extract_schema_cache_missing_column(exc, table_name)
+                if missing_column:
+                    errors.append(f"{table_name}: missing {missing_column}")
+                    continue
+                if "not-null constraint" in str(exc).lower() and "subject" in variant:
+                    errors.append(f"{table_name}: {exc}")
+                    continue
+                errors.append(f"{table_name}: {exc}")
+                break
+    raise RuntimeError("Could not save contact message. " + " / ".join(errors))
+
+
 @app.route("/api/contact-us", methods=["POST"])
 @login_required
 def contact_us_send_api():
@@ -5528,12 +5616,13 @@ def contact_us_send_api():
 
     try:
         insert_payload = {
+            "user_id": user.get("id"),
             "name": name,
             "email": email,
             "subject": subject,
             "message": message_text,
         }
-        inserted = (client.table("contact_us").insert(insert_payload).execute().data or [{}])[0]
+        inserted = insert_contact_message(client, insert_payload)
         return jsonify({"ok": True, "message": inserted, "confirmation": "Your message has been sent successfully."})
     except Exception as exc:
         log_exception("contact us send failed", exc, user=user.get("email", ""))
@@ -5562,8 +5651,7 @@ def admin_messages():
     profile_defaults.setdefault("email", "admin@gmail.com")
     profile_defaults.setdefault("avatar", None)
     try:
-        result = db().table("contact_us").select("id,name,email,subject,message,created_at").order("created_at", desc=True).execute()
-        messages = result.data or []
+        _, messages = fetch_contact_message_rows(db())
     except Exception as exc:
         log_exception("admin contact messages load failed", exc, user=session.get("user", {}).get("email", ""))
     try:
@@ -5595,17 +5683,74 @@ def admin_messages_api():
     if not client:
         return jsonify({"ok": False, "error": "Database unavailable."}), 503
     try:
-        rows = (
-            client.table("contact_us")
-            .select("id,name,email,subject,message,created_at")
-            .order("created_at", desc=True)
-            .execute()
-            .data
-            or []
-        )
+        _, rows = fetch_contact_message_rows(client)
         return jsonify({"ok": True, "messages": rows})
     except Exception as exc:
         log_exception("admin contact messages api failed", exc, user=session.get("user", {}).get("email", ""))
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@app.route("/api/admin/messages/<message_id>/reply", methods=["POST"])
+@admin_required
+def admin_message_reply_api(message_id):
+    client = db()
+    if not client:
+        return jsonify({"ok": False, "error": "Database unavailable."}), 503
+    payload = request.get_json(silent=True) or {}
+    reply_text = str(payload.get("reply", "") or "").strip()
+    if not reply_text:
+        return jsonify({"ok": False, "error": "Reply message is required."}), 400
+    if len(reply_text) > 4000:
+        return jsonify({"ok": False, "error": "Reply is too long."}), 400
+    try:
+        requested_table = str(payload.get("table", "") or "").strip()
+        table_candidates = [requested_table] if requested_table in CONTACT_MESSAGE_TABLE_CANDIDATES else []
+        table_candidates.extend(table for table in CONTACT_MESSAGE_TABLE_CANDIDATES if table not in table_candidates)
+        updated = []
+        table_name = ""
+        last_error = None
+        for candidate in table_candidates:
+            try:
+                table_name = candidate
+                existing_rows = (
+                    client.table(candidate)
+                    .select("id,admin_reply")
+                    .eq("id", message_id)
+                    .limit(1)
+                    .execute()
+                    .data
+                    or []
+                )
+                if not existing_rows:
+                    continue
+                existing_reply = str(existing_rows[0].get("admin_reply") or "").strip()
+                next_reply = f"{existing_reply}\n\n{reply_text}" if existing_reply else reply_text
+                updated = (
+                    client.table(candidate)
+                    .update({"admin_reply": next_reply})
+                    .eq("id", message_id)
+                    .execute()
+                    .data
+                    or []
+                )
+                if updated:
+                    break
+            except Exception as table_exc:
+                last_error = table_exc
+                if extract_schema_cache_missing_column(table_exc, candidate) == "admin_reply":
+                    raise
+                continue
+        if not updated and last_error:
+            raise last_error
+        if not updated:
+            return jsonify({"ok": False, "error": "Message not found."}), 404
+        _, rows = fetch_contact_message_rows(client)
+        return jsonify({"ok": True, "message": updated[0], "messages": rows})
+    except Exception as exc:
+        log_exception("admin contact message reply failed", exc, message_id=message_id, user=session.get("user", {}).get("email", ""))
+        missing_column = extract_schema_cache_missing_column(exc, locals().get("table_name", "contact_messages"))
+        if missing_column == "admin_reply":
+            return jsonify({"ok": False, "error": "The contact messages table needs an admin_reply text column before replies can be saved."}), 400
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 @app.route("/")

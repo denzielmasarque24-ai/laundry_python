@@ -36,8 +36,19 @@ All endpoints return:
 - `GET /api/v1/auth/me`
 - `POST /api/v1/auth/test-email` (admin only)
 
+- `GET /api/v1/products`
+- `POST /api/v1/products` (admin only)
+- `PATCH /api/v1/products/:id` (admin only)
+
 - `POST /api/v1/orders`
 - `GET /api/v1/orders/me`
 - `GET /api/v1/orders` (admin only)
 - `PATCH /api/v1/orders/:id/status` (admin only)
 
+## Product Stock Orders
+
+For product checkout, send `productId` and `quantity` to `POST /api/v1/orders`.
+The API checks current stock, rejects out-of-stock or over-quantity orders, creates
+the order, and deducts stock in one database transaction. The response includes
+the updated product with `stockStatus` and `isAvailable` so admin product tables
+and shop pages can refresh immediately.

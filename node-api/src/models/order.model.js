@@ -13,21 +13,37 @@ const Order = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false
     },
+    productId: {
+      type: DataTypes.UUID,
+      allowNull: true
+    },
+    quantity: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 1,
+      validate: {
+        min: 1
+      }
+    },
+    unitPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true
+    },
     serviceType: {
       type: DataTypes.STRING(120),
-      allowNull: false
+      allowNull: true
     },
     weightKg: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: false
+      allowNull: true
     },
     pickupAddress: {
       type: DataTypes.STRING(255),
-      allowNull: false
+      allowNull: true
     },
     pickupDate: {
       type: DataTypes.DATEONLY,
-      allowNull: false
+      allowNull: true
     },
     deliveryDate: {
       type: DataTypes.DATEONLY,
@@ -55,4 +71,3 @@ const Order = sequelize.define(
 );
 
 module.exports = Order;
-

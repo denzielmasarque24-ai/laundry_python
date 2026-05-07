@@ -2,241 +2,888 @@
 
 {% block content %}
 <style>
-  .contact-message-cell {
-    white-space: nowrap;
-    width: 120px;
-    text-align: center;
-  }
-  .contact-message-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(8, 4, 10, 0.56);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    padding: 20px;
-  }
-  .contact-message-modal.is-open {
-    display: flex;
-  }
-  .contact-message-modal-card {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 680px;
-    max-width: 92vw;
-    max-height: 85vh;
-    background: #fff9fc;
-    border-radius: 18px;
-    box-shadow: 0 20px 46px rgba(191, 45, 121, 0.22);
-    border: 1px solid rgba(255, 157, 207, 0.38);
+  .freshwash-chat-shell {
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    min-height: 680px;
+    height: calc(100vh - 180px);
     overflow: hidden;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(242, 122, 178, 0.18);
+    box-shadow: 0 20px 46px rgba(142, 37, 88, 0.12);
+  }
+
+  .freshwash-chat-sidebar {
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    background:
+      linear-gradient(180deg, rgba(255, 248, 252, 0.96), rgba(255, 239, 247, 0.9)),
+      #fff7fb;
+    border-right: 1px solid rgba(242, 122, 178, 0.16);
   }
-  .contact-message-modal-head {
+
+  .freshwash-chat-sidebar-head {
+    padding: 22px 20px 16px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .freshwash-chat-title-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px;
-    background: linear-gradient(135deg, #ff4da6, #ff7ac3);
+    gap: 12px;
+  }
+
+  .freshwash-chat-title-row h3 {
+    margin: 0;
+    color: #3d1a2d;
+    font-size: 1.45rem;
+    line-height: 1.1;
+    font-weight: 800;
+  }
+
+  .freshwash-chat-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    color: #8a224f;
+    background: rgba(255, 209, 230, 0.74);
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+
+  .freshwash-chat-search {
+    position: relative;
+  }
+
+  .freshwash-chat-search i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #b35a85;
+    font-size: 0.88rem;
+  }
+
+  .freshwash-chat-search input {
+    width: 100%;
+    min-height: 46px;
+    border: 1px solid rgba(242, 122, 178, 0.2);
+    border-radius: 16px;
+    padding: 0 14px 0 40px;
+    background: rgba(255, 255, 255, 0.86);
+    color: #3d1a2d;
+    outline: none;
+    box-shadow: 0 10px 20px rgba(142, 37, 88, 0.06);
+  }
+
+  .freshwash-chat-search input:focus {
+    border-color: rgba(235, 77, 152, 0.5);
+    box-shadow: 0 0 0 4px rgba(235, 77, 152, 0.1);
+  }
+
+  .freshwash-chat-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 12px 16px;
+  }
+
+  .freshwash-chat-item {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 0;
+    border-radius: 18px;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    color: #3d1a2d;
+    transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .freshwash-chat-item:hover,
+  .freshwash-chat-item.is-active {
+    background: linear-gradient(135deg, rgba(255, 219, 236, 0.96), rgba(255, 238, 247, 0.98));
+    box-shadow: 0 12px 24px rgba(142, 37, 88, 0.12);
+    transform: translateY(-1px);
+  }
+
+  .freshwash-chat-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ff82bd, #8e2558);
     color: #fff;
+    font-weight: 800;
+    box-shadow: 0 10px 18px rgba(142, 37, 88, 0.18);
     flex: 0 0 auto;
   }
-  .contact-message-modal-head h3 {
-    margin: 0;
-    font-size: 18px;
+
+  .freshwash-chat-item-main,
+  .freshwash-chat-user-copy {
+    min-width: 0;
   }
-  .contact-message-modal-close {
-    border: 0;
-    width: 34px;
-    height: 34px;
+
+  .freshwash-chat-item-name,
+  .freshwash-chat-user-name {
+    display: block;
+    overflow: hidden;
+    color: #321725;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .freshwash-chat-preview,
+  .freshwash-chat-user-email {
+    display: block;
+    overflow: hidden;
+    color: #8a5a6b;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .freshwash-chat-item-side {
+    display: grid;
+    gap: 6px;
+    justify-items: end;
+  }
+
+  .freshwash-chat-time {
+    color: #a86b86;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .freshwash-chat-unread {
+    display: inline-flex;
+    min-width: 22px;
+    height: 22px;
+    align-items: center;
+    justify-content: center;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.24);
+    background: linear-gradient(135deg, #ff4da6, #8e2558);
     color: #fff;
-    font-size: 16px;
-    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 800;
   }
-  .contact-message-modal-body {
-    padding: 12px 14px 14px;
+
+  .freshwash-conversation {
     display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-width: 0;
+    min-height: 0;
+    background:
+      radial-gradient(680px 240px at 18% -8%, rgba(255, 203, 228, 0.42), transparent 68%),
+      linear-gradient(180deg, rgba(255, 253, 254, 0.98), rgba(255, 247, 251, 0.94));
+  }
+
+  .freshwash-conversation-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 22px;
+    border-bottom: 1px solid rgba(242, 122, 178, 0.14);
+    background: rgba(255, 255, 255, 0.68);
+    backdrop-filter: blur(8px);
+  }
+
+  .freshwash-chat-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .freshwash-chat-status {
+    display: inline-flex;
+    align-items: center;
     gap: 8px;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    color: #8a224f;
+    background: rgba(255, 226, 240, 0.9);
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .freshwash-chat-status::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff4da6;
+    box-shadow: 0 0 0 4px rgba(255, 77, 166, 0.14);
+  }
+
+  .freshwash-chat-body {
+    min-height: 0;
     overflow-y: auto;
-    flex: 1 1 auto;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
   }
-  .contact-message-modal-row {
+
+  .freshwash-date-separator {
+    align-self: center;
+    padding: 7px 12px;
+    border-radius: 999px;
+    color: #8a5a6b;
+    background: rgba(255, 232, 243, 0.92);
+    border: 1px solid rgba(242, 122, 178, 0.14);
+    font-size: 0.74rem;
+    font-weight: 800;
+  }
+
+  .freshwash-message-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    max-width: min(76%, 680px);
+  }
+
+  .freshwash-message-row.is-admin {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+
+  .freshwash-message-row.is-customer {
+    align-self: flex-start;
+  }
+
+  .freshwash-bubble {
     display: grid;
-    gap: 4px;
+    gap: 7px;
   }
-  .contact-message-modal-row strong {
-    font-size: 12px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: #8b3a66;
-  }
-  .contact-message-modal-row p {
+
+  .freshwash-bubble-text {
     margin: 0;
-    color: #3a2130;
-    line-height: 1.45;
-    font-size: 14px;
-    word-break: break-word;
+    padding: 13px 16px;
+    border-radius: 20px;
+    color: #3d1a2d;
+    background: #fff;
+    border: 1px solid rgba(242, 122, 178, 0.12);
+    box-shadow: 0 12px 24px rgba(142, 37, 88, 0.08);
+    line-height: 1.5;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
-  body.admin-dashboard-body.dark-mode .contact-message-modal-card {
-    background: #211525;
-    border-color: rgba(255, 122, 195, 0.28);
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+
+  .freshwash-message-row.is-admin .freshwash-bubble-text {
+    color: #fff;
+    background: linear-gradient(135deg, #ff5aa9, #8e2558);
+    border-color: transparent;
+    box-shadow: 0 14px 28px rgba(142, 37, 88, 0.22);
   }
-  body.admin-dashboard-body.dark-mode .contact-message-modal-row strong {
-    color: #f3a7d0;
+
+  .freshwash-bubble-time {
+    color: #9d7385;
+    font-size: 0.72rem;
+    font-weight: 700;
   }
-  body.admin-dashboard-body.dark-mode .contact-message-modal-row p {
-    color: #f9e7f2;
+
+  .freshwash-message-row.is-admin .freshwash-bubble-time {
+    text-align: right;
+  }
+
+  .freshwash-waiting-indicator {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 13px;
+    border-radius: 999px;
+    color: #8a224f;
+    background: rgba(255, 226, 240, 0.94);
+    border: 1px solid rgba(242, 122, 178, 0.16);
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+
+  .freshwash-typing-dots {
+    display: inline-flex;
+    gap: 3px;
+  }
+
+  .freshwash-typing-dots span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #ff4da6;
+  }
+
+  .freshwash-reply-area {
+    padding: 16px 20px 20px;
+    background: rgba(255, 255, 255, 0.76);
+    border-top: 1px solid rgba(242, 122, 178, 0.14);
+  }
+
+  .freshwash-reply-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+  }
+
+  .freshwash-reply-form textarea {
+    width: 100%;
+    min-height: 54px;
+    max-height: 150px;
+    resize: vertical;
+    padding: 16px 18px;
+    border: 1px solid rgba(242, 122, 178, 0.2);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.94);
+    color: #3d1a2d;
+    outline: none;
+    line-height: 1.45;
+    box-shadow: 0 10px 20px rgba(142, 37, 88, 0.06);
+  }
+
+  .freshwash-reply-form textarea:focus {
+    border-color: rgba(235, 77, 152, 0.5);
+    box-shadow: 0 0 0 4px rgba(235, 77, 152, 0.1);
+  }
+
+  .freshwash-send-button {
+    min-width: 112px;
+    min-height: 54px;
+    border: 0;
+    border-radius: 18px;
+    color: #fff;
+    background: linear-gradient(135deg, #ff4da6, #8e2558);
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 14px 26px rgba(142, 37, 88, 0.22);
+    transition: transform 0.18s ease, opacity 0.18s ease;
+  }
+
+  .freshwash-send-button:hover {
+    transform: translateY(-1px);
+  }
+
+  .freshwash-send-button:disabled {
+    opacity: 0.58;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .freshwash-empty-state {
+    margin: auto;
+    max-width: 360px;
+    text-align: center;
+    color: #8a5a6b;
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+  }
+
+  .freshwash-empty-state i {
+    width: 58px;
+    height: 58px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    color: #fff;
+    background: linear-gradient(135deg, #ff8ebf, #8e2558);
+    box-shadow: 0 14px 26px rgba(142, 37, 88, 0.18);
+  }
+
+  .freshwash-empty-state strong {
+    color: #3d1a2d;
+    font-size: 1rem;
+  }
+
+  .freshwash-toast {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 1300;
+    display: none;
+    max-width: 360px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    color: #8a224f;
+    background: rgba(255, 241, 248, 0.96);
+    border: 1px solid rgba(242, 122, 178, 0.22);
+    box-shadow: 0 18px 34px rgba(142, 37, 88, 0.18);
+    font-weight: 700;
+  }
+
+  .freshwash-toast.is-visible {
+    display: block;
+  }
+
+  body.admin-dashboard-body.dark-mode .freshwash-chat-shell,
+  body.admin-dashboard-body.dark-mode .freshwash-conversation {
+    background: linear-gradient(180deg, #211525, #1a101d);
+    border-color: rgba(255, 122, 195, 0.2);
+  }
+
+  body.admin-dashboard-body.dark-mode .freshwash-chat-sidebar {
+    background: linear-gradient(180deg, #251729, #1d1221);
+    border-color: rgba(255, 122, 195, 0.18);
+  }
+
+  body.admin-dashboard-body.dark-mode .freshwash-chat-title-row h3,
+  body.admin-dashboard-body.dark-mode .freshwash-chat-item-name,
+  body.admin-dashboard-body.dark-mode .freshwash-chat-user-name,
+  body.admin-dashboard-body.dark-mode .freshwash-empty-state strong {
+    color: #fff2f8;
+  }
+
+  body.admin-dashboard-body.dark-mode .freshwash-chat-preview,
+  body.admin-dashboard-body.dark-mode .freshwash-chat-user-email,
+  body.admin-dashboard-body.dark-mode .freshwash-bubble-time,
+  body.admin-dashboard-body.dark-mode .freshwash-empty-state {
+    color: #d9afc5;
+  }
+
+  body.admin-dashboard-body.dark-mode .freshwash-bubble-text,
+  body.admin-dashboard-body.dark-mode .freshwash-chat-search input,
+  body.admin-dashboard-body.dark-mode .freshwash-reply-form textarea {
+    background: rgba(45, 28, 50, 0.96);
+    border-color: rgba(255, 122, 195, 0.18);
+    color: #fff2f8;
+  }
+
+  body.admin-dashboard-body.dark-mode .freshwash-conversation-head,
+  body.admin-dashboard-body.dark-mode .freshwash-reply-area {
+    background: rgba(35, 21, 40, 0.8);
+    border-color: rgba(255, 122, 195, 0.16);
+  }
+
+  @media (max-width: 900px) {
+    .freshwash-chat-shell {
+      grid-template-columns: 1fr;
+      height: auto;
+      min-height: 0;
+    }
+
+    .freshwash-chat-sidebar {
+      min-height: 360px;
+      border-right: 0;
+      border-bottom: 1px solid rgba(242, 122, 178, 0.16);
+    }
+
+    .freshwash-conversation {
+      min-height: 640px;
+    }
+
+    .freshwash-message-row {
+      max-width: 88%;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .freshwash-conversation-head {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .freshwash-reply-form {
+      grid-template-columns: 1fr;
+    }
+
+    .freshwash-send-button {
+      width: 100%;
+    }
   }
 </style>
 
 <section class="admin-panel is-active" data-panel="messages" aria-label="Contact messages">
-  <div class="admin-card">
-    <div class="admin-bookings-head">
-      <div class="admin-bookings-head-copy">
-        <h3>Contact Messages</h3>
-        <p>Customer-submitted Contact Us messages.</p>
+  <div class="freshwash-chat-shell" id="freshwashChatApp">
+    <aside class="freshwash-chat-sidebar" aria-label="Chats list">
+      <div class="freshwash-chat-sidebar-head">
+        <div class="freshwash-chat-title-row">
+          <h3>Chats</h3>
+          <span class="freshwash-chat-count" id="chatCount">0</span>
+        </div>
+        <label class="freshwash-chat-search" for="chatSearchInput">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input id="chatSearchInput" type="search" autocomplete="off" placeholder="Search messages or users" />
+        </label>
       </div>
-      <div class="admin-bookings-controls">
-        <span class="admin-pill">{{ messages|length }} messages</span>
-      </div>
-    </div>
+      <div class="freshwash-chat-list" id="chatList"></div>
+    </aside>
 
-    <div class="admin-bookings-table-wrap">
-      <table class="admin-table admin-bookings-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Subject</th>
-            <th>Message</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if messages %}
-            {% for m in messages %}
-            <tr>
-              <td>{{ m.name or "-" }}</td>
-              <td>{{ m.email or "-" }}</td>
-              <td>{{ m.subject or "-" }}</td>
-              <td class="contact-message-cell">
-                <button
-                  type="button"
-                  class="admin-button admin-button-outline-pink"
-                  data-name="{{ (m.name or '')|e }}"
-                  data-email="{{ (m.email or '')|e }}"
-                  data-subject="{{ (m.subject or '')|e }}"
-                  data-message="{{ (m.message or '')|e }}"
-                  data-created-at="{{ (m.created_at or '')|e }}"
-                  onclick="openContactMessageModalFromButton(this)"
-                >
-                  View
-                </button>
-              </td>
-              <td>{{ m.created_at or "-" }}</td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="5">No messages yet.</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
+    <main class="freshwash-conversation" aria-label="Conversation">
+      <header class="freshwash-conversation-head">
+        <div class="freshwash-chat-user">
+          <span class="freshwash-chat-avatar" id="activeAvatar">FW</span>
+          <div class="freshwash-chat-user-copy">
+            <strong class="freshwash-chat-user-name" id="activeName">Select a chat</strong>
+            <span class="freshwash-chat-user-email" id="activeEmail">Customer conversation</span>
+          </div>
+        </div>
+        <span class="freshwash-chat-status" id="activeStatus">Ready</span>
+      </header>
+
+      <div class="freshwash-chat-body" id="chatBody"></div>
+
+      <footer class="freshwash-reply-area">
+        <form class="freshwash-reply-form" id="replyForm">
+          <textarea id="replyInput" rows="2" placeholder="Type your reply..." disabled></textarea>
+          <button class="freshwash-send-button" id="sendReplyButton" type="submit" disabled>
+            <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+            Send
+          </button>
+        </form>
+      </footer>
+    </main>
   </div>
 </section>
 
-<div class="contact-message-modal" id="contactMessageModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="contactMessageModalTitle">
-  <div class="contact-message-modal-card">
-    <div class="contact-message-modal-head">
-      <h3 id="contactMessageModalTitle">Contact Message</h3>
-      <button type="button" class="contact-message-modal-close" aria-label="Close" onclick="closeContactMessageModal()">&times;</button>
-    </div>
-    <div class="contact-message-modal-body">
-      <div class="contact-message-modal-row">
-        <strong>Name</strong>
-        <p id="contactModalName">-</p>
-      </div>
-      <div class="contact-message-modal-row">
-        <strong>Email</strong>
-        <p id="contactModalEmail">-</p>
-      </div>
-      <div class="contact-message-modal-row">
-        <strong>Subject</strong>
-        <p id="contactModalSubject">-</p>
-      </div>
-      <div class="contact-message-modal-row">
-        <strong>Full Message</strong>
-        <p id="contactModalMessage">-</p>
-      </div>
-      <div class="contact-message-modal-row">
-        <strong>Date</strong>
-        <p id="contactModalDate">-</p>
-      </div>
-    </div>
-  </div>
-</div>
+<div class="freshwash-toast" id="freshwashChatToast" role="status" aria-live="polite"></div>
 
 <script>
-  function openContactMessageModalFromButton(button) {
-    if (!button) return;
-    openContactMessageModal({
-      name: button.dataset.name || "",
-      email: button.dataset.email || "",
-      subject: button.dataset.subject || "",
-      message: button.dataset.message || "",
-      created_at: button.dataset.createdAt || "",
+  const INITIAL_CONTACT_MESSAGES = {{ messages|tojson }};
+
+  const chatState = {
+    messages: Array.isArray(INITIAL_CONTACT_MESSAGES) ? INITIAL_CONTACT_MESSAGES : [],
+    conversations: [],
+    activeKey: "",
+    query: "",
+    sending: false,
+  };
+
+  const chatEls = {};
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function parseDate(value) {
+    const date = value ? new Date(value) : null;
+    return date && !Number.isNaN(date.getTime()) ? date : null;
+  }
+
+  function formatChatTime(value) {
+    const date = parseDate(value);
+    if (!date) return "";
+    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+
+  function formatDateLabel(value) {
+    const date = parseDate(value);
+    if (!date) return "Conversation";
+    return date.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function getInitials(name, email) {
+    const source = String(name || email || "FW").trim();
+    const parts = source.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return source.slice(0, 2).toUpperCase();
+  }
+
+  function conversationKey(row) {
+    return String(row.user_id || row.email || row.name || row.id || "unknown").toLowerCase();
+  }
+
+  function normalizeMessage(row) {
+    return {
+      id: String(row.id || ""),
+      user_id: row.user_id || "",
+      name: row.name || "Customer",
+      email: row.email || "",
+      subject: row.subject || "",
+      message: row.message || "",
+      admin_reply: row.admin_reply || "",
+      created_at: row.created_at || "",
+      _table: row._table || "",
+    };
+  }
+
+  function buildConversations() {
+    const grouped = new Map();
+    chatState.messages.map(normalizeMessage).forEach((row) => {
+      const key = conversationKey(row);
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          key,
+          name: row.name || "Customer",
+          email: row.email || "",
+          initials: getInitials(row.name, row.email),
+          rows: [],
+          latestAt: row.created_at || "",
+          latestPreview: "",
+          unread: 0,
+        });
+      }
+      const conversation = grouped.get(key);
+      conversation.rows.push(row);
+      if (!conversation.email && row.email) conversation.email = row.email;
+      if (row.name && conversation.name === "Customer") conversation.name = row.name;
+    });
+
+    chatState.conversations = Array.from(grouped.values()).map((conversation) => {
+      conversation.rows.sort((a, b) => (parseDate(a.created_at)?.getTime() || 0) - (parseDate(b.created_at)?.getTime() || 0));
+      const latest = conversation.rows[conversation.rows.length - 1] || {};
+      conversation.latestAt = latest.created_at || "";
+      conversation.latestPreview = latest.admin_reply ? `You: ${latest.admin_reply}` : latest.message || "No message preview";
+      conversation.unread = conversation.rows.filter((row) => !String(row.admin_reply || "").trim()).length;
+      return conversation;
+    }).sort((a, b) => (parseDate(b.latestAt)?.getTime() || 0) - (parseDate(a.latestAt)?.getTime() || 0));
+
+    if (!chatState.activeKey && chatState.conversations.length) {
+      chatState.activeKey = chatState.conversations[0].key;
+    }
+    if (chatState.activeKey && !chatState.conversations.some((conversation) => conversation.key === chatState.activeKey)) {
+      chatState.activeKey = chatState.conversations[0]?.key || "";
+    }
+  }
+
+  function filteredConversations() {
+    const query = chatState.query.trim().toLowerCase();
+    if (!query) return chatState.conversations;
+    return chatState.conversations.filter((conversation) => {
+      const haystack = [
+        conversation.name,
+        conversation.email,
+        conversation.latestPreview,
+        ...conversation.rows.flatMap((row) => [row.subject, row.message, row.admin_reply]),
+      ].join(" ").toLowerCase();
+      return haystack.includes(query);
     });
   }
 
-  function openContactMessageModal(message) {
-    const modal = document.getElementById("contactMessageModal");
-    if (!modal) return;
-    const setText = (id, value) => {
-      const el = document.getElementById(id);
-      const clean = (value === null || value === undefined) ? "" : String(value).trim();
-      if (el) el.textContent = clean || "-";
-    };
-    setText("contactModalName", message && message.name);
-    setText("contactModalEmail", message && message.email);
-    setText("contactModalSubject", message && message.subject);
-    setText("contactModalMessage", message && message.message);
-    setText("contactModalDate", message && message.created_at);
-    modal.classList.add("is-open");
-    modal.setAttribute("aria-hidden", "false");
-    document.body.classList.add("auth-modal-open");
+  function renderChatList() {
+    const conversations = filteredConversations();
+    chatEls.chatCount.textContent = `${chatState.conversations.length} chats`;
+    if (!conversations.length) {
+      chatEls.chatList.innerHTML = `
+        <div class="freshwash-empty-state">
+          <i class="fa-solid fa-comments" aria-hidden="true"></i>
+          <strong>No chats found</strong>
+          <span>New Contact Us messages will appear here.</span>
+        </div>
+      `;
+      return;
+    }
+
+    chatEls.chatList.innerHTML = conversations.map((conversation) => `
+      <button type="button" class="freshwash-chat-item ${conversation.key === chatState.activeKey ? "is-active" : ""}" data-chat-key="${escapeHtml(conversation.key)}">
+        <span class="freshwash-chat-avatar">${escapeHtml(conversation.initials)}</span>
+        <span class="freshwash-chat-item-main">
+          <span class="freshwash-chat-item-name">${escapeHtml(conversation.name)}</span>
+          <span class="freshwash-chat-preview">${escapeHtml(conversation.latestPreview)}</span>
+        </span>
+        <span class="freshwash-chat-item-side">
+          <span class="freshwash-chat-time">${escapeHtml(formatChatTime(conversation.latestAt))}</span>
+          ${conversation.unread ? `<span class="freshwash-chat-unread">${conversation.unread}</span>` : ""}
+        </span>
+      </button>
+    `).join("");
+
+    chatEls.chatList.querySelectorAll("[data-chat-key]").forEach((button) => {
+      button.addEventListener("click", () => {
+        chatState.activeKey = button.dataset.chatKey || "";
+        renderChat();
+      });
+    });
   }
 
-  function closeContactMessageModal() {
-    const modal = document.getElementById("contactMessageModal");
-    if (!modal) return;
-    modal.classList.remove("is-open");
-    modal.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("auth-modal-open");
+  function getActiveConversation() {
+    return chatState.conversations.find((conversation) => conversation.key === chatState.activeKey) || null;
+  }
+
+  function rowToBubbles(row) {
+    const bubbles = [{
+      type: "customer",
+      text: row.subject ? `${row.subject}\n\n${row.message}` : row.message,
+      time: row.created_at,
+      initials: getInitials(row.name, row.email),
+    }];
+    if (String(row.admin_reply || "").trim()) {
+      bubbles.push({
+        type: "admin",
+        text: row.admin_reply,
+        time: row.created_at,
+        initials: "AD",
+      });
+    }
+    return bubbles;
+  }
+
+  function renderConversation() {
+    const conversation = getActiveConversation();
+    if (!conversation) {
+      chatEls.activeAvatar.textContent = "FW";
+      chatEls.activeName.textContent = "Select a chat";
+      chatEls.activeEmail.textContent = "Customer conversation";
+      chatEls.activeStatus.textContent = "Ready";
+      chatEls.replyInput.disabled = true;
+      chatEls.sendReplyButton.disabled = true;
+      chatEls.chatBody.innerHTML = `
+        <div class="freshwash-empty-state">
+          <i class="fa-solid fa-inbox" aria-hidden="true"></i>
+          <strong>No conversation selected</strong>
+          <span>Choose a chat from the left to view the full message history.</span>
+        </div>
+      `;
+      return;
+    }
+
+    chatEls.activeAvatar.textContent = conversation.initials;
+    chatEls.activeName.textContent = conversation.name || "Customer";
+    chatEls.activeEmail.textContent = conversation.email || "No email provided";
+    chatEls.activeStatus.textContent = conversation.unread ? "Waiting for reply" : "Replied";
+    chatEls.replyInput.disabled = false;
+    chatEls.sendReplyButton.disabled = chatState.sending;
+
+    let lastDateLabel = "";
+    const html = [];
+    conversation.rows.forEach((row) => {
+      const dateLabel = formatDateLabel(row.created_at);
+      if (dateLabel !== lastDateLabel) {
+        html.push(`<div class="freshwash-date-separator">${escapeHtml(dateLabel)}</div>`);
+        lastDateLabel = dateLabel;
+      }
+      rowToBubbles(row).forEach((bubble) => {
+        html.push(`
+          <div class="freshwash-message-row ${bubble.type === "admin" ? "is-admin" : "is-customer"}">
+            <span class="freshwash-chat-avatar">${escapeHtml(bubble.initials)}</span>
+            <div class="freshwash-bubble">
+              <p class="freshwash-bubble-text">${escapeHtml(bubble.text)}</p>
+              <span class="freshwash-bubble-time">${escapeHtml(formatChatTime(bubble.time))}</span>
+            </div>
+          </div>
+        `);
+      });
+    });
+
+    if (conversation.unread) {
+      html.push(`
+        <div class="freshwash-waiting-indicator">
+          <span class="freshwash-typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+          Customer is waiting for your reply
+        </div>
+      `);
+    }
+
+    chatEls.chatBody.innerHTML = html.join("");
+    requestAnimationFrame(() => {
+      chatEls.chatBody.scrollTop = chatEls.chatBody.scrollHeight;
+    });
+  }
+
+  function renderChat() {
+    buildConversations();
+    renderChatList();
+    renderConversation();
+  }
+
+  function activeReplyTarget() {
+    const conversation = getActiveConversation();
+    if (!conversation) return null;
+    return conversation.rows.find((row) => !String(row.admin_reply || "").trim()) || conversation.rows[conversation.rows.length - 1] || null;
+  }
+
+  function showChatToast(message) {
+    chatEls.toast.textContent = message;
+    chatEls.toast.classList.add("is-visible");
+    window.clearTimeout(showChatToast.timer);
+    showChatToast.timer = window.setTimeout(() => chatEls.toast.classList.remove("is-visible"), 3000);
+  }
+
+  async function fetchLatestMessages() {
+    const response = await fetch("/api/admin/messages", { headers: { "Accept": "application/json" } });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || "Could not load messages.");
+    chatState.messages = Array.isArray(data.messages) ? data.messages : [];
+    renderChat();
+  }
+
+  async function sendReply(event) {
+    event.preventDefault();
+    const target = activeReplyTarget();
+    const reply = chatEls.replyInput.value.trim();
+    if (!target || !reply || chatState.sending) return;
+
+    chatState.sending = true;
+    chatEls.sendReplyButton.disabled = true;
+    chatEls.sendReplyButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Sending';
+    try {
+      const response = await fetch(`/api/admin/messages/${encodeURIComponent(target.id)}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ reply, table: target._table || "" }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || "Could not send reply.");
+      chatEls.replyInput.value = "";
+      chatState.messages = Array.isArray(data.messages) ? data.messages : chatState.messages.map((row) => {
+        if (String(row.id) === String(target.id)) return { ...row, admin_reply: reply };
+        return row;
+      });
+      renderChat();
+      showChatToast("Reply sent successfully.");
+    } catch (error) {
+      showChatToast(error.message || "Reply failed.");
+    } finally {
+      chatState.sending = false;
+      chatEls.sendReplyButton.innerHTML = '<i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send';
+      renderConversation();
+    }
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    const modal = document.getElementById("contactMessageModal");
-    if (!modal) return;
-    modal.addEventListener("click", (event) => {
-      if (event.target === modal) closeContactMessageModal();
+    chatEls.chatList = document.getElementById("chatList");
+    chatEls.chatBody = document.getElementById("chatBody");
+    chatEls.chatCount = document.getElementById("chatCount");
+    chatEls.activeAvatar = document.getElementById("activeAvatar");
+    chatEls.activeName = document.getElementById("activeName");
+    chatEls.activeEmail = document.getElementById("activeEmail");
+    chatEls.activeStatus = document.getElementById("activeStatus");
+    chatEls.replyForm = document.getElementById("replyForm");
+    chatEls.replyInput = document.getElementById("replyInput");
+    chatEls.sendReplyButton = document.getElementById("sendReplyButton");
+    chatEls.toast = document.getElementById("freshwashChatToast");
+
+    document.getElementById("chatSearchInput")?.addEventListener("input", (event) => {
+      chatState.query = event.target.value || "";
+      renderChatList();
     });
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && modal.classList.contains("is-open")) {
-        closeContactMessageModal();
+    chatEls.replyForm?.addEventListener("submit", sendReply);
+    chatEls.replyInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        chatEls.replyForm.requestSubmit();
       }
     });
+
+    renderChat();
+    fetchLatestMessages().catch((error) => showChatToast(error.message || "Could not refresh messages."));
+    window.setInterval(() => {
+      fetchLatestMessages().catch(() => {});
+    }, 30000);
   });
 </script>
 {% endblock %}
